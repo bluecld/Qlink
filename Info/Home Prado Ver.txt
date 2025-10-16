@@ -1,0 +1,1611 @@
+QLink: 4.82, 02/14/2007, Build:346
+FirmwareVersion: 7.89
+TeleAccessVersion: 1.00
+
+Project: Tek Tjia
+OwnerInfo: ,,,192.168.1.200,3040,,
+DealerInfo: ,,,,
+InstallerInfo: ,,,,
+JobInfo: 24:2:2007,24:2:2007,,0,1,-1
+SunT:Burbank,CA,United States,34.1200000000,-118.2100000000,-480,60,3,8,1,2,0,11,1,1,2,0
+GloSetup: 0,0,1,1,1,0,0,25,0,0,1,0,0,0,24,0,0,1,0,1
+GloIr: 224,0,0
+GloBtnCfg: ,,,,224,14,0,255,,,,,,,,
+CycleT: 1.0000000000
+LearnT: 5.0000000000
+DefEncl: 4,0
+DefLf: 1920
+DefaultKeypad: 1,2,White,White,Standard,1,1,0,0,White,Black
+DefaultDimmer: 1,2,White,White,Standard,1,1,0,0,White,Black
+DefaultSlim: 1,0,White,White,Standard,0,1,0,0,White,Black
+DefaultFaceplate: 1,0,White,White,Standard,0,1,0,0,White,Black
+DefLCDCol: White
+DefLCDSty: 1
+GExtTempSnsr: 1,0,0
+POAttn:  
+POPrefs: ,,
+POFEDEXNum: 
+POPaymentInfo: ,,,
+
+Palette1: #4D0000,#9E0000,#FF0000,#FE5555,#CC959E,#000000,#5F5F5F,#AAAAAA,#660066,#8C008C,
+Palette2: #D200D2,#FF00FF,#DC00DC,#C17EC1,#000060,#0000E0,#4949FF,#7373FF,#8F8FE1,#002741,
+Palette3: #004573,#007ACC,#0490FA,#5AA7F5,#004949,#007587,#00FFFF,#4FD6D9,#004100,#008000,
+Palette4: #00DC00,#90DF90,#3D3D00,#999900,#E3E300,#EBEA20,#CDCC67,#920075,#FF00CC,#F55AA7
+
+LdMap: Incandescent,MDS8RW101
+LdMap: Fluor. Mag non-Dim,MDR8RW101
+LdMap: Fluor. Electronic non-Dim,MDR8RW101
+LdMap: Fluor. Magnetic Dim,MDS8RW101
+LdMap: Fluor. Lutron High Lum,ED4008-120
+LdMap: Electronic Low Voltage,ED4008-120
+LdMap: Magnetic Low Voltage,MDS8RW101
+LdMap: Motor,MDR8RW101
+LdMap: Var Speed Motor,MDS8RW101
+LdMap: DC Controlled,MDR8RW101
+LdMap: HID,MDR8RW101
+LdMap: Cold Cathode,MDS8RW101
+LdMap: [MDS8RW101],MDS8RW101
+LdMap: [ED4008-120],ED4008-120
+LdMap: [MDR8RW101],MDR8RW101
+LdMap: [MDS8RW201],MDS8RW201
+LdMap: [MDR8RW201],MDR8RW201
+LdMap: [MDR8CW301],MDR8CW301
+LdPwr: 0,Default,0,97,40,684,1051,1410,1782,2361,3368,4423,5313,6061,6382
+LdPwr: 2,Advance Mark X,23,90,40,2746,2785,2856,2970,3225,3842,4608,5258,5722,5871
+LdPwr: 3,Magnetic Low Voltage,0,90,40,668,1025,1373,1734,2294,3257,4236,4997,5524,5691
+LdPwr: 4,Compact Fluorescent,20,100,40,2602,2650,2737,2873,3173,3887,4790,5643,6517,7680
+LVLoadType: Default,0,100
+LVLoadType: Lutron,0,100
+LVLoadType: Motorola Helios,0,100
+LVLoadType: Prescolite,30,120
+************************************** Variables ******************************
+
+LdVar: Fade,10011
+************************************** String Variables ******************************
+
+************************************** Master Info  ****************************
+
+Master: M1West Utility 1,1,0,2
+  Encl: M1 West Utility 1,1,1,4,0,,0,2
+    Module: Module 1,MDS8RW101,1,1,1
+    Module: Module 2,MDS8RW101,1,1,2
+    Module: Module 3,MDS8RW101,1,1,3
+    Module: Module 4,MDS8RW101,1,1,4
+  Encl: S1 West Utility 2,1,2,4,0,,0,2
+    Module: Module 1,MDS8RW101,1,2,1
+    Module: Module 2,MDS8RW101,1,2,2
+    Module: Module 3,MDS8RW101,1,2,3
+    Module: Module 4,MDR8RW101,1,2,4
+  Encl: S2 West Utility 2A,1,3,2,0,,0,0
+    Module: Module 1,MDS8RW101,1,3,1
+    Module: Module 2,MDS8RW101,1,3,2
+Master: M2 Under Stairs,2,0,2
+  Encl: M2 Under Stairs,2,1,4,0,,0,2
+    Module: Module 1,MDS8RW101,2,1,1
+    Module: Module 2,MDS8RW101,2,1,2
+    Module: Module 3,MDS8RW101,2,1,3
+    Module: Module 4,MDS8RW101,2,1,4
+  Encl: S3 Linen Closet,2,2,4,0,,0,2
+    Module: Module 1,MDS8RW101,2,2,1
+    Module: Module 2,MDS8RW101,2,2,2
+    Module: Module 3,MDS8RW101,2,2,3
+    Module: Module 4,MDR8RW101,2,2,4
+  Time: Midnight,1,1,0,*** **, **** ******* 11:59:00 PM, 0
+        Event: 1, 0 PRESET_ON 1 5.0 0 0
+          LdA: 1328:50%
+  Time: Exterior Off 10,2,1,0,*** **, **** ******* 10:00:00 PM, 0
+        Event: 1, 0 PRESET_OFF 2 0.0
+          LdA: 1112,2212,1117,1144,1127
+          LdA: 2115,1231,1232,2221,2231
+          LdA: 2233,2238,1145,2121
+  Time: House Off Sweep-1AM,3,1,0,*** **, **** ******* 01:00:00 AM, 0
+        Event: 1, 0 ALL_OFF 2 0.0
+          LdA: 1328,2122,1146
+  Time: Sunset On,4,1,0,*** **, **** ******* SS - 10, 0
+        Event: 1, 0 PRESET_ON 1 0.0 0 0
+          LdA: 1328,1145,2121
+  Time: Morning,6,1,0,*** **, **** ******* SR + 15, 0
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1328
+************************************** Floor Plan  ****************************
+
+Floor: Equipment
+  Room: Equipment
+    Station: Global,255,1,8,000000,1,1948280182,0,1,0,1
+      Btn: Button 1,1,,,1
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: All On,5,All On,,1
+        Event: 1, 0 ALL_ON 0 0.0
+      Btn: All Off,6,All Off,,1
+        Event: 1, 0 ALL_OFF 2 0.0
+      Btn: Button 7,7,,,1
+      Btn: Button 8,8,,,1
+    Station: V18,255,1,18,000000,1,1948280182,0,1,0,1
+      Btn: Button 1,1,,,1
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: Button 5,5,,,1
+      Btn: Button 6,6,,,1
+      Btn: Button 7,7,,,1
+      Btn: Button 8,8,,,1
+    Load: spare 6,2,1,2,3,165,Incandescent,0,100,,1,100
+    Load: spare 7,2,1,2,4,166,Incandescent,0,100,,1,100
+Floor: 1st Floor
+  Room: Game Room
+    Station: V23,255,1,23,0182024,1,1948280182,0,1,0,1
+      Btn: Path,1,Path,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1317,2148,1328
+      Btn: Pendant ,2,Pendant,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1111
+      Btn: Soffit,3,Soffit,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1114
+      Btn: Pool Table,4,Pool,Table,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2141
+      Btn: Game Room On,5,Game,Room On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1111,1114,1115,2141
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1111:60%,1114,1115:60%,2141:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1111:20%,1114:0%,1115:20%,2141:20%
+      Btn: Game Room Off,8,Game,Room Of,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1111,1114,1115,2141
+    Station: V24,255,1,24,0181976,1,1948280182,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2231:80%
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: Button 5,5,,,1
+      Btn: Button 6,6,,,1
+      Btn: Button 7,7,,,1
+      Btn: Button 8,8,,,1
+    Load: Pendant,1,1,1,1,101,Incandescent,0,200,,1,100
+    Load: Sofit Fluor,1,1,1,4,105,Fluor. Mag non-Dim,1,720,,1,100
+    Load: 4 6" downlites,1,1,1,5,104,Incandescent,0,360,,1,100
+    Load: pendant-pool table,2,1,4,1,325,Incandescent,0,100,,1,100
+  Room: Library
+    Station: V01,255,1,1,0182007,1,1769234787,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1112:80%
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: Button 5,5,,,1
+      Btn: Button 6,6,,,1
+      Btn: Button 7,7,,,1
+      Btn: Button 8,8,,,1
+    Station: V02,255,1,2,0182030,1,1769234787,0,1,0,1
+      Btn: Path,1,Path,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 1 23 1 0 0
+      Btn: ,2,,,1
+      Btn: ,3,,,1
+      Btn: Entry,4,Entry,,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 1135,1233,1238
+      Btn: Library On,5,Library,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1113,1147
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1113:60%,1147:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1113:0%,1147:20%
+      Btn: Library Off,8,Library,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1113,1147
+    Load: 4 6" downlites,1,1,1,3,103,Incandescent,0,360,,1,100
+    Load: under cabinet,1,1,4,7,121,Incandescent,0,400,,1,100
+  Room: Under Bridge
+    Load: 2 4"lv,2,2,3,2,106,Magnetic Low Voltage,0,400,,1,100
+  Room: Exercise Room
+    Station: V03,255,1,3,0182035,1,1769234787,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1117:80%
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: Button 5,5,,,1
+      Btn: Button 6,6,,,1
+      Btn: Button 7,7,,,1
+      Btn: Button 8,8,,,1
+    Station: V05,255,1,5,0181997,1,1769234787,0,1,0,1
+      Btn: Hall,1,Hall,,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 1317
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: Room On,5,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1118
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1118:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1118:20%
+      Btn: Room Off,8,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1118
+    Load: 5 downlites,1,1,1,8,108,Incandescent,0,450,,1,100
+  Room: W-Hall to Exercse Rm
+    Station: V14,255,1,14,0182029,1,1948280182,0,1,0,1
+      Btn: Path,1,Path,,1
+        Event: 1, 2 TOGGLE 34 0.0
+      Btn: Wall,2,Wall,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1124
+      Btn: Art,3,Art,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1122
+      Btn: Ceiling,4,Ceiling,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1317
+      Btn: Hall On,5,Hall,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1317,1314
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1122:60%,1124:80%,1227:80%,1317:60%,1314:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1122:40%,1124:40%,1227:40%,1317:20%,1314:20%
+      Btn: Hall Off,8,Hall,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1122,1124,1227,1317,1314
+    Load: hall art,1,1,2,2,114,Incandescent,0,500,,1,100
+    Load: wall light,1,1,2,4,113,Incandescent,0,100,,1,100
+          Notes: not working
+    Load: hall pendant,1,2,2,7,164,Incandescent,0,200,,1,100
+          Notes: not working works with hall lights
+    Load: 5 6" downlites,1,3,1,7,137,Incandescent,0,450,,1,100
+    Load: elev lite,1,3,1,4,134,Incandescent,0,100,,1,100
+          Notes: not working
+  Room: TV Room
+    Station: V16,255,1,16,0182040,1,1948280182,0,1,0,1
+      Btn: Hall,1,Hall,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 1 5 1 0 0
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: Room On,5,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1126
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1126:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1126:20%
+      Btn: Room Off,8,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1126
+    Load: 4 6" downlites,1,1,2,6,120,Incandescent,0,360,,1,100
+  Room: Entry
+    Station: V20,255,2,22,0182032,1,1948280182,0,1,0,1
+      Btn: Path,1,Path,,1
+        Event: 1, 0 PRESET_TOGGLE 1 3.0 0 0
+          LdA: 1328
+      Btn: Outside,2,Outside,,1
+        Event: 1, 0 PRESET_TOGGLE 1 3.0 0 0
+          LdA: 1231,1127,2115
+      Btn: Foyer,3,Foyer,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1135
+      Btn: All Outside Off,4,All Off,Outside,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1112,2212,1117,1144,1231
+          LdA: 1232,2221,2231,2233,2238
+          LdA: 1127,2115
+      Btn: Entry On,5,Entry,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1135,1233,1238
+      Btn: Lanscape,6,Land,Scape,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1145,2121
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1135:20%,1233:35%,1238:20%
+      Btn: Entry Off,8,Entry,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1135,1233,1238
+    Load: 2 low voltage,1,1,3,5,125,Incandescent,0,180,,1,100
+    Load: chandelier,1,2,3,3,169,Incandescent,0,500,,1,100
+    Load: 4 6" downlites,1,2,3,8,168,Incandescent,0,360,,1,100
+  Room: Living Room
+    Station: V13,255,1,13,0182042,1,1948280182,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1127:80%
+      Btn: Fire Place ,2,Fire,Place,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1128
+      Btn: Art,3,Art,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1133
+      Btn: Path,4,Path,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 1 23 1 0 0
+      Btn: Room On,5,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1128,1136,1133
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1128:60%,1133:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1128:20%,1133:20%
+      Btn: Room Off,8,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1128,1136,2147,1133
+    Station: V73 new 03-13,255,1,33,0181977,1,1702260589,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 1 13 1 0 0
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: Button 5,5,,,1
+      Btn: Button 6,6,,,1
+      Btn: Button 7,7,,,1
+      Btn: Button 8,8,,,1
+    Load: 2 fire place LV,1,1,2,8,123,Incandescent,0,100,,1,100
+    Load: 2 6" downlites,1,1,3,6,122,Incandescent,0,190,,1,100
+    Load: 3 wall wash,2,1,4,7,326,Incandescent,0,270,,1,100
+    Load: Art Lights,1,1,3,3,130,Incandescent,0,300,,1,100
+  Room: W-Garage 2
+    Station: V17,255,1,17,0182001,1,1948280182,0,1,0,1
+      Btn: Hall,1,Hall,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 1 5 1 0 0
+      Btn: System Off,2,System,Off,1
+        Event: 1, 2 MOMENTARY 0 0.0
+        Event: 2, 0 ALL_OFF 2 0.0
+          Cond: DELAY 3.0
+      Btn: Button 3,3,,,1
+      Btn: All Off Outside,4,All Off,Outside,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 22 4 0 0
+      Btn: Garage On,5,Garage,On,1
+        Event: 1, 0 PRESET_ON 1 0.0 0 0
+          LdA: 1141
+        Event: 2, 0 PRESET_OFF 2 3.0
+          Cond: AFTER *** **, **** ******* 11:00:00 PM
+          Cond: BEFORE *** **, **** ******* SR + 0
+          Cond: DELAY 1800.0
+      Btn: Home,6,Home,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 1 23 1 0 2
+        Event: 2, 0 SWITCH_POINTER -1 0.0 1 5 1 0 2
+      Btn: House Off,7,House,Off,1
+        Event: 1, 2 MOMENTARY 0 0.0
+        Event: 2, 0 ALL_OFF 2 0.0
+          Cond: DELAY 2.0
+          LdA: 1112,2212,1117,1144,1127
+          LdA: 2115,1145,2121,2122,1231
+          LdA: 1232,2221,2231,2233,2238
+          LdA: 1146
+      Btn: Garage Off,8,Garage,Off,1
+        Event: 1, 0 PRESET_OFF 2 0.0
+          LdA: 1141
+      BCnt: Garage,9
+        BtnCfg: ,,0,
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1141
+      BCnt: Garage 2,10
+        BtnCfg: ,,0,
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1141
+    Load: fluorescents,1,1,4,1,128,Fluor. Mag non-Dim,1,500,,1,100
+  Room: E-Garage 1
+    Station: V40,255,2,37,0182037,1,1948280182,0,1,0,1
+      Btn: Hall,1,Hall,,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 2148
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: All Off Outside,4,All Off,Outside,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 22 4 0 0
+      Btn: Garage On,5,Garage,On,1
+        Event: 1, 0 PRESET_ON 1 0.0 0 0
+          LdA: 2128
+        Event: 2, 0 PRESET_OFF 2 60.0
+          Cond: AFTER *** **, **** ******* 11:00:00 PM
+          Cond: BEFORE *** **, **** ******* SR + 0
+          Cond: DELAY 1800.0
+          LdA: 2128
+      Btn: Home,6,Home,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 37 1 0 2
+        Event: 2, 0 SWITCH_POINTER 34 0.0 1 23 1 0 2
+      Btn: House Off,7,House,Off,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 17 7 0 0
+      Btn: Garage Off,8,Garage,Off,1
+        Event: 1, 0 PRESET_OFF 2 0.0
+          LdA: 2128
+      BCnt: Garage,9
+        BtnCfg: ,,0,
+        Event: 1, 2 TOGGLE 34 0.0
+          LdA: 2128
+      BCnt: Garage 2,10
+        BtnCfg: ,,0,
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 2128
+    Load: lights,2,1,2,8,162,Fluor. Mag non-Dim,1,500,,1,100
+  Room: Foyer
+    Station: V19,255,1,19,0182013,1,1948280182,0,1,0,1
+      Btn: Stairs,1,Stairs,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1311:80%
+      Btn: Chand,2,Chand,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1237
+      Btn: Art,3,Art,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1235,2232,1116
+      Btn: Dome,4,Dome,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1236
+      Btn: Foyer On,5,Foyer,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1234,1235,1236,1237,1311
+          LdA: 1328
+      Btn: Ceiling,6,Ceiling,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1328
+      Btn: Lassen,7,Lassen,,1
+        Event: 1, 0 PRESET_TOGGLE 1 3.0 0 0
+          LdA: 2232
+      Btn: Foyer Off,8,Foyer,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1234,1235,1236,1237,1311
+          LdA: 1328,1116
+    Station: V22,255,2,3,0182043,1,1948280182,0,1,0,1
+      Btn: Stairs,1,Stairs,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 19 1 0 0
+      Btn: Chand,2,Chand,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 19 2 0 0
+      Btn: Art,3,Art,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 19 3 0 0
+      Btn: Dome,4,Dome,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 19 4 0 0
+      Btn: Foyer On,5,Foyer,On,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 19 5 0 0
+      Btn: Ceiling,6,Ceiling,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 19 6 0 0
+      Btn: Lassen,7,Lassen,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 19 7 0 0
+      Btn: Foyer Off,8,Foyer,Off,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 19 8 0 0
+    Load: 5 wall wash-art,1,2,3,5,271,Incandescent,0,250,,1,100
+    Load: dome ring,1,2,3,6,272,Incandescent,0,200,,1,100
+    Load: chandelier,1,2,3,7,273,Incandescent,0,500,,1,100
+    Load: 7 6" downlites ,1,3,1,1,131,Incandescent,0,630,,1,100
+    Load: 2 6" downlites,1,3,2,8,246,Incandescent,0,180,,1,100
+    Load: Art Foyer,1,1,1,6,406,Incandescent,0,400,,1,100
+          Notes: Not Working Nothing
+  Room: Powder Room
+    Station: V06,15,1,6,0181837,1,1948280182,0,1,0,0
+      Btn: Room On,1,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1313
+      Btn: Medium,2,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1313:60%
+      Btn: Dim,3,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1313:20%
+      Btn: Room Off,4,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1313
+    Load: chandelier,1,3,1,3,233,Incandescent,0,200,,1,100
+  Room: Guest Suite
+    Station: V07,255,1,7,0182012,1,1948280182,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1144:80%
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: Button 5,5,,,1
+      Btn: Button 6,6,,,1
+      Btn: Button 7,7,,,1
+      Btn: Button 8,8,,,1
+    Station: V10,255,1,10,0182006,1,1948280182,0,1,0,1
+      Btn: Sitting Room,1,Sitting,Room,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 1148
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Foyer,4,Foyer,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1316
+      Btn: Room On,5,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1143,1142
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1143:60%,1142:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1143:30%,1142:20%
+      Btn: Room Off,8,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1143,1142
+    Load: under cabinet light,1,1,4,3,115,Incandescent,0,100,,1,100
+    Load: 4 6" downlites,1,1,4,2,111,Incandescent,0,240,,1,100
+  Room: Guest Bath Foyer
+    Station: V11,2,1,11,0181828,1,1948280182,0,1,0,0
+      Btn: Foyer,2,Foyer,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 10 4 0 0
+    Load: foyer lite,1,3,1,6,136,Incandescent,0,50,,1,100
+  Room: Guest Bath
+    Station: V12,255,1,12,0182044,1,1948280182,0,1,0,1
+      Btn: Ceilling,1,Ceiling,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1315
+      Btn: Vanity,2,Vanity,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1134
+      Btn: Tub,3,Tub,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1131
+      Btn: Shower,4,Shower,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1132
+      Btn: Bath On,5,Bath,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1131,1132,1134,1315
+      Btn: Fan,6,Fan,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1312
+        Event: 2, 0 PRESET_OFF 34 0.0
+          Cond: DELAY 1800.0
+          LdA: 1312
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1131:20%,1132:20%,1134:30%,1315:0%
+      Btn: Bath Off,8,Bath,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1131,1132,1134,1315,1312
+    Load: 6" downlite-tub,1,1,3,1,117,Incandescent,0,90,,1,100
+    Load: 6" downlite-shower,1,1,3,2,118,Incandescent,0,90,,1,100
+    Load: 2 sconces-Vanity,1,1,3,4,116,Incandescent,0,200,,1,100
+    Load: 2 fluor downlites,1,3,1,5,135,Fluor. Mag non-Dim,1,100,,1,100
+    Load: fan,1,3,1,2,132,Motor,1,100,,1,100
+  Room: Guest Sitting
+    Station: V04,255,1,4,0182002,1,1769234787,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1144:80%
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: Button 5,5,,,1
+      Btn: Button 6,6,,,1
+      Btn: Button 7,7,,,1
+      Btn: Button 8,8,,,1
+    Station: V09,255,1,9,4057843,1,1948280182,0,1,0,1
+      Btn: Hall,1,Hall,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 5 1 0 0
+      Btn: Button 2,2,,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 1 14 1 0 0
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: Sitting On,5,Sitting,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1148
+      Btn: Dim,6,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1148:20%
+      Btn: Sitting Off,7,Sitting,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1148
+      Btn: Suite Off,8,Suite,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1143,1142,1314,1131,1132
+          LdA: 1134,1316,1315,1148
+    Load: 2 6" downlites,1,1,4,8,112,Incandescent,0,180,,1,100
+  Room: Dining Room
+    Station: V21,255,2,23,0182016,1,1948280182,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2115:80%
+      Btn: Pendant,2,Pendant,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2112
+      Btn: Soffit,3,Soffit,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 2111
+      Btn: Path,4,Path,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 23 1 0 0
+      Btn: Room On,5,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2111,2112,2118
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2111:0%,2112:60%,2118:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2111,2112,2118
+      Btn: Room Off,8,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2111,2112,2118
+    Station: V72 new 03-13,255,2,1,0182018,1,1702260589,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1127,2115
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: Button 5,5,,,1
+      Btn: Button 6,6,,,1
+      Btn: Button 7,7,,,1
+      Btn: Button 8,8,,,1
+    Load: fluor soffit,2,1,1,1,159,Fluor. Mag non-Dim,1,620,,1,100
+    Load: pendant,2,1,1,2,158,Incandescent,0,300,,1,100
+    Load: 4 downlites,2,1,1,8,157,Incandescent,0,360,,1,100
+  Room: Kitchen
+    Station: V32,255,2,29,0182014,1,1948280182,0,1,1,1
+      Btn: Clean Up,1,Clean,Up,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 2244,2247,2146
+      Btn: Under Cabinet ,2,Under,Cabinet,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 2146
+      Btn: Ceiling,3,Ceiling,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2247
+      Btn: Island,4,Island,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2244
+      Btn: Kitchen On,5,Kitchen,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2244,2247,2146
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 2242
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2242,2138
+      Btn: Kitchen Off,8,Kitchen,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2244,2247,2146
+    Station: V34,255,2,31,0182015,1,1948280182,0,1,0,1
+      Btn: Hall ,1,Hall,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 37 1 0 0
+      Btn: Ceiling,2,Ceiling,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 29 3 0 0
+      Btn: Island,3,Island,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 29 4 0 0
+      Btn: Under Cabinet,4,Under ,Cabinet,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 29 2 0 0
+      Btn: Kitchen On,5,Kitchen,On,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 29 5 0 0
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 29 6 0 0
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 29 7 0 0
+      Btn: Kitchen Off,8,Kitchen,Off,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 29 8 0 0
+    Load: 4 surface,2,2,4,4,143,Incandescent,0,400,,1,100
+    Load: 10 6" downlites,2,2,4,7,141,Incandescent,0,900,,1,100
+    Load: under cabinet lights,2,1,4,6,144,Fluor. Mag non-Dim,1,300,,1,100
+  Room: Kitchen Hall
+  Room: Pantry
+    Station: V33,15,2,30,0181834,1,1948280182,0,1,0,0
+      Btn: Pantry,1,Pantry,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2144
+      Btn: Under Cabinet,2,Under,Cabinet,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 29 2 0 0
+      Btn: Ceiling,3,Ceiling,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 29 3 0 0
+      Btn: Island,4,Island,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 29 4 0 0
+    Load: 2 6" downlites,2,1,4,4,331,Incandescent,0,180,,1,100
+  Room: E-Hall to Kitchen
+    Station: V35,255,2,32,0181975,1,1948280182,0,1,0,1
+      Btn: Path,1,Path,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 23 1 0 0
+      Btn: Wall,2,Wall,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2117,2113
+      Btn: Art,3,Art,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2113
+      Btn: Ceiling,4,Ceiling,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2148
+      Btn: Hall On,5,Hall,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2113,2116,2117,2148
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2113:60%,2116:60%,2117:60%,2148:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2113:40%,2116:20%,2117:40%,2148:20%
+      Btn: Hall Off,8,Hall,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2113,2116,2117,2148
+    Station: V37,255,2,34,0182005,1,218696205,0,1,0,1
+      Btn: Button1,1,,,1
+        Event: 1, 2 NOT_DEFINED 34 0.0
+      Btn: Button 2,2,,,1
+        Event: 1, 2 NOT_DEFINED 34 0.0
+      Btn: Button 3,3,,,1
+        Event: 1, 2 NOT_DEFINED 34 0.0
+      Btn: Button 4,4,,,1
+        Event: 1, 2 NOT_DEFINED 34 0.0
+      Btn: Hall>,5,Hall>,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 37 1 0 0
+      Btn: Button 6,6,,,1
+        Event: 1, 2 NOT_DEFINED 34 0.0
+      Btn: Button 7,7,,,1
+        Event: 1, 2 NOT_DEFINED 34 0.0
+      Btn: Button 8,8,,,1
+        Event: 1, 2 NOT_DEFINED 34 0.0
+    Load: art lights,2,1,1,3,149,Incandescent,0,500,,1,100
+    Load: wall light,2,1,1,6,150,Incandescent,0,100,,1,100
+          Notes: not working
+    Load: art light,2,1,1,7,156,Incandescent,0,350,,1,100
+          Notes: not working
+    Load: 4 6" downlites,2,1,4,8,332,Incandescent,0,360,,1,100
+          Notes: 5 vlights
+  Room: Laundry
+    Station: V38,15,2,35,0181797,1,1948280182,0,1,0,0
+      Btn: Room On,1,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2127,2126
+      Btn: Ceiling,2,Ceiling,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2126
+      Btn: Window Lights,3,Window,Lights,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2127
+      Btn: Room Off,4,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2127,2126
+    Load: 3 downlites-sink+shower,2,1,2,7,155,Incandescent,0,100,,1,100
+    Load: 2 downllite,2,1,2,6,154,Incandescent,0,180,,1,100
+  Room: Maids Room
+    Load: 2 downlites,2,1,2,5,151,Incandescent,0,180,,1,100
+  Room: Breakfast Room
+    Station: V28,255,2,25,0182033,1,1948280182,0,1,0,1
+      Btn: Breakfast Room,1,Bkfast,Room,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 2243,2143
+      Btn: ,2,,,1
+      Btn: ,3,,,1
+      Btn: ,4,,,1
+      Btn: Kitchen,5,Kitchen,,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 2244,2247,2146
+      Btn: ,6,,,1
+      Btn: ,7,,,1
+      Btn: Family Room,8,Family,Room,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 2234,2214,2215,2237,2145
+    Station: V29,255,2,26,0181998,1,1948280182,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 PRESET_TOGGLE 1 0.0 0 0
+          LdA: 2238,2233
+      Btn: Pendant ,2,Pendant,,1
+        Event: 1, 0 PRESET_ON 1 3.0 0 0
+          LdA: 2143
+      Btn: Soffit,3,Soffit,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 2243
+      Btn: Dine,4,Dine,,1
+        Event: 1, 0 PRESET_ON 1 0.0 0 0
+          LdA: 2243,2143:50%
+      Btn: Breakfast Rm On,5,Bkfst,Rm On,1
+        Event: 1, 0 PRESET_ON 1 0.0 0 0
+          LdA: 2243,2143
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 5.0 0 0
+          LdA: 2143:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 5.0 0 0
+          LdA: 2143:20%
+      Btn: Breakfast Rm Off,8,Bkfast,Rm Off,1
+        Event: 1, 0 PRESET_OFF 2 0.0
+          LdA: 2243,2143
+    Load: soffit fluor,2,2,4,3,138,Fluor. Mag non-Dim,1,720,,1,100
+    Load: pendant,2,1,4,3,327,Incandescent,0,200,,1,100
+  Room: Bar
+    Station: V25,255,2,4,0182019,1,1948280182,0,1,0,1
+      Btn: Under Cabinet,1,Under,Cabinet,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 2142
+      Btn: Ceiling,2,Ceiling,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2235
+      Btn: Pendants ,3,Pendant,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2236
+      Btn: Game Room Dim,4,Game,Rm Dim,1
+        Event: 1, 0 PRESET_TOGGLE 1 3.0 0 0
+          LdA: 1111:20%,1114:0%,1115:20%,2141:20%
+      Btn: Bar On,5,Bar,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2235,2236,2142
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 3.0 0 0
+          LdA: 2235:40%,2236:60%,2142:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 3.0 0 0
+          LdA: 2235:20%,2236:20%,2142:0%
+      Btn: Bar Off,8,Bar,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2142,2236,2235
+    Load: 3 6" downlites,2,2,3,5,337,Incandescent,0,270,,1,100
+    Load: 3 pendants,2,2,3,6,336,Incandescent,0,270,,1,100
+    Load: under cabinet lights,2,1,4,2,324,Incandescent,0,200,,1,100
+    Load: ??,1,1,2,1,127,Incandescent,1,800,,1,100
+  Room: Butlers
+    Station: V36,15,2,33,0181779,1,1948280182,0,1,0,0
+      Btn: Butler On,1,Butler,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2246,2114
+      Btn: Under Cabinet,2,Under,Cabinet,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 2246
+      Btn: Dining Room,3,Dining,Room,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2118,2111,2112
+      Btn: Butler Off,4,Butler,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2246,2114
+    Load: under cabinet lites,2,2,4,6,153,Incandescent,0,120,,1,100
+    Load: 2 downlites,2,1,1,4,152,Incandescent,0,180,,1,100
+  Room: WOK Kitchen
+    Station: V30,255,2,27,0182038,1,1948280182,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2238:80%
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: Button 5,5,,,1
+      Btn: Button 6,6,,,1
+      Btn: Button 7,7,,,1
+      Btn: Button 8,8,,,1
+    Station: V31,15,2,28,0181832,1,1948280182,0,1,0,0
+      Btn: Room On,1,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2242,2138
+      Btn: Under Cabinet,2,Under ,Cabinet,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2138
+      Btn: Ceiling,3,Ceiling,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2242
+      Btn: Room Off,4,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2242,2138
+    Load: 4 6" downlites,2,2,4,2,140,Incandescent,0,360,,1,100
+    Load: under cabinet lights,2,1,3,8,328,Incandescent,0,200,,1,100
+  Room: Family Room
+    Station: V26,255,1,26,0182028,1,1948280182,0,1,0,1
+      Btn: Path,1,Path,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 23 1 0 0
+      Btn: Ceiling,2,Ceiling,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2234,2214,2237
+      Btn: Art,3,Art,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2215
+      Btn: Under Cabinet,4,Under,Cabinet,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2145
+      Btn: Family Rm On,5,Family,Rm On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2234,2214,2215,2237,2145
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2234:60%,2214:60%,2215:60%,2237:60%,2145:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2234:20%,2214:20%,2215:40%,2237:20%,2145:30%
+      Btn: Family Rm Off,8,Family,Rm Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2234,2214,2215,2237,2145
+    Station: V27,255,2,24,0182027,1,1948280182,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 2233
+      Btn: Center,2,Center,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2234
+      Btn: Outer,3,Outer,,1
+        Event: 1, 0 PRESET_TOGGLE 1 3.0 0 0
+          LdA: 2214
+      Btn: Inner,4,Inner,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2237
+      Btn: Family Rm On,5,Family,Rm On,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 1 26 5 0 0
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 1 26 6 0 0
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 1 26 7 0 0
+      Btn: Family Rm Off,8,Family,Rm Off,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 1 26 8 0 0
+    Load: 3 6" downlites,2,2,3,4,145,Incandescent,0,270,,1,100
+    Load: 6 6" DOWNLITES,2,2,1,4,146,Incandescent,0,540,,1,100
+    Load: 2 wall wash -art,2,2,1,5,148,Incandescent,0,100,,1,100
+    Load: 6 6" downlites,2,2,3,7,147,Incandescent,0,540,,1,100
+    Load: under cabinet lights,2,1,4,5,129,Incandescent,0,200,,1,100
+  Room: E-Backstair to 2nd
+    Station: V39,6,2,36,0181798,1,1948280182,0,1,0,0
+      Btn: Stairs,2,Stairs,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 21 2 0 0
+      Btn: Hall,3,Hall,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 37 1 0 0
+  Room: W-Backstair to 2nd
+    Station: V15,6,1,15,0181836,1,1948280182,0,1,0,0
+      Btn: Stairs,2,Stairs,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 30 2 0 0
+      Btn: Hall,3,Hall,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 5 1 0 0
+  Room: Media Room
+    Station: V44,255,2,7,0182039,1,1948280182,0,1,0,1
+      Btn: Watch Movie,1,Watch,Movie,1
+        Event: 1, 0 PRESET_ON 1 4.0 0 0
+          LdA: 1123,1125:20%,1138:0%,1137:0%
+      Btn: Intermission,2,Inter,mission,1
+        Event: 1, 0 PRESET_ON 1 3.0 0 0
+          LdA: 1123,1125:60%,1138:60%,1137:60%
+      Btn: Resume Movie,3,Resume,Movie,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 7 1 0 0
+      Btn: Clean Up,4,Clean,Up,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1123:0%,1125,1138,1137
+      Btn: Media Room On,5,Media,Room On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1123,1125:80%,1138:90%,1137:90%
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_TOGGLE 1 3.0 0 0
+          LdA: 1125:40%,1138:40%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_TOGGLE 1 3.0 0 0
+          LdA: 1125:30%
+      Btn: Media Room Off,8,Media,Rm Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1123,1125,1138,1137
+    Load: Theater-Optic Ceiling,1,1,2,3,124,Motor,1,100,,0,100
+    Load: Theater sconce,1,1,2,5,453,Incandescent,0,200,,1,100
+    Load: Theater 4",1,1,3,8,300,Incandescent,0,500,,1,100
+    Load: Theater 6" ,1,1,3,7,301,Incandescent,0,400,,1,100
+Floor: 2nd Floor
+  Room: E-Hall to Jr Master
+    Station: V66,255,2,16,0182004,1,1948280182,0,1,0,1
+      Btn: Hall,1,Hall,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2134:80%
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: 1st Floor Off,4,1st Fl,Off,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 1 31 8 0 0
+      Btn: Entry On,5,Entry,On,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 22 5 0 0
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 22 6 0 0
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 22 7 0 0
+      Btn: Entry Off,8,Entry,Off,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 22 8 0 0
+    Load: 5 6" downlites,2,1,3,4,222,Incandescent,0,450,,1,100
+    Load: Art Light,2,2,1,3,203,Incandescent,0,100,,1,100
+  Room: Walk Around
+    Load: 7 6" downlites,1,2,3,4,270,Incandescent,0,630,,1,100
+  Room: Stairs to 1st floor
+  Room: Junior Master Bed Rm
+    Station: V61 BED L,255,2,11,0182010,1,1948280182,0,1,0,1
+      Btn: Read,1,Read,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2228
+      Btn: Center,2,Center,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2216
+      Btn: Under Cabinet,3,Under ,Cabinet,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2132
+      Btn: Outside All,4,Outside,All,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 1112,2212,1117,1144,1127
+          LdA: 2115,1145,2121,2122,1231
+          LdA: 1232,2221,2231,2233,2238
+          LdA: 1146
+      Btn: Room On,5,Room,On,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 13 5 0 0
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 13 6 0 0
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 13 7 0 0
+      Btn: Room Off,8,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2241,2217,2216,2223,2228
+          LdA: 2132
+    Station: V60 BED R,255,2,10,0181938,1,1948280182,0,1,0,1
+      Btn: Read,1,Read,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2223
+      Btn: Corners,2,Corners,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2217
+      Btn: Soffit,3,Soffit,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2241
+      Btn: Outside All,4,Outside,All,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 11 4 0 0
+      Btn: Room On,5,Room,On,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 13 5 0 0
+      Btn: Under Cabinet,6,Under,Cabinet,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 11 3 0 0
+      Btn: Office,7,Office,,1
+        Event: 1, 0 TOGGLE 34 3.0
+          LdA: 2227
+      Btn: Room Off,8,Room,Off,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 11 8 0 0
+    Station: V63,255,2,13,0182009,1,1948280182,0,1,0,1
+      Btn: Office,1,Office,,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 2227
+      Btn: All Off Outside,2,All Off,Outside,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 1 17 4 0 0
+      Btn: House Off,3,House,Off,1
+        Event: 1, 0 MOMENTARY 0 0.0
+        Event: 2, 0 ALL_OFF 2 0.0
+          LdA: 1112,2212,1117,1144,1127
+          LdA: 2115,1145,2121,2122,1231
+          LdA: 1232,2221,2231,2233,2238
+          LdA: 2241,2217,2216,2223,2228
+          LdA: 2132,2213,2131,2211,2218
+          LdA: 2222,2248,2135,2136,2227
+          LdA: 1215,1216,1214,1321,1322
+          LdA: 1323,1226,1213,1217,1218
+          LdA: 1221,1225,1326,1324,1325
+          LdA: 1327,1222,1223,1224,2134
+          LdA: 1146
+      Btn: Sitting Room,4,Sitting,Room,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 2131
+      Btn: Room On,5,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2241,2217,2216,2223,2228
+          LdA: 2132
+      Btn: Under Cabinet,6,Under,Cabinet,1
+        Event: 1, 0 PRESET_TOGGLE 1 3.0 0 0
+          LdA: 2132
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2241:80%,2217:20%,2216:0%,2223:0%,2228:0%
+          LdA: 2132:20%
+      Btn: Suite Off ,8,Suite,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2241,2217,2216,2223,2228
+          LdA: 2132,2131,2211,2218,2222
+          LdA: 2248,2135,2136,2227
+    Load: soffit light,2,2,4,1,209,Incandescent,0,740,,1,100
+    Load: 3 6" downlites-under soffit,2,2,1,7,207,Incandescent,0,270,,1,100
+    Load: 4 6" downlites,2,2,1,6,206,Incandescent,0,360,,1,100
+    Load: reading right,2,2,2,3,215,Incandescent,0,100,,1,100
+    Load: reading left,2,2,2,8,216,Incandescent,0,100,,1,100
+          Notes: Load 16 In Connected to 16A at Relay But 16A are Art lights in E. Upstairs Hallway
+    Load: under cabinet light,2,1,3,2,218,Incandescent,0,12,,1,100
+  Room: Junior Master Sit Rm
+    Station: V59,255,2,9,0182020,1,1948280182,0,1,0,1
+      Btn: Hall,1,Hall,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2134
+      Btn: Bedroom 4,2,,,1
+        Event: 1, 0 PRESET_TOGGLE 1 15.0 0 0
+          LdA: 2224
+      Btn: Bedroom 6,3,,,1
+        Event: 1, 0 PRESET_TOGGLE 1 3.0 0 0
+          LdA: 2226
+      Btn: Walkway,4,Path To,Kitchen,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 2134,1234
+      Btn: Sitting On,5,Sitting,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2131
+      Btn: Master Bedroom,6,Master,Bedroom,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 2241,2217,2216,2223,2228
+          LdA: 2132
+      Btn: Suite Off,7,Suite,Off,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 13 8 0 0
+      Btn: Sitting Off,8,Sitting,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2131
+    Load: downlite,2,1,3,1,217,Incandescent,0,100,,1,100
+          Notes: Not Working Works together with 203 Wall Wash - Both need to be On to work correctly
+  Room: Junior Master Bath
+    Station: V64,255,2,14,0182003,1,1948280182,0,1,0,1
+      Btn: Shower,1,Shower,,1
+        Event: 1, 0 PRESET_TOGGLE 1 3.0 0 0
+          LdA: 2211:50%
+      Btn: Tub,2,Tub,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2218
+      Btn: Make Up,3,Make Up,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2222,2135
+      Btn: Ceiling,4,Ceiling,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 2248,2135
+      Btn: Room On,5,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2222,2248,2135
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2222:60%,2248:60%,2135:0%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2222:20%,2248:20%,2135:0%
+      Btn: Room Off,8,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2211,2218,2222,2248,2135
+          LdA: 2136
+    Station: V65,15,2,15,0181835,1,1948280182,0,1,0,0
+      Btn: Toilet Light,1,Toilet,Light,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2136
+      Btn: Toilet Fan,2,Toilet,Fan,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 2133
+        Event: 2, 0 PRESET_OFF 34 0.0
+          Cond: DELAY 900.0
+          LdA: 2133
+      Btn: ,3,,,1
+      Btn: Shower,4,Shower,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 14 1 0 0
+    Load: downlite-shower,2,2,1,1,205,Incandescent,0,100,,1,50
+    Load: 2 6" downlites-tub,2,2,1,8,208,Incandescent,0,100,,1,100
+    Load: 2 sconces,2,2,2,2,210,Incandescent,0,200,,1,100
+          Notes: 2 scones and downights
+    Load: downlites,2,2,4,8,142,Incandescent,0,360,,1,100
+          Notes: Not Working Two Lights turn on with scones
+    Load: 2 fluor downlites,2,1,3,5,219,Fluor. Mag non-Dim,1,100,,1,100
+  Room: Junior Mastr Toilet 
+    Load: downlite,2,1,3,6,221,Incandescent,0,100,,1,100
+    Load: Fan,2,1,3,3,220,Motor,0,100,,1,100
+  Room: Junior Master Office
+    Station: V62,255,2,12,0181999,1,1948280182,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2221:80%
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: Room On,5,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2227
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2227:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2227:20%
+      Btn: Room Off,8,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2227
+    Load: 2 6": downlites,2,2,2,7,204,Incandescent,0,180,,1,100
+  Room: Hobby Room 1
+    Station: V55,15,2,6,0181799,1,1948280182,0,1,0,0
+      Btn: Room On,1,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1211,1228
+      Btn: Medium,2,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1211:60%,1228:60%
+      Btn: Room Off,3,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1211,1228
+      Btn: Hall,4,Hall,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1234:80%
+    Load: 2 6" downlites 2,1,2,1,1,250,Incandescent,0,100,,1,100
+    Load: 2 Under cabinets,1,2,2,8,249,Incandescent,0,180,,1,100
+  Room: Hobby Room 2
+    Station: V45,255,2,5,0182022,1,1948280182,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2221:80%
+      Btn: ,2,,,1
+      Btn: ,3,,,1
+      Btn: ,4,,,1
+      Btn: Button 1,5,,,1
+      Btn: Button 2,6,,,1
+      Btn: Button 3,7,,,1
+      Btn: Button 4,8,,,1
+    Station: V58,15,1,22,0181783,1,1948280182,0,1,0,0
+      Btn: Room On,1,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1212
+      Btn: Medium,2,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1212:60%
+      Btn: Room Off,3,Room ,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1212
+      Btn: Path,4,Path,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 31 5 0 0
+    Station: V74 new 03-13,255,2,2,0262896,1,1702260589,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1232:80%
+      Btn: Button 2,2,,,1
+      Btn: Button 3,3,,,1
+      Btn: Button 4,4,,,1
+      Btn: Button 5,5,,,1
+      Btn: Button 6,6,,,1
+      Btn: Button 7,7,,,1
+      Btn: Button 8,8,,,1
+    Load: 4 6" downlites,1,2,1,2,251,Incandescent,0,360,,1,100
+  Room: Master Bedroom
+    Station: V51 BED R,255,1,20,0182031,1,1948280182,0,1,0,1
+      Btn: Read,1,Read,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1322
+      Btn: Corners,2,Corners,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1214
+      Btn: Soffit,3,Soffit,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1216
+      Btn: Outside All,4,Outside,All,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 11 4 0 0
+      Btn: Room On,5,Room,On,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 50 5 0 0
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 50 6 0 0
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 50 7 0 0
+      Btn: Room Off,8,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1215,1216,1214,1321,1322
+          LdA: 1323
+    Station: V51 BED L,255,1,21,0182041,1,1948280182,0,1,0,1
+      Btn: Read,1,Read,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1323
+      Btn: Center,2,Center,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1215
+      Btn: Under Cabinet,3,Under ,Cabinet,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1321
+      Btn: Outside All,4,Outside,All,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 11 4 0 0
+      Btn: Room On,5,Room,On,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 50 5 0 0
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 50 6 0 0
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 50 7 0 0
+      Btn: Room Off,8,Room,Off,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 20 8 0 0
+    Station: V53,255,1,27,0182021,1,1948280182,0,1,0,1
+      Btn: His Closet,1,His,Closet,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1222
+      Btn: ,2,,,1
+      Btn: ,3,,,1
+      Btn: Foyer,4,Foyer,,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 1327:80%
+      Btn: Her Closet,5,Her ,Closet,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1223,1224
+      Btn: ,6,,,1
+      Btn: ,7,,,1
+      Btn: Bath,8,Bath,,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 1218,1221,1326
+    Station: V50,255,1,50,0182026,1,1948280182,0,1,0,1
+      Btn: Outside,1,Outside,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1232:80%
+      Btn: All Off Outside,2,All Off,Outside,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 22 4 0 0
+      Btn: House Off,3,House,Off,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 13 3 0 0
+      Btn: Sitting Room,4,Sitting,Room,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 1213
+      Btn: Room On,5,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1215,1216,1214,1321,1322
+          LdA: 1323
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1215:60%,1216:60%,1214:60%,1321:60%,1322:60%
+          LdA: 1323:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1215:20%,1216:20%,1214:20%,1321:20%,1322:0%
+          LdA: 1323:0%
+      Btn: Suite Off ,8,Suite,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1215,1216,1214,1321,1322
+          LdA: 1323,1226,1213,1217,1218
+          LdA: 1221,1225,1326,1324,1325
+          LdA: 1327,1222,1223,1224
+    Load: 4 6" downlites center,1,2,1,5,254,Incandescent,0,360,,1,100
+    Load: soffit lites,1,2,1,6,255,Incandescent,0,700,,1,100
+    Load: 4 6" corners under soffit,1,2,1,4,253,Incandescent,0,360,,1,100
+    Load: under cabinet light,1,3,2,1,239,Incandescent,0,100,,1,100
+    Load: reading right,1,3,2,2,240,Incandescent,0,100,,1,100
+    Load: reading left,1,3,2,3,241,Incandescent,0,100,,1,100
+  Room: W-Hall to Master
+    Station: V57,255,1,31,0257775,1,1948280182,0,1,0,1
+      Btn: Entry On,1,Entry,On,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 22 5 0 0
+      Btn: Medium,2,Medium,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 22 6 0 0
+      Btn: Dim,3,Dim,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 22 7 0 0
+      Btn: Entry Off,4,Entry,Off,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 22 8 0 0
+      Btn: Hall,5,Hall,,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 1226:80%
+      Btn: Walk Around,6,Walk,Around,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1234
+      Btn: Scoon,7,Scoon,,1
+        Event: 1, 0 PRESET_TOGGLE 1 3.0 0 0
+          LdA: 1125:60%
+      Btn: 1st Fl Off,8,1st Fl,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1111,1114,1115,2141,1113
+          LdA: 1147,2232,1118,1122,1124
+          LdA: 1227,1317,1126,1135,1233
+          LdA: 1238,1128,1136,2147,1141
+          LdA: 2128,1234,1235,1236,1237
+          LdA: 1311,1328,1313,1314,2111
+          LdA: 2112,2118,2244,2247,2146
+          LdA: 2144,2113,2116,2117,2148
+          LdA: 2127,2126,2125,2243,2143
+          LdA: 2235,2236,2142,2246,2114
+          LdA: 2242,2138,2234,2214,2215
+          LdA: 2237,2145
+    Load: 2 6" downlites-at elev,1,2,2,6,263,Incandescent,0,180,,1,100
+  Room: Master Sitting Room
+    Station: V54,255,1,28,0182025,1,1948280182,0,1,0,1
+      Btn: Hall,1,Hall,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1226
+      Btn: Under cabinet Lights,2,Under,Cabinet,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 21 3 0 0
+      Btn: Theater,3,Theater,,1
+        Event: 1, 0 PRESET_TOGGLE 1 3.0 0 0
+          LdA: 1138,1137
+      Btn: ,4,,,1
+      Btn: Sitting On,5,Sitting,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1213
+      Btn: Master Bedroom,6,Master,Bedroom,1
+        Event: 1, 0 PRESET_TOGGLE 1 2.0 0 0
+          LdA: 1215,1216,1214,1321,1322
+          LdA: 1323
+      Btn: Suite Off,7,Suite,Off,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 50 8 0 0
+      Btn: Sitting Off,8,Sitting,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1213
+    Load: 4 6" downlites,1,2,1,3,252,Incandescent,0,360,,1,100
+  Room: Master Bath
+    Station: V48,255,1,48,0182017,1,1948280182,0,1,0,1
+      Btn: Shower,1,Shower,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1217
+      Btn: Tub,2,Tub,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1225
+      Btn: Make Up,3,Make Up,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1218,1221,1326
+      Btn: Ceiling,4,Ceiling,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1326
+      Btn: Room On,5,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1218,1221,1326
+      Btn: Medium,6,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1218:60%,1221:60%,1326:60%
+      Btn: Dim,7,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 1218:20%,1221:20%,1326:0%
+      Btn: Room Off,8,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 1217,1218,1221,1225,1326
+          LdA: 1324,1325
+    Station: V49,15,1,49,0181816,1,1948280182,0,1,0,0
+      Btn: Toilet Light,1,Toilet,Light,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1325
+      Btn: Toilet Fan,2,Toilet,Fan,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1324
+        Event: 2, 0 PRESET_OFF 2 0.0
+          Cond: DELAY 1800.0
+          LdA: 1324
+      Btn: ,3,,,1
+      Btn: Shower,4,Shower,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1217
+    Load: 6" downlite-shower,1,2,1,7,256,Incandescent,0,90,,1,100
+    Load: 4 sconces,1,2,1,8,257,Incandescent,0,400,,1,100
+    Load: vallance,1,2,2,1,258,Incandescent,0,280,,1,100
+    Load: 2 6" downlites-tub,1,2,2,5,259,Incandescent,0,180,,1,100
+    Load: 2 fluor downlites,1,3,2,6,244,Fluor. Mag non-Dim,1,100,,1,100
+  Room: Master Toilet
+    Load: fan  ,1,3,2,4,242,Motor,1,90,,1,100
+    Load: lights  ,1,3,2,5,243,Incandescent,0,100,,0,100
+  Room: Master Hall
+    Load: 2 6" downlites,1,3,2,7,245,Incandescent,0,100,,1,100
+  Room: His Closet
+    Station: V46,2,1,46,0181778,1,1948280182,0,1,0,0
+      Btn: Closet,2,Closet,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1222
+    Load: 4 6" downlites,1,2,2,2,262,Incandescent,0,100,,1,100
+  Room: Her Closet
+    Station: V47,2,1,47,0181833,1,1948280182,0,1,0,0
+      Btn: Closet,2,Closet,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1223,1224
+    Load: 2 6" downlites,1,2,2,3,260,Incandescent,0,180,,1,100
+    Load: 6 6' Downlites,1,2,2,4,261,Incandescent,0,540,,1,100
+  Room: Play Room
+    Station: V69,255,2,19,0181939,1,1948280182,0,1,0,1
+      Btn: Room On,1,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2245
+      Btn: Medium,2,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2245:60%
+      Btn: Dim,3,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2245:20%
+      Btn: Room Off,4,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2245
+      Btn: Hall,5,Hall,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 16 1 0 0
+      Btn: Button 6,6,,,1
+      Btn: Button 7,7,,,1
+      Btn: Button 8,8,,,1
+    Load: 4 6" downlites,2,2,4,5,211,Incandescent,0,360,,1,100
+  Room: Bedroom 4
+    Station: V67,255,2,17,0182045,1,1948280182,0,1,0,1
+      Btn: Room On,1,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2224
+      Btn: Medium,2,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2224:40%
+      Btn: Dim,3,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2224:15%
+      Btn: Room Off,4,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2224
+      Btn: Hall,5,Hall,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 16 1 0 0
+      Btn: Button 6,6,,,1
+      Btn: Xmas,7,Xmas,,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 2122,1146
+      Btn: Exterior Lights,8,Ext,Lights,1
+        Event: 1, 0 TOGGLE 34 0.0
+          LdA: 1145,2121
+    Load: 4 6" downlites,2,2,2,4,212,Incandescent,0,360,,1,100
+  Room: Bedroom 5
+    Station: V68,255,2,18,0182023,1,1948280182,0,1,0,1
+      Btn: Room On,1,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2225
+      Btn: Medium,2,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2225:60%
+      Btn: Dim,3,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2225:20%
+      Btn: Room Off,4,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2225
+      Btn: Hall,5,Hall,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 16 1 0 0
+      Btn: Button 6,6,,,1
+      Btn: xmas,7,xmas,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 17 7 0 0
+      Btn: Button 8,8,,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 17 8 0 0
+    Load: 4 6" downlites,2,2,2,5,213,Incandescent,0,360,,1,100
+  Room: Bedroom 6
+    Station: V70,255,2,20,0182000,1,1948280182,0,1,0,1
+      Btn: Room On,1,Room,On,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2226
+      Btn: Medium,2,Medium,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2226:60%
+      Btn: Dim,3,Dim,,1
+        Event: 1, 0 PRESET_ON 1 2.0 0 0
+          LdA: 2226:20%
+      Btn: Room Off,4,Room,Off,1
+        Event: 1, 0 PRESET_OFF 2 3.0
+          LdA: 2226
+      Btn: Hall,5,Hall,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 16 1 0 0
+      Btn: Button 6,6,,,1
+      Btn: Button 7,7,,,1
+      Btn: Button 8,8,,,1
+        Event: 1, 0 SWITCH_POINTER -1 0.0 2 17 8 0 0
+    Load: 4 6" downlites,2,2,2,6,214,Incandescent,0,360,,1,100
+  Room: E-Backstair to 1st 
+    Station: V71,6,2,21,0181777,1,1948280182,0,1,0,0
+      Btn: Stairs,2,Stairs,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 2137:80%
+      Btn: Hall,3,Hall,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 2 16 1 0 0
+    Load: 2 sconces,2,1,3,7,223,Incandescent,0,200,,1,100
+  Room: W-Backstair to 1st
+    Station: V56,6,1,30,0181712,1,1948280182,0,1,0,0
+      Btn: Stairs,2,Stairs,,1
+        Event: 1, 0 DIM 34 2.0 3.0 1 0
+          LdA: 1318:80%
+      Btn: Hall,3,Hall,,1
+        Event: 1, 0 SWITCH_POINTER 34 0.0 1 31 5 0 0
+    Load: 6" downlite,1,3,1,8,238,Incandescent,0,100,,1,100
+Floor: Exterior
+  Room: Library
+    Load: 6" downlite,1,1,1,2,102,Incandescent,0,90,,1,100
+  Room: Junior Master
+    Load: sconce,2,2,1,2,202,Incandescent,0,100,,1,100
+  Room: Exercise Room
+    Load: 6" downlite,1,1,1,7,107,Incandescent,0,90,,1,100
+  Room: Guest Suite
+    Load: 6" downlite,1,1,4,4,110,Incandescent,0,90,,1,100
+  Room: Left Entry
+    Load: 6 sconces,1,1,2,7,126,Incandescent,0,900,,1,100
+  Room: Right Entry
+    Load: 6 sconces,2,1,1,5,160,Incandescent,0,900,,1,100
+  Room: X Mas Lites
+    Load: Xmas Lights 2,2,1,2,2,161,Incandescent,1,800,,1,100
+    Load: xmas lights west,1,1,4,6,119,Incandescent,0,100,,1,100
+  Room: Main Entry
+    Load: 2 downlites + 2   2fl,1,2,3,1,266,Incandescent,0,300,,1,100
+  Room: Master Bedroom
+    Load: 3 sconces,1,2,3,2,274,Incandescent,0,300,,1,100
+  Room: Junior Master Sitng
+    Load: 3 6" downlites,2,2,2,1,201,Incandescent,0,270,,1,100
+  Room: Game Room
+    Load: downlite,2,2,3,1,133,Incandescent,0,100,,1,100
+  Room: Kitchen
+  Room: Family Room
+  Room: Breakfast
+    Load: downlite,2,2,3,3,335,Incandescent,0,100,,1,100
+  Room: WOK Kitchen
+    Load: downlite + fam room dnlites,2,2,3,8,139,Incandescent,0,100,,1,100
+  Room: Landscape
+    Load: landscape lights west,1,1,4,5,109,Incandescent,0,600,,1,100
+    Load: Landscape Front East,2,1,2,1,163,Incandescent,0,800,,1,100

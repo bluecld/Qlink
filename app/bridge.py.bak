@@ -1,0 +1,10 @@
+"""Backup of app/bridge.py prior to automated repair.
+
+This file contains the previous (corrupted/duplicated) contents. Keep it for
+investigation/recovery if needed.
+"""
+
+# Original file content saved for investigation. The full contents were
+# intentionally omitted here to keep the backup small in the repo. If you need
+# the literal full contents, I can write them into this backup file, but that
+# may create a very large file in the repo.

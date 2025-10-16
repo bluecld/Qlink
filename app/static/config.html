@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration - Vantage Q-Link Bridge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e4e4e4;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: rgba(0, 0, 0, 0.2);
+            color: #e4e4e4;
+            padding: 30px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header p {
+            color: #b0b0b0;
+        }
+
+        nav {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px 30px;
+            display: flex;
+            gap: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        nav a {
+            color: #b0b0b0;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        nav a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e4e4e4;
+        }
+
+        nav a.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        main {
+            padding: 30px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: #b0b0b0;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            font-size: 16px;
+        }
+
+        .tab:hover {
+            color: #e4e4e4;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .info-box {
+            background: rgba(102, 126, 234, 0.15);
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            color: #e4e4e4;
+        }
+
+        .json-editor {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 400px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #e4e4e4;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e4e4e4;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+            border: 1px solid;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-success {
+            background: rgba(74, 222, 128, 0.15);
+            color: #4ade80;
+            border-color: #4ade80;
+        }
+
+        .alert-warning {
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+            border-color: #fbbf24;
+        }
+
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border-color: #ef4444;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #b0b0b0;
+            font-size: 0.9em;
+        }
+
+        .code-example {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .code-example pre {
+            color: #4ade80;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        h2 {
+            color: #e4e4e4;
+            margin: 30px 0 15px 0;
+            font-size: 1.5em;
+        }
+
+        h3 {
+            color: #b0b0b0;
+            margin: 20px 0 10px 0;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🔧 Configuration Manager</h1>
+            <p>Manage Rooms, Loads, Stations & Panels</p>
+        </header>
+
+        <nav>
+            <a href="/">🏠 Home</a>
+            <a href="/ui/">🎛️ Control</a>
+            <a href="/ui/settings.html">⚙️ Settings</a>
+            <a href="/ui/config.html" class="active">🔧 Configuration</a>
+            <a href="/monitor/status" target="_blank">📊 Status</a>
+        </nav>
+
+        <main>
+            <div id="alert" class="alert"></div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('loads')">💡 Loads & Rooms</button>
+                <button class="tab" onclick="showTab('stations')">🎮 Stations & Buttons</button>
+                <button class="tab" onclick="showTab('help')">📚 Help</button>
+            </div>
+
+            <!-- LOADS TAB -->
+            <div id="loads-tab" class="tab-content active">
+                <div class="info-box">
+                    <strong>💡 About Loads Configuration:</strong>
+                    Define your lighting loads, room groupings, and dimmer assignments. This file is used by the control
+                    interface to organize buttons by room.
+                </div>
+
+                <div class="stats-grid" id="loads-stats">
+                    <div class="stat-card">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Total Rooms</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Total Loads</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Master 1 Loads</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Master 2 Loads</div>
+                    </div>
+                </div>
+
+                <h3>Edit loads.json</h3>
+                <div class="json-editor">
+                    <textarea id="loads-json" placeholder="Loading loads.json..."></textarea>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-secondary" onclick="loadLoadsJson()">↻ Reload</button>
+                    <button class="btn-secondary" onclick="validateJson('loads')">✓ Validate</button>
+                    <button class="btn-primary" onclick="saveLoadsJson()">💾 Save Loads</button>
+                </div>
+            </div>
+
+            <!-- STATIONS TAB -->
+            <div id="stations-tab" class="tab-content">
+                <div class="info-box">
+                    <strong>🎮 About Stations Configuration:</strong>
+                    Configure keypads (stations) and their button assignments. Extract from your Vantage configuration
+                    or edit manually.
+                </div>
+
+                <div class="stats-grid" id="stations-stats">
+                    <div class="stat-card">
+                        <div class="stat-value">71</div>
+                        <div class="stat-label">Total Stations</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">470</div>
+                        <div class="stat-label">Total Buttons</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">42</div>
+                        <div class="stat-label">Configured Stations</div>
+                    </div>
+                </div>
+
+                <h3>Current Configuration</h3>
+                <p style="color: #b0b0b0; margin-bottom: 15px;">
+                    Button configuration was extracted from <code>Info/Home Prado Ver.txt</code>.
+                    To update, re-run the extraction script:
+                </p>
+
+                <div class="code-example">
+                    <pre>python scripts\extract_buttons.py</pre>
+                </div>
+
+                <p style="color: #b0b0b0; margin: 15px 0;">
+                    This will regenerate <code>config/loads.json</code> with all stations and buttons from your Vantage
+                    configuration file.
+                </p>
+
+                <div class="button-group">
+                    <button class="btn-secondary" onclick="window.open('/config', '_blank')">📄 View Current
+                        Config</button>
+                    <button class="btn-primary" onclick="extractButtons()">🔄 Re-extract Buttons</button>
+                </div>
+            </div>
+
+            <!-- HELP TAB -->
+            <div id="help-tab" class="tab-content">
+                <h2>📚 Configuration Guide</h2>
+
+                <h3>Loads & Rooms Format</h3>
+                <p style="color: #b0b0b0; margin-bottom: 15px;">
+                    The <code>loads.json</code> file defines your lighting zones and room groupings:
+                </p>
+
+                <div class="code-example">
+                    <pre>{
+  "Living Room": {
+    "loads": [1101, 1102, 1103],
+    "master": 1,
+    "icon": "🛋️"
+  },
+  "Kitchen": {
+    "loads": [1201, 1202, 1203, 1204],
+    "master": 1,
+    "icon": "🍽️"
+  },
+  "Master Bedroom": {
+    "loads": [2101, 2102],
+    "master": 2,
+    "icon": "🛏️"
+  }
+}</pre>
+                </div>
+
+                <h3>Load ID Numbering</h3>
+                <ul style="color: #b0b0b0; line-height: 1.8; margin: 15px 0 15px 30px;">
+                    <li><strong>1xxx</strong> - Loads on Master 1</li>
+                    <li><strong>2xxx</strong> - Loads on Master 2</li>
+                    <li><strong>Examples:</strong> 1101 = Master 1, Load 101 | 2225 = Master 2, Load 225</li>
+                </ul>
+
+                <h3>Stations & Buttons Format</h3>
+                <p style="color: #b0b0b0; margin-bottom: 15px;">
+                    Button configurations are automatically extracted from your Vantage system:
+                </p>
+
+                <div class="code-example">
+                    <pre>{
+  "station_23": {
+    "name": "Kitchen",
+    "station": 23,
+    "master": 1,
+    "buttons": {
+      "button_1": {
+        "name": "Island Pendant",
+        "button": 1,
+        "event_type": "DIM",
+        "loads": [1201]
+      },
+      "button_5": {
+        "name": "All On",
+        "button": 5,
+        "event_type": "PRESET_ON",
+        "loads": [1201, 1202, 1203, 1204]
+      }
+    }
+  }
+}</pre>
+                </div>
+
+                <h3>Finding Your Load IDs</h3>
+                <ol style="color: #b0b0b0; line-height: 1.8; margin: 15px 0 15px 30px;">
+                    <li>Open Vantage Design Center</li>
+                    <li>Go to Loads → View load assignments</li>
+                    <li>Note the load numbers (e.g., Load 101, Load 225)</li>
+                    <li>Prefix with master number: Master 1 Load 101 = 1101</li>
+                </ol>
+
+                <h3>Station Numbers</h3>
+                <p style="color: #b0b0b0; margin-bottom: 15px;">
+                    Station numbers match your Vantage keypad addresses:
+                </p>
+                <ul style="color: #b0b0b0; line-height: 1.8; margin: 15px 0 15px 30px;">
+                    <li><strong>V01-V73</strong> - Keypad stations throughout your home</li>
+                    <li><strong>Station 8 (Global)</strong> - System-wide controls</li>
+                    <li>Check your Vantage config file for exact station numbers</li>
+                </ul>
+
+                <h3>Automatic Extraction</h3>
+                <p style="color: #b0b0b0; margin-bottom: 15px;">
+                    The easiest way to configure is to extract from your Vantage backup:
+                </p>
+                <ol style="color: #b0b0b0; line-height: 1.8; margin: 15px 0 15px 30px;">
+                    <li>Export your Vantage configuration from Design Center</li>
+                    <li>Save the file to <code>Info/Home Prado Ver.txt</code></li>
+                    <li>Run <code>python scripts\extract_buttons.py</code></li>
+                    <li>All stations, buttons, and loads will be automatically configured!</li>
+                </ol>
+
+                <div class="info-box" style="margin-top: 30px;">
+                    <strong>💡 Pro Tip:</strong>
+                    After extraction, you get 470+ buttons across 71 stations automatically configured with names, load
+                    assignments, and event types!
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Load loads.json
+        async function loadLoadsJson() {
+            try {
+                const response = await fetch('/config/loads.json');
+                if (!response.ok) {
+                    // If file doesn't exist, show example
+                    const example = {
+                        "Living Room": {
+                            "loads": [1101, 1102, 1103],
+                            "master": 1,
+                            "icon": "🛋️"
+                        },
+                        "Kitchen": {
+                            "loads": [1201, 1202, 1203],
+                            "master": 1,
+                            "icon": "🍽️"
+                        }
+                    };
+                    document.getElementById('loads-json').value = JSON.stringify(example, null, 2);
+                    showAlert('No loads.json found. Showing example format.', 'warning');
+                    return;
+                }
+
+                const data = await response.json();
+                document.getElementById('loads-json').value = JSON.stringify(data, null, 2);
+
+                // Update stats
+                updateLoadsStats(data);
+
+                showAlert('✅ Loaded successfully', 'success');
+            } catch (error) {
+                showAlert('Error loading: ' + error.message, 'danger');
+            }
+        }
+
+        // Update loads statistics
+        function updateLoadsStats(data) {
+            let rooms = 0;
+            let totalLoads = 0;
+            let master1 = 0;
+            let master2 = 0;
+
+            for (const room in data) {
+                rooms++;
+                if (data[room].loads) {
+                    totalLoads += data[room].loads.length;
+                    data[room].loads.forEach(load => {
+                        if (load >= 1000 && load < 2000) master1++;
+                        else if (load >= 2000) master2++;
+                    });
+                }
+            }
+
+            document.querySelector('#loads-stats .stat-card:nth-child(1) .stat-value').textContent = rooms;
+            document.querySelector('#loads-stats .stat-card:nth-child(2) .stat-value').textContent = totalLoads;
+            document.querySelector('#loads-stats .stat-card:nth-child(3) .stat-value').textContent = master1;
+            document.querySelector('#loads-stats .stat-card:nth-child(4) .stat-value').textContent = master2;
+        }
+
+        // Validate JSON
+        function validateJson(type) {
+            const textarea = document.getElementById(type + '-json');
+            try {
+                JSON.parse(textarea.value);
+                showAlert('✅ Valid JSON format', 'success');
+            } catch (error) {
+                showAlert('❌ Invalid JSON: ' + error.message, 'danger');
+            }
+        }
+
+        // Save loads.json
+        async function saveLoadsJson() {
+            const textarea = document.getElementById('loads-json');
+
+            // Validate first
+            try {
+                const data = JSON.parse(textarea.value);
+
+                // Here you would send to server
+                // For now, just validate and show success
+                showAlert('✅ JSON is valid! (Server save endpoint needed)', 'warning');
+
+                updateLoadsStats(data);
+            } catch (error) {
+                showAlert('❌ Cannot save invalid JSON: ' + error.message, 'danger');
+            }
+        }
+
+        // Extract buttons
+        function extractButtons() {
+            showAlert('ℹ️ To extract buttons, run: python scripts\\extract_buttons.py', 'warning');
+        }
+
+        // Show alert
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.className = `alert alert-${type} show`;
+            alert.textContent = message;
+
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        // Load on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadLoadsJson();
+        });
+    </script>
+</body>
+
+</html>

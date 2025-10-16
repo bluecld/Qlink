@@ -1,0 +1,663 @@
+{
+    "rooms": [
+        {
+            "name": "Entry/Foyer",
+            "floor": "1st Floor",
+            "station": 20,
+            "loads": [
+                {
+                    "id": 1135,
+                    "name": "Foyer Chandelier",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1233,
+                    "name": "Entry Sconces",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1238,
+                    "name": "Entry Accent",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1328,
+                    "name": "Path Lights",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1231,
+                    "name": "Outside Lights",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1127,
+                    "name": "Front Exterior",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 2115,
+                    "name": "Side Exterior",
+                    "type": "dimmer"
+                }
+            ],
+            "buttons": [
+                {
+                    "number": 1,
+                    "name": "Path",
+                    "loads": [
+                        1328
+                    ],
+                    "event": "PRESET_TOGGLE"
+                },
+                {
+                    "number": 2,
+                    "name": "Outside",
+                    "loads": [
+                        1231,
+                        1127,
+                        2115
+                    ],
+                    "event": "PRESET_TOGGLE"
+                },
+                {
+                    "number": 3,
+                    "name": "Foyer",
+                    "loads": [
+                        1135
+                    ],
+                    "event": "DIM"
+                },
+                {
+                    "number": 4,
+                    "name": "All Outside Off",
+                    "loads": [
+                        1127,
+                        2115
+                    ],
+                    "event": "PRESET_OFF"
+                },
+                {
+                    "number": 5,
+                    "name": "Entry On",
+                    "loads": [
+                        1135,
+                        1233,
+                        1238
+                    ],
+                    "preset": 100,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 6,
+                    "name": "Landscape",
+                    "loads": [
+                        1145,
+                        2121
+                    ],
+                    "event": "TOGGLE"
+                },
+                {
+                    "number": 7,
+                    "name": "Dim",
+                    "loads": [
+                        1135,
+                        1233,
+                        1238
+                    ],
+                    "preset": 20,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 8,
+                    "name": "Entry Off",
+                    "loads": [
+                        1135,
+                        1233,
+                        1238
+                    ],
+                    "preset": 0,
+                    "event": "PRESET_OFF"
+                }
+            ]
+        },
+        {
+            "name": "Game Room",
+            "floor": "1st Floor",
+            "station": 23,
+            "loads": [
+                {
+                    "id": 1111,
+                    "name": "Pendant",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1114,
+                    "name": "Soffit",
+                    "type": "relay"
+                },
+                {
+                    "id": 1115,
+                    "name": "Recessed",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 2141,
+                    "name": "Pool Table",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1317,
+                    "name": "Hall",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 2148,
+                    "name": "Corridor",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1328,
+                    "name": "Path",
+                    "type": "dimmer"
+                }
+            ],
+            "buttons": [
+                {
+                    "number": 1,
+                    "name": "Path",
+                    "loads": [
+                        1317,
+                        2148,
+                        1328
+                    ],
+                    "event": "DIM"
+                },
+                {
+                    "number": 2,
+                    "name": "Pendant",
+                    "loads": [
+                        1111
+                    ],
+                    "event": "DIM"
+                },
+                {
+                    "number": 3,
+                    "name": "Soffit",
+                    "loads": [
+                        1114
+                    ],
+                    "event": "TOGGLE"
+                },
+                {
+                    "number": 4,
+                    "name": "Pool Table",
+                    "loads": [
+                        2141
+                    ],
+                    "event": "DIM"
+                },
+                {
+                    "number": 5,
+                    "name": "Game Room On",
+                    "loads": [
+                        1111,
+                        1114,
+                        1115,
+                        2141
+                    ],
+                    "preset": 100,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 6,
+                    "name": "Medium",
+                    "loads": [
+                        1111,
+                        1114,
+                        1115,
+                        2141
+                    ],
+                    "preset": 60,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 7,
+                    "name": "Dim",
+                    "loads": [
+                        1111,
+                        1114,
+                        1115,
+                        2141
+                    ],
+                    "preset": 20,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 8,
+                    "name": "Game Room Off",
+                    "loads": [
+                        1111,
+                        1114,
+                        1115,
+                        2141
+                    ],
+                    "preset": 0,
+                    "event": "PRESET_OFF"
+                }
+            ]
+        },
+        {
+            "name": "Library",
+            "floor": "1st Floor",
+            "station": 2,
+            "loads": [
+                {
+                    "id": 1113,
+                    "name": "Library Lights",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1147,
+                    "name": "Reading Lights",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1135,
+                    "name": "Entry",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1233,
+                    "name": "Entry Sconces",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1238,
+                    "name": "Entry Accent",
+                    "type": "dimmer"
+                }
+            ],
+            "buttons": [
+                {
+                    "number": 1,
+                    "name": "Path",
+                    "event": "SWITCH_POINTER"
+                },
+                {
+                    "number": 4,
+                    "name": "Entry",
+                    "loads": [
+                        1135,
+                        1233,
+                        1238
+                    ],
+                    "event": "PRESET_TOGGLE"
+                },
+                {
+                    "number": 5,
+                    "name": "Library On",
+                    "loads": [
+                        1113,
+                        1147
+                    ],
+                    "preset": 100,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 6,
+                    "name": "Medium",
+                    "loads": [
+                        1113,
+                        1147
+                    ],
+                    "preset": 60,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 7,
+                    "name": "Dim",
+                    "loads": [
+                        1113,
+                        1147
+                    ],
+                    "preset": 20,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 8,
+                    "name": "Library Off",
+                    "loads": [
+                        1113,
+                        1147
+                    ],
+                    "preset": 0,
+                    "event": "PRESET_OFF"
+                }
+            ]
+        },
+        {
+            "name": "Master Bath",
+            "floor": "2nd Floor",
+            "station": 12,
+            "loads": [
+                {
+                    "id": 1315,
+                    "name": "Ceiling",
+                    "type": "relay"
+                },
+                {
+                    "id": 1134,
+                    "name": "Vanity",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1131,
+                    "name": "Tub",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1132,
+                    "name": "Shower",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1312,
+                    "name": "Fan",
+                    "type": "relay"
+                }
+            ],
+            "buttons": [
+                {
+                    "number": 1,
+                    "name": "Ceiling",
+                    "loads": [
+                        1315
+                    ],
+                    "event": "TOGGLE"
+                },
+                {
+                    "number": 2,
+                    "name": "Vanity",
+                    "loads": [
+                        1134
+                    ],
+                    "event": "DIM"
+                },
+                {
+                    "number": 3,
+                    "name": "Tub",
+                    "loads": [
+                        1131
+                    ],
+                    "event": "DIM"
+                },
+                {
+                    "number": 4,
+                    "name": "Shower",
+                    "loads": [
+                        1132
+                    ],
+                    "event": "DIM"
+                },
+                {
+                    "number": 5,
+                    "name": "Bath On",
+                    "loads": [
+                        1131,
+                        1132,
+                        1134,
+                        1315
+                    ],
+                    "preset": 100,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 6,
+                    "name": "Fan",
+                    "loads": [
+                        1312
+                    ],
+                    "event": "PRESET_OFF"
+                },
+                {
+                    "number": 7,
+                    "name": "Dim",
+                    "loads": [
+                        1131,
+                        1132,
+                        1134,
+                        1315
+                    ],
+                    "preset": 20,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 8,
+                    "name": "Bath Off",
+                    "loads": [
+                        1131,
+                        1132,
+                        1134,
+                        1315,
+                        1312
+                    ],
+                    "preset": 0,
+                    "event": "PRESET_OFF"
+                }
+            ]
+        },
+        {
+            "name": "Master Bedroom",
+            "floor": "2nd Floor",
+            "station": 13,
+            "loads": [
+                {
+                    "id": 1128,
+                    "name": "Fire Place",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1136,
+                    "name": "Recessed",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1133,
+                    "name": "Art Lights",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 2147,
+                    "name": "Accent",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1127,
+                    "name": "Outside",
+                    "type": "dimmer"
+                }
+            ],
+            "buttons": [
+                {
+                    "number": 1,
+                    "name": "Outside",
+                    "loads": [
+                        1127
+                    ],
+                    "preset": 80,
+                    "event": "DIM"
+                },
+                {
+                    "number": 2,
+                    "name": "Fire Place",
+                    "loads": [
+                        1128
+                    ],
+                    "event": "DIM"
+                },
+                {
+                    "number": 3,
+                    "name": "Art",
+                    "loads": [
+                        1133
+                    ],
+                    "event": "DIM"
+                },
+                {
+                    "number": 4,
+                    "name": "Path",
+                    "event": "SWITCH_POINTER"
+                },
+                {
+                    "number": 5,
+                    "name": "Room On",
+                    "loads": [
+                        1128,
+                        1136,
+                        1133
+                    ],
+                    "preset": 100,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 6,
+                    "name": "Medium",
+                    "loads": [
+                        1128,
+                        1133
+                    ],
+                    "preset": 60,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 7,
+                    "name": "Dim",
+                    "loads": [
+                        1128,
+                        1133
+                    ],
+                    "preset": 20,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 8,
+                    "name": "Room Off",
+                    "loads": [
+                        1128,
+                        1136,
+                        2147,
+                        1133
+                    ],
+                    "preset": 0,
+                    "event": "PRESET_OFF"
+                }
+            ]
+        },
+        {
+            "name": "Master Suite Sitting",
+            "floor": "2nd Floor",
+            "station": 9,
+            "loads": [
+                {
+                    "id": 1148,
+                    "name": "Sitting Room",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1134,
+                    "name": "Bath Vanity",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1316,
+                    "name": "Foyer",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1315,
+                    "name": "Bath Ceiling",
+                    "type": "relay"
+                }
+            ],
+            "buttons": [
+                {
+                    "number": 1,
+                    "name": "Hall",
+                    "event": "SWITCH_POINTER"
+                },
+                {
+                    "number": 5,
+                    "name": "Sitting On",
+                    "loads": [
+                        1148
+                    ],
+                    "preset": 100,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 6,
+                    "name": "Dim",
+                    "loads": [
+                        1148
+                    ],
+                    "preset": 20,
+                    "event": "PRESET_ON"
+                },
+                {
+                    "number": 7,
+                    "name": "Sitting Off",
+                    "loads": [
+                        1148
+                    ],
+                    "preset": 0,
+                    "event": "PRESET_OFF"
+                },
+                {
+                    "number": 8,
+                    "name": "Suite Off",
+                    "loads": [
+                        1134,
+                        1316,
+                        1315,
+                        1148
+                    ],
+                    "preset": 0,
+                    "event": "PRESET_OFF"
+                }
+            ]
+        },
+        {
+            "name": "Bar",
+            "floor": "1st Floor",
+            "loads": [
+                {
+                    "id": 127,
+                    "name": "Bar Main Lights",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 128,
+                    "name": "Bar Under Cabinet",
+                    "type": "dimmer"
+                }
+            ]
+        },
+        {
+            "name": "Kitchen",
+            "floor": "1st Floor",
+            "loads": [
+                {
+                    "id": 249,
+                    "name": "2 Under Cabinets",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 250,
+                    "name": "2x 6in Downlites",
+                    "type": "dimmer"
+                }
+            ]
+        }
+    ]
+}

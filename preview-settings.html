@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Vantage Q-Link Bridge (PREVIEW)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e4e4e4;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: rgba(0, 0, 0, 0.2);
+            color: #e4e4e4;
+            padding: 30px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header p {
+            color: #b0b0b0;
+        }
+
+        nav {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px 30px;
+            display: flex;
+            gap: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        nav a {
+            color: #b0b0b0;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        nav a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #e4e4e4;
+        }
+
+        nav a.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        main {
+            padding: 30px;
+        }
+
+        .status-section {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-row:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #b0b0b0;
+        }
+
+        .status-value {
+            color: #e4e4e4;
+        }
+
+        .connection-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #4ade80;
+            box-shadow: 0 0 15px #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        .dot.disconnected {
+            background-color: #ef4444;
+            box-shadow: 0 0 15px #ef4444;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1);
+            }
+        }
+
+        .settings-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #e4e4e4;
+        }
+
+        .form-group input {
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            font-size: 14px;
+            color: #e4e4e4;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(0, 0, 0, 0.4);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #b0b0b0;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e4e4e4;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+            border: 1px solid;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-success {
+            background: rgba(74, 222, 128, 0.15);
+            color: #4ade80;
+            border-color: #4ade80;
+        }
+
+        .alert-warning {
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+            border-color: #fbbf24;
+        }
+
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border-color: #ef4444;
+        }
+
+        footer {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            text-align: center;
+            color: #b0b0b0;
+            font-size: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        footer a {
+            color: #667eea;
+        }
+
+        footer a:hover {
+            color: #764ba2;
+        }
+
+        .preview-banner {
+            background: #ffc107;
+            color: #000;
+            text-align: center;
+            padding: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="preview-banner">
+        ⚠️ PREVIEW MODE - This is a static preview of the settings page design
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>⚙️ Vantage Q-Link Bridge</h1>
+            <p>Modern REST API for Vantage Lighting Control</p>
+        </header>
+
+        <nav>
+            <a href="#">🏠 Home</a>
+            <a href="#">🎮 Control</a>
+            <a href="#" class="active">⚙️ Settings</a>
+            <a href="#">📊 Status</a>
+        </nav>
+
+        <main>
+            <h2 style="margin-bottom: 20px;">Current Status</h2>
+
+            <div class="status-section">
+                <div class="status-row">
+                    <span class="status-label">Connection Status</span>
+                    <span class="status-value">
+                        <span class="connection-indicator">
+                            <span class="dot"></span>
+                            Connected
+                        </span>
+                    </span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Vantage Controller</span>
+                    <span class="status-value">192.168.0.180:3041</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Last Event</span>
+                    <span class="status-value">2 seconds ago</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Active Connections</span>
+                    <span class="status-value">3 WebSocket clients</span>
+                </div>
+            </div>
+
+            <div class="alert alert-success show">
+                ✅ Settings updated successfully!
+            </div>
+
+            <div class="alert alert-warning">
+                ⚠️ Network changes require bridge restart to take effect.
+            </div>
+
+            <h2 style="margin-bottom: 20px; margin-top: 30px;">Configuration</h2>
+
+            <form class="settings-form">
+                <div class="form-group">
+                    <label for="vantage_ip">Vantage Controller IP Address</label>
+                    <input type="text" id="vantage_ip" name="vantage_ip" value="192.168.0.180">
+                    <span class="help-text">IP address of your Vantage controller. Requires restart.</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="vantage_port">Vantage Controller Port</label>
+                    <input type="number" id="vantage_port" name="vantage_port" value="3041">
+                    <span class="help-text">Q-Link port (3041 for read/write, 3040 for read-only). Requires
+                        restart.</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="qlink_fade">Default Fade Time (seconds)</label>
+                    <input type="number" id="qlink_fade" name="qlink_fade" value="2.0" step="0.1">
+                    <span class="help-text">Default fade time for load changes. Updates immediately.</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="qlink_timeout">Q-Link Command Timeout (seconds)</label>
+                    <input type="number" id="qlink_timeout" name="qlink_timeout" value="5.0" step="0.5">
+                    <span class="help-text">How long to wait for Vantage responses. Updates immediately.</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="qlink_eol">Q-Link End-of-Line Character</label>
+                    <input type="text" id="qlink_eol" name="qlink_eol" value="\r\n" maxlength="4">
+                    <span class="help-text">Line terminator for Q-Link protocol. Usually \r\n. Updates
+                        immediately.</span>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn-primary">💾 Save Settings</button>
+                    <button type="button" class="btn-secondary" onclick="location.reload()">🔄 Refresh Status</button>
+                </div>
+            </form>
+        </main>
+
+        <footer>
+            <p>Vantage Q-Link Bridge v0.4.0 | Status refreshes every 10 seconds</p>
+            <p style="margin-top: 5px; font-size: 12px;">
+                <a href="#" style="color: #667eea; text-decoration: none;">Documentation</a> •
+                <a href="#" style="color: #667eea; text-decoration: none;">API Reference</a> •
+                <a href="#" style="color: #667eea; text-decoration: none;">GitHub</a>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // Preview mode - simulate form submission
+        document.querySelector('form').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            // Hide all alerts
+            document.querySelectorAll('.alert').forEach(a => a.classList.remove('show'));
+
+            // Show success alert
+            const success = document.querySelector('.alert-success');
+            success.classList.add('show');
+
+            // Show warning if IP or port changed
+            const warning = document.querySelector('.alert-warning');
+            warning.classList.add('show');
+
+            // Scroll to top to see alerts
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Hide alerts after 5 seconds
+            setTimeout(() => {
+                success.classList.remove('show');
+                warning.classList.remove('show');
+            }, 5000);
+        });
+
+        // Simulate connection status updates
+        setInterval(() => {
+            const lastEvent = document.querySelector('.status-row:nth-child(3) .status-value');
+            const seconds = Math.floor(Math.random() * 10);
+            lastEvent.textContent = `${seconds} seconds ago`;
+        }, 3000);
+    </script>
+</body>
+
+</html>

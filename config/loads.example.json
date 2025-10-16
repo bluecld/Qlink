@@ -1,0 +1,99 @@
+{
+    "rooms": [
+        {
+            "name": "Living Room",
+            "loads": [
+                {
+                    "id": 1,
+                    "name": "Main Lights",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 2,
+                    "name": "Accent Lights",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 3,
+                    "name": "Reading Lamp",
+                    "type": "switch"
+                }
+            ]
+        },
+        {
+            "name": "Kitchen",
+            "loads": [
+                {
+                    "id": 10,
+                    "name": "Main Lights",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 11,
+                    "name": "Under Cabinet",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 12,
+                    "name": "Pendant Lights",
+                    "type": "dimmer"
+                }
+            ]
+        },
+        {
+            "name": "Master Bedroom",
+            "loads": [
+                {
+                    "id": 20,
+                    "name": "Main Lights",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 21,
+                    "name": "Bedside Left",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 22,
+                    "name": "Bedside Right",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 23,
+                    "name": "Closet",
+                    "type": "switch"
+                }
+            ]
+        },
+        {
+            "name": "Dining Room",
+            "loads": [
+                {
+                    "id": 30,
+                    "name": "Chandelier",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 31,
+                    "name": "Wall Sconces",
+                    "type": "dimmer"
+                }
+            ]
+        },
+        {
+            "name": "Office",
+            "loads": [
+                {
+                    "id": 40,
+                    "name": "Desk Light",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 41,
+                    "name": "Overhead",
+                    "type": "dimmer"
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,180 @@
+{
+    "rooms": [
+        {
+            "name": "Game Room",
+            "floor": "1st Floor",
+            "station": 23,
+            "loads": [
+                {
+                    "id": 1111,
+                    "name": "Pendant",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1114,
+                    "name": "Soffit",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 1115,
+                    "name": "Pool Table",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 2141,
+                    "name": "Recessed",
+                    "type": "dimmer"
+                }
+            ],
+            "buttons": [
+                {
+                    "number": 1,
+                    "name": "Path",
+                    "loads": [
+                        1317,
+                        2148,
+                        1328
+                    ]
+                },
+                {
+                    "number": 5,
+                    "name": "Game Room On",
+                    "preset": 100
+                },
+                {
+                    "number": 6,
+                    "name": "Medium",
+                    "preset": 60
+                },
+                {
+                    "number": 7,
+                    "name": "Dim",
+                    "preset": 20
+                },
+                {
+                    "number": 8,
+                    "name": "Game Room Off",
+                    "preset": 0
+                }
+            ]
+        },
+        {
+            "name": "Library",
+            "floor": "1st Floor",
+            "station": 2,
+            "loads": [
+                {
+                    "id": 221,
+                    "name": "Entry Lights",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 222,
+                    "name": "Library Lights",
+                    "type": "dimmer"
+                }
+            ],
+            "buttons": [
+                {
+                    "number": 1,
+                    "name": "Path"
+                },
+                {
+                    "number": 4,
+                    "name": "Entry"
+                },
+                {
+                    "number": 5,
+                    "name": "Library On",
+                    "preset": 100
+                },
+                {
+                    "number": 6,
+                    "name": "Medium",
+                    "preset": 60
+                },
+                {
+                    "number": 7,
+                    "name": "Dim",
+                    "preset": 20
+                },
+                {
+                    "number": 8,
+                    "name": "Library Off",
+                    "preset": 0
+                }
+            ]
+        },
+        {
+            "name": "Entry",
+            "floor": "1st Floor",
+            "station": 20,
+            "loads": [
+                {
+                    "id": 301,
+                    "name": "Foyer Chandelier",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 302,
+                    "name": "Entry Sconces",
+                    "type": "dimmer"
+                }
+            ],
+            "buttons": [
+                {
+                    "number": 1,
+                    "name": "Path"
+                },
+                {
+                    "number": 2,
+                    "name": "Outside"
+                },
+                {
+                    "number": 3,
+                    "name": "Foyer"
+                },
+                {
+                    "number": 4,
+                    "name": "All Outside Off",
+                    "preset": 0
+                },
+                {
+                    "number": 5,
+                    "name": "Entry On",
+                    "preset": 100
+                },
+                {
+                    "number": 6,
+                    "name": "Landscape"
+                },
+                {
+                    "number": 7,
+                    "name": "Dim",
+                    "preset": 20
+                },
+                {
+                    "number": 8,
+                    "name": "Entry Off",
+                    "preset": 0
+                }
+            ]
+        },
+        {
+            "name": "Bar",
+            "floor": "1st Floor",
+            "loads": [
+                {
+                    "id": 127,
+                    "name": "Bar Main Lights",
+                    "type": "dimmer"
+                },
+                {
+                    "id": 128,
+                    "name": "Bar Under Cabinet",
+                    "type": "dimmer"
+                }
+            ]
+        }
+    ]
+}

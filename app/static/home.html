@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vantage Lighting Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Floor Filter Dropdown */
+        .filter-bar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 15px;
+        }
+
+        .filter-dropdown {
+            padding: 10px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            background: white;
+            color: #334155;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+            flex: 1;
+            max-width: 300px;
+        }
+
+        .filter-dropdown:focus {
+            border-color: #667eea;
+        }
+
+        /* Floor Section */
+        .floor-section {
+            margin-bottom: 25px;
+        }
+
+        .floor-header {
+            background: white;
+            padding: 18px 25px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .floor-header:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .floor-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .floor-title h2 {
+            font-size: 22px;
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .floor-count {
+            font-size: 13px;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        .floor-toggle {
+            font-size: 20px;
+            color: #667eea;
+            transition: transform 0.3s ease;
+        }
+
+        .floor-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .floor-rooms {
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .floor-rooms.collapsed {
+            display: none;
+        }
+
+        /* Room Cards */
+        .room-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .room-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .room-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        .room-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .room-all-off {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .room-all-off:hover {
+            background: #dc2626;
+        }
+
+        .load-item {
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .load-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .load-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .load-name {
+            font-weight: 600;
+            color: #334155;
+            font-size: 14px;
+        }
+
+        .load-type {
+            font-size: 10px;
+            color: #64748b;
+            background: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .load-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .btn-on {
+            background: #22c55e;
+            color: white;
+            flex: 1;
+        }
+
+        .btn-on:hover {
+            background: #16a34a;
+        }
+
+        .btn-off {
+            background: #94a3b8;
+            color: white;
+            flex: 1;
+        }
+
+        .btn-off:hover {
+            background: #64748b;
+        }
+
+        .slider-container {
+            flex: 2;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .slider {
+            flex: 1;
+            height: 5px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .level-display {
+            min-width: 35px;
+            text-align: right;
+            font-weight: 600;
+            color: #667eea;
+            font-size: 13px;
+        }
+
+        .diagnostic-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .diagnostic-link a {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .diagnostic-link a:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1e293b;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🏠 Vantage Lighting Control</h1>
+            <div class="status">
+                <div class="status-dot"></div>
+                <span id="statusText">Connected</span>
+            </div>
+        </header>
+
+        <div class="filter-bar">
+            <span class="filter-label">Jump to Floor:</span>
+            <select id="floor-filter" class="filter-dropdown">
+                <option value="all">All Floors (Expand All)</option>
+            </select>
+        </div>
+
+        <div id="content" class="loading">Loading rooms...</div>
+
+        <div class="diagnostic-link">
+            <a href="/ui/">→ Diagnostic Console</a>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const API_BASE = '';
+        let rooms = [];
+        let floorStates = {}; // Track which floors are expanded
+
+        // Load configuration
+        async function loadConfig() {
+            try {
+                const response = await fetch(`${API_BASE}/config`);
+                const config = await response.json();
+                rooms = config.rooms || [];
+                populateFloorDropdown();
+                renderRooms();
+            } catch (error) {
+                showToast('Error loading configuration', 'error');
+                document.getElementById('content').innerHTML =
+                    '<div class="loading">❌ Could not load configuration. Check loads.json file.</div>';
+            }
+        }
+
+        // Populate floor dropdown
+        function populateFloorDropdown() {
+            const dropdown = document.getElementById('floor-filter');
+            const floors = [...new Set(rooms
+                .filter(r => r.floor && !r.floor.includes('─') && r.loads && r.loads.length > 0)
+                .map(r => r.floor))];
+
+            // Initialize all floors as expanded
+            floors.forEach(floor => {
+                if (floorStates[floor] === undefined) {
+                    floorStates[floor] = true;
+                }
+            });
+
+            // Add floor options
+            floors.forEach(floor => {
+                const option = document.createElement('option');
+                option.value = floor;
+                option.textContent = floor;
+                dropdown.appendChild(option);
+            });
+
+            // Handle dropdown change
+            dropdown.addEventListener('change', (e) => {
+                const selected = e.target.value;
+                if (selected === 'all') {
+                    // Expand all floors
+                    Object.keys(floorStates).forEach(f => floorStates[f] = true);
+                    renderRooms();
+                } else {
+                    // Collapse all, expand selected, and scroll to it
+                    Object.keys(floorStates).forEach(f => floorStates[f] = false);
+                    floorStates[selected] = true;
+                    renderRooms();
+                    setTimeout(() => {
+                        const section = document.querySelector(`[data-floor="${selected}"]`);
+                        if (section) {
+                            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }, 100);
+                }
+            });
+        }
+
+        // Render rooms grouped by floor
+        function renderRooms() {
+            if (rooms.length === 0) {
+                document.getElementById('content').innerHTML =
+                    '<div class="loading">⚠️ No rooms configured. Add rooms to config/loads.json</div>';
+                return;
+            }
+
+            // Group rooms by floor
+            const floorGroups = {};
+            rooms.forEach(room => {
+                if (!room.loads || room.loads.length === 0 || room.floor.includes('─')) {
+                    return; // Skip separators
+                }
+                if (!floorGroups[room.floor]) {
+                    floorGroups[room.floor] = [];
+                }
+                floorGroups[room.floor].push(room);
+            });
+
+            // Render floor sections
+            const html = Object.keys(floorGroups).map(floor => {
+                const isExpanded = floorStates[floor];
+                return `
+                    <div class="floor-section" data-floor="${floor}">
+                        <div class="floor-header" onclick="toggleFloor('${floor}')">
+                            <div class="floor-title">
+                                <h2>${floor}</h2>
+                                <span class="floor-count">${floorGroups[floor].length} rooms</span>
+                            </div>
+                            <span class="floor-toggle ${isExpanded ? '' : 'collapsed'}">▼</span>
+                        </div>
+                        <div class="floor-rooms ${isExpanded ? '' : 'collapsed'}">
+                            ${floorGroups[floor].map(room => renderRoom(room)).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('content').innerHTML = html;
+        }
+
+        // Toggle floor expansion
+        function toggleFloor(floor) {
+            floorStates[floor] = !floorStates[floor];
+            renderRooms();
+        }
+
+        // Render single room
+        function renderRoom(room) {
+            return `
+                <div class="room-card">
+                    <div class="room-header">
+                        <div class="room-name">${room.name}</div>
+                        <button class="room-all-off" onclick="turnOffRoom('${room.name}')">
+                            All Off
+                        </button>
+                    </div>
+                    <div class="loads">
+                        ${room.loads.map(load => renderLoad(load, room.name)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render single load
+        function renderLoad(load, roomName) {
+            const isDimmer = load.type === 'dimmer';
+            // Escape quotes in names for safe onclick attributes
+            const escapedRoomName = roomName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const escapedLoadName = load.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            return `
+                <div class="load-item">
+                    <div class="load-header">
+                        <span class="load-name">${load.name}</span>
+                        <span class="load-type">${load.type} #${load.id}</span>
+                    </div>
+                    <div class="load-controls">
+                        <button class="btn btn-on" onclick="setLevel(${load.id}, 100, '${escapedRoomName}', '${escapedLoadName}')">
+                            ON
+                        </button>
+                        <button class="btn btn-off" onclick="setLevel(${load.id}, 0, '${escapedRoomName}', '${escapedLoadName}')">
+                            OFF
+                        </button>
+                        ${isDimmer ? `
+                            <div class="slider-container">
+                                <input type="range" min="0" max="100" value="0" class="slider"
+                                    oninput="updateLevel(this, ${load.id})"
+                                    onchange="setLevel(${load.id}, this.value, '${escapedRoomName}', '${escapedLoadName}')">
+                                <span class="level-display" id="level-${load.id}">0%</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Update level display
+        function updateLevel(slider, id) {
+            document.getElementById(`level-${id}`).textContent = `${slider.value}%`;
+        }
+
+        // Set device level
+        async function setLevel(id, level, roomName, loadName) {
+            try {
+                const response = await fetch(`${API_BASE}/device/${id}/set`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ level: parseInt(level) })
+                });
+
+                if (response.ok) {
+                    const action = level > 0 ? 'ON' : 'OFF';
+                    showToast(`${roomName} - ${loadName}: ${action} ${level > 0 && level < 100 ? `(${level}%)` : ''}`);
+                } else {
+                    showToast('Command failed', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        // Turn off all loads in a room
+        async function turnOffRoom(roomName) {
+            const room = rooms.find(r => r.name === roomName);
+            if (!room) return;
+
+            for (const load of room.loads) {
+                await setLevel(load.id, 0, roomName, load.name);
+            }
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Health check
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/healthz`);
+                const statusDot = document.querySelector('.status-dot');
+                const statusText = document.getElementById('statusText');
+
+                if (response.ok) {
+                    statusDot.style.background = '#4ade80';
+                    statusText.textContent = 'Connected';
+                } else {
+                    statusDot.style.background = '#fbbf24';
+                    statusText.textContent = 'Warning';
+                }
+            } catch (error) {
+                const statusDot = document.querySelector('.status-dot');
+                const statusText = document.getElementById('statusText');
+                statusDot.style.background = '#ef4444';
+                statusText.textContent = 'Disconnected';
+            }
+        }
+
+        // Initialize
+        loadConfig();
+        setInterval(checkHealth, 10000);
+        checkHealth();
+    </script>
+</body>
+
+</html>

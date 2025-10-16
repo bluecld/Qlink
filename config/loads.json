@@ -1,0 +1,2334 @@
+{
+  "station_8": {
+    "name": "Global",
+    "station": 8,
+    "master": 1,
+    "buttons": {
+      "button_1": {
+        "name": "Button 1",
+        "button": 1,
+        "event_type": null,
+        "loads": []
+      },
+      "button_2": {
+        "name": "Button 2",
+        "button": 2,
+        "event_type": null,
+        "loads": []
+      },
+      "button_3": {
+        "name": "Button 3",
+        "button": 3,
+        "event_type": null,
+        "loads": []
+      },
+      "button_4": {
+        "name": "Button 4",
+        "button": 4,
+        "event_type": null,
+        "loads": []
+      },
+      "button_5": {
+        "name": "All On",
+        "button": 5,
+        "event_type": null,
+        "loads": []
+      },
+      "button_6": {
+        "name": "All Off",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "Button 7",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Button 8",
+        "button": 8,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_18": {
+    "name": "V68",
+    "station": 18,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Room On",
+        "button": 1,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2225
+        ]
+      },
+      "button_2": {
+        "name": "Medium",
+        "button": 2,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2225
+        ]
+      },
+      "button_3": {
+        "name": "Dim",
+        "button": 3,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2225
+        ]
+      },
+      "button_4": {
+        "name": "Room Off",
+        "button": 4,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2225
+        ]
+      },
+      "button_5": {
+        "name": "Hall",
+        "button": 5,
+        "event_type": null,
+        "loads": []
+      },
+      "button_6": {
+        "name": "Button 6",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "xmas",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Button 8",
+        "button": 8,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_23": {
+    "name": "V21",
+    "station": 23,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Outside",
+        "button": 1,
+        "event_type": "DIM",
+        "loads": [
+          2115
+        ]
+      },
+      "button_2": {
+        "name": "Pendant",
+        "button": 2,
+        "event_type": "DIM",
+        "loads": [
+          2112
+        ]
+      },
+      "button_3": {
+        "name": "Soffit",
+        "button": 3,
+        "event_type": "TOGGLE",
+        "loads": [
+          2111
+        ]
+      },
+      "button_4": {
+        "name": "Path",
+        "button": 4,
+        "event_type": null,
+        "loads": []
+      },
+      "button_5": {
+        "name": "Room On",
+        "button": 5,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2111,
+          2112,
+          2118
+        ]
+      },
+      "button_6": {
+        "name": "Medium",
+        "button": 6,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2111,
+          2112,
+          2118
+        ]
+      },
+      "button_7": {
+        "name": "Dim",
+        "button": 7,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2111,
+          2112,
+          2118
+        ]
+      },
+      "button_8": {
+        "name": "Room Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2111,
+          2112,
+          2118
+        ]
+      }
+    }
+  },
+  "station_24": {
+    "name": "V27",
+    "station": 24,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Outside",
+        "button": 1,
+        "event_type": "TOGGLE",
+        "loads": [
+          2233
+        ]
+      },
+      "button_2": {
+        "name": "Center",
+        "button": 2,
+        "event_type": "DIM",
+        "loads": [
+          2234
+        ]
+      },
+      "button_3": {
+        "name": "Outer",
+        "button": 3,
+        "event_type": null,
+        "loads": [
+          2214
+        ]
+      },
+      "button_4": {
+        "name": "Inner",
+        "button": 4,
+        "event_type": "DIM",
+        "loads": [
+          2237
+        ]
+      },
+      "button_5": {
+        "name": "Family Rm On",
+        "button": 5,
+        "event_type": null,
+        "loads": []
+      },
+      "button_6": {
+        "name": "Medium",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "Dim",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Family Rm Off",
+        "button": 8,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_1": {
+    "name": "V72 new 03-13",
+    "station": 1,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Outside",
+        "button": 1,
+        "event_type": "DIM",
+        "loads": [
+          1127,
+          2115
+        ]
+      },
+      "button_2": {
+        "name": "Button 2",
+        "button": 2,
+        "event_type": null,
+        "loads": []
+      },
+      "button_3": {
+        "name": "Button 3",
+        "button": 3,
+        "event_type": null,
+        "loads": []
+      },
+      "button_4": {
+        "name": "Button 4",
+        "button": 4,
+        "event_type": null,
+        "loads": []
+      },
+      "button_5": {
+        "name": "Button 5",
+        "button": 5,
+        "event_type": null,
+        "loads": []
+      },
+      "button_6": {
+        "name": "Button 6",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "Button 7",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Button 8",
+        "button": 8,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_2": {
+    "name": "V74 new 03-13",
+    "station": 2,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Outside",
+        "button": 1,
+        "event_type": "DIM",
+        "loads": [
+          1232
+        ]
+      },
+      "button_2": {
+        "name": "Button 2",
+        "button": 2,
+        "event_type": null,
+        "loads": []
+      },
+      "button_3": {
+        "name": "Button 3",
+        "button": 3,
+        "event_type": null,
+        "loads": []
+      },
+      "button_4": {
+        "name": "Button 4",
+        "button": 4,
+        "event_type": null,
+        "loads": []
+      },
+      "button_5": {
+        "name": "Button 5",
+        "button": 5,
+        "event_type": null,
+        "loads": []
+      },
+      "button_6": {
+        "name": "Button 6",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "Button 7",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Button 8",
+        "button": 8,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_3": {
+    "name": "V22",
+    "station": 3,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Stairs",
+        "button": 1,
+        "event_type": null,
+        "loads": []
+      },
+      "button_2": {
+        "name": "Chand",
+        "button": 2,
+        "event_type": null,
+        "loads": []
+      },
+      "button_3": {
+        "name": "Art",
+        "button": 3,
+        "event_type": null,
+        "loads": []
+      },
+      "button_4": {
+        "name": "Dome",
+        "button": 4,
+        "event_type": null,
+        "loads": []
+      },
+      "button_5": {
+        "name": "Foyer On",
+        "button": 5,
+        "event_type": null,
+        "loads": []
+      },
+      "button_6": {
+        "name": "Ceiling",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "Lassen",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Foyer Off",
+        "button": 8,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_5": {
+    "name": "V45",
+    "station": 5,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Outside",
+        "button": 1,
+        "event_type": "DIM",
+        "loads": [
+          2221
+        ]
+      },
+      "button_5": {
+        "name": "Button 1",
+        "button": 5,
+        "event_type": null,
+        "loads": []
+      },
+      "button_6": {
+        "name": "Button 2",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "Button 3",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Button 4",
+        "button": 8,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_14": {
+    "name": "V64",
+    "station": 14,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Shower",
+        "button": 1,
+        "event_type": null,
+        "loads": [
+          2211
+        ]
+      },
+      "button_2": {
+        "name": "Tub",
+        "button": 2,
+        "event_type": "DIM",
+        "loads": [
+          2218
+        ]
+      },
+      "button_3": {
+        "name": "Make Up",
+        "button": 3,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2222,
+          2135
+        ]
+      },
+      "button_4": {
+        "name": "Ceiling",
+        "button": 4,
+        "event_type": "TOGGLE",
+        "loads": [
+          2248,
+          2135
+        ]
+      },
+      "button_5": {
+        "name": "Room On",
+        "button": 5,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2222,
+          2248,
+          2135
+        ]
+      },
+      "button_6": {
+        "name": "Medium",
+        "button": 6,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2222,
+          2248,
+          2135
+        ]
+      },
+      "button_7": {
+        "name": "Dim",
+        "button": 7,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2222,
+          2248,
+          2135
+        ]
+      },
+      "button_8": {
+        "name": "Room Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2136
+        ]
+      }
+    }
+  },
+  "station_16": {
+    "name": "V66",
+    "station": 16,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Hall",
+        "button": 1,
+        "event_type": "DIM",
+        "loads": [
+          2134
+        ]
+      },
+      "button_2": {
+        "name": "Button 2",
+        "button": 2,
+        "event_type": null,
+        "loads": []
+      },
+      "button_3": {
+        "name": "Button 3",
+        "button": 3,
+        "event_type": null,
+        "loads": []
+      },
+      "button_4": {
+        "name": "1st Floor Off",
+        "button": 4,
+        "event_type": null,
+        "loads": []
+      },
+      "button_5": {
+        "name": "Entry On",
+        "button": 5,
+        "event_type": null,
+        "loads": []
+      },
+      "button_6": {
+        "name": "Medium",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "Dim",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Entry Off",
+        "button": 8,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_22": {
+    "name": "V58",
+    "station": 22,
+    "master": 1,
+    "buttons": {
+      "button_1": {
+        "name": "Room On",
+        "button": 1,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1212
+        ]
+      },
+      "button_2": {
+        "name": "Medium",
+        "button": 2,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1212
+        ]
+      },
+      "button_3": {
+        "name": "Room Off",
+        "button": 3,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          1212
+        ]
+      },
+      "button_4": {
+        "name": "Path",
+        "button": 4,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_13": {
+    "name": "V63",
+    "station": 13,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Office",
+        "button": 1,
+        "event_type": null,
+        "loads": [
+          2227
+        ]
+      },
+      "button_2": {
+        "name": "All Off Outside",
+        "button": 2,
+        "event_type": null,
+        "loads": []
+      },
+      "button_3": {
+        "name": "House Off",
+        "button": 3,
+        "event_type": null,
+        "loads": [
+          1146
+        ]
+      },
+      "button_4": {
+        "name": "Sitting Room",
+        "button": 4,
+        "event_type": null,
+        "loads": [
+          2131
+        ]
+      },
+      "button_5": {
+        "name": "Room On",
+        "button": 5,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2132
+        ]
+      },
+      "button_6": {
+        "name": "Under Cabinet",
+        "button": 6,
+        "event_type": null,
+        "loads": [
+          2132
+        ]
+      },
+      "button_7": {
+        "name": "Dim",
+        "button": 7,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2132
+        ]
+      },
+      "button_8": {
+        "name": "Suite Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2248,
+          2135,
+          2136,
+          2227
+        ]
+      }
+    }
+  },
+  "station_33": {
+    "name": "V36",
+    "station": 33,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Butler On",
+        "button": 1,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2246,
+          2114
+        ]
+      },
+      "button_2": {
+        "name": "Under Cabinet",
+        "button": 2,
+        "event_type": "TOGGLE",
+        "loads": [
+          2246
+        ]
+      },
+      "button_3": {
+        "name": "Dining Room",
+        "button": 3,
+        "event_type": "DIM",
+        "loads": [
+          2118,
+          2111,
+          2112
+        ]
+      },
+      "button_4": {
+        "name": "Butler Off",
+        "button": 4,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2246,
+          2114
+        ]
+      }
+    }
+  },
+  "station_17": {
+    "name": "V67",
+    "station": 17,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Room On",
+        "button": 1,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2224
+        ]
+      },
+      "button_2": {
+        "name": "Medium",
+        "button": 2,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2224
+        ]
+      },
+      "button_3": {
+        "name": "Dim",
+        "button": 3,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2224
+        ]
+      },
+      "button_4": {
+        "name": "Room Off",
+        "button": 4,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2224
+        ]
+      },
+      "button_5": {
+        "name": "Hall",
+        "button": 5,
+        "event_type": null,
+        "loads": []
+      },
+      "button_6": {
+        "name": "Button 6",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "Xmas",
+        "button": 7,
+        "event_type": "TOGGLE",
+        "loads": [
+          2122,
+          1146
+        ]
+      },
+      "button_8": {
+        "name": "Exterior Lights",
+        "button": 8,
+        "event_type": "TOGGLE",
+        "loads": [
+          1145,
+          2121
+        ]
+      }
+    }
+  },
+  "station_37": {
+    "name": "V40",
+    "station": 37,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Hall",
+        "button": 1,
+        "event_type": null,
+        "loads": [
+          2148
+        ]
+      },
+      "button_2": {
+        "name": "Button 2",
+        "button": 2,
+        "event_type": null,
+        "loads": []
+      },
+      "button_3": {
+        "name": "Button 3",
+        "button": 3,
+        "event_type": null,
+        "loads": []
+      },
+      "button_4": {
+        "name": "All Off Outside",
+        "button": 4,
+        "event_type": null,
+        "loads": []
+      },
+      "button_5": {
+        "name": "Garage On",
+        "button": 5,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2128
+        ]
+      },
+      "button_6": {
+        "name": "Home",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "House Off",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Garage Off",
+        "button": 8,
+        "event_type": "TOGGLE",
+        "loads": [
+          2128
+        ]
+      }
+    }
+  },
+  "station_19": {
+    "name": "V69",
+    "station": 19,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Room On",
+        "button": 1,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2245
+        ]
+      },
+      "button_2": {
+        "name": "Medium",
+        "button": 2,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2245
+        ]
+      },
+      "button_3": {
+        "name": "Dim",
+        "button": 3,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2245
+        ]
+      },
+      "button_4": {
+        "name": "Room Off",
+        "button": 4,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2245
+        ]
+      },
+      "button_5": {
+        "name": "Hall",
+        "button": 5,
+        "event_type": null,
+        "loads": []
+      },
+      "button_6": {
+        "name": "Button 6",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "Button 7",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Button 8",
+        "button": 8,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_6": {
+    "name": "V55",
+    "station": 6,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Room On",
+        "button": 1,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1211,
+          1228
+        ]
+      },
+      "button_2": {
+        "name": "Medium",
+        "button": 2,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1211,
+          1228
+        ]
+      },
+      "button_3": {
+        "name": "Room Off",
+        "button": 3,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          1211,
+          1228
+        ]
+      },
+      "button_4": {
+        "name": "Hall",
+        "button": 4,
+        "event_type": "DIM",
+        "loads": [
+          1234
+        ]
+      }
+    }
+  },
+  "station_7": {
+    "name": "V44",
+    "station": 7,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Watch Movie",
+        "button": 1,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1123,
+          1125,
+          1138,
+          1137
+        ]
+      },
+      "button_2": {
+        "name": "Intermission",
+        "button": 2,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1123,
+          1125,
+          1138,
+          1137
+        ]
+      },
+      "button_3": {
+        "name": "Resume Movie",
+        "button": 3,
+        "event_type": null,
+        "loads": []
+      },
+      "button_4": {
+        "name": "Clean Up",
+        "button": 4,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1123,
+          1125,
+          1138,
+          1137
+        ]
+      },
+      "button_5": {
+        "name": "Media Room On",
+        "button": 5,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1123,
+          1125,
+          1138,
+          1137
+        ]
+      },
+      "button_6": {
+        "name": "Medium",
+        "button": 6,
+        "event_type": null,
+        "loads": [
+          1125,
+          1138
+        ]
+      },
+      "button_7": {
+        "name": "Dim",
+        "button": 7,
+        "event_type": null,
+        "loads": [
+          1125
+        ]
+      },
+      "button_8": {
+        "name": "Media Room Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          1123,
+          1125,
+          1138,
+          1137
+        ]
+      }
+    }
+  },
+  "station_10": {
+    "name": "V60 BED R",
+    "station": 10,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Read",
+        "button": 1,
+        "event_type": "DIM",
+        "loads": [
+          2223
+        ]
+      },
+      "button_2": {
+        "name": "Corners",
+        "button": 2,
+        "event_type": "DIM",
+        "loads": [
+          2217
+        ]
+      },
+      "button_3": {
+        "name": "Soffit",
+        "button": 3,
+        "event_type": "DIM",
+        "loads": [
+          2241
+        ]
+      },
+      "button_4": {
+        "name": "Outside All",
+        "button": 4,
+        "event_type": null,
+        "loads": []
+      },
+      "button_5": {
+        "name": "Room On",
+        "button": 5,
+        "event_type": null,
+        "loads": []
+      },
+      "button_6": {
+        "name": "Under Cabinet",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "Office",
+        "button": 7,
+        "event_type": "TOGGLE",
+        "loads": [
+          2227
+        ]
+      },
+      "button_8": {
+        "name": "Room Off",
+        "button": 8,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_11": {
+    "name": "V61 BED L",
+    "station": 11,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Read",
+        "button": 1,
+        "event_type": "DIM",
+        "loads": [
+          2228
+        ]
+      },
+      "button_2": {
+        "name": "Center",
+        "button": 2,
+        "event_type": "DIM",
+        "loads": [
+          2216
+        ]
+      },
+      "button_3": {
+        "name": "Under Cabinet",
+        "button": 3,
+        "event_type": "DIM",
+        "loads": [
+          2132
+        ]
+      },
+      "button_4": {
+        "name": "Outside All",
+        "button": 4,
+        "event_type": null,
+        "loads": [
+          1146
+        ]
+      },
+      "button_5": {
+        "name": "Room On",
+        "button": 5,
+        "event_type": null,
+        "loads": []
+      },
+      "button_6": {
+        "name": "Medium",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "Dim",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Room Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2132
+        ]
+      }
+    }
+  },
+  "station_12": {
+    "name": "V62",
+    "station": 12,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Outside",
+        "button": 1,
+        "event_type": "DIM",
+        "loads": [
+          2221
+        ]
+      },
+      "button_2": {
+        "name": "Button 2",
+        "button": 2,
+        "event_type": null,
+        "loads": []
+      },
+      "button_3": {
+        "name": "Button 3",
+        "button": 3,
+        "event_type": null,
+        "loads": []
+      },
+      "button_4": {
+        "name": "Button 4",
+        "button": 4,
+        "event_type": null,
+        "loads": []
+      },
+      "button_5": {
+        "name": "Room On",
+        "button": 5,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2227
+        ]
+      },
+      "button_6": {
+        "name": "Medium",
+        "button": 6,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2227
+        ]
+      },
+      "button_7": {
+        "name": "Dim",
+        "button": 7,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2227
+        ]
+      },
+      "button_8": {
+        "name": "Room Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2227
+        ]
+      }
+    }
+  },
+  "station_4": {
+    "name": "V25",
+    "station": 4,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Under Cabinet",
+        "button": 1,
+        "event_type": "TOGGLE",
+        "loads": [
+          2142
+        ]
+      },
+      "button_2": {
+        "name": "Ceiling",
+        "button": 2,
+        "event_type": "DIM",
+        "loads": [
+          2235
+        ]
+      },
+      "button_3": {
+        "name": "Pendants",
+        "button": 3,
+        "event_type": "DIM",
+        "loads": [
+          2236
+        ]
+      },
+      "button_4": {
+        "name": "Game Room Dim",
+        "button": 4,
+        "event_type": null,
+        "loads": [
+          1111,
+          1114,
+          1115,
+          2141
+        ]
+      },
+      "button_5": {
+        "name": "Bar On",
+        "button": 5,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2235,
+          2236,
+          2142
+        ]
+      },
+      "button_6": {
+        "name": "Medium",
+        "button": 6,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2235,
+          2236,
+          2142
+        ]
+      },
+      "button_7": {
+        "name": "Dim",
+        "button": 7,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2235,
+          2236,
+          2142
+        ]
+      },
+      "button_8": {
+        "name": "Bar Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2142,
+          2236,
+          2235
+        ]
+      }
+    }
+  },
+  "station_9": {
+    "name": "V59",
+    "station": 9,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Hall",
+        "button": 1,
+        "event_type": "DIM",
+        "loads": [
+          2134
+        ]
+      },
+      "button_2": {
+        "name": "Bedroom 4",
+        "button": 2,
+        "event_type": null,
+        "loads": [
+          2224
+        ]
+      },
+      "button_3": {
+        "name": "Bedroom 6",
+        "button": 3,
+        "event_type": null,
+        "loads": [
+          2226
+        ]
+      },
+      "button_4": {
+        "name": "Walkway",
+        "button": 4,
+        "event_type": null,
+        "loads": [
+          2134,
+          1234
+        ]
+      },
+      "button_5": {
+        "name": "Sitting On",
+        "button": 5,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2131
+        ]
+      },
+      "button_6": {
+        "name": "Master Bedroom",
+        "button": 6,
+        "event_type": null,
+        "loads": [
+          2132
+        ]
+      },
+      "button_7": {
+        "name": "Suite Off",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Sitting Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2131
+        ]
+      }
+    }
+  },
+  "station_29": {
+    "name": "V32",
+    "station": 29,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Clean Up",
+        "button": 1,
+        "event_type": null,
+        "loads": [
+          2244,
+          2247,
+          2146
+        ]
+      },
+      "button_2": {
+        "name": "Under Cabinet",
+        "button": 2,
+        "event_type": "TOGGLE",
+        "loads": [
+          2146
+        ]
+      },
+      "button_3": {
+        "name": "Ceiling",
+        "button": 3,
+        "event_type": "DIM",
+        "loads": [
+          2247
+        ]
+      },
+      "button_4": {
+        "name": "Island",
+        "button": 4,
+        "event_type": "DIM",
+        "loads": [
+          2244
+        ]
+      },
+      "button_5": {
+        "name": "Kitchen On",
+        "button": 5,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2244,
+          2247,
+          2146
+        ]
+      },
+      "button_6": {
+        "name": "Medium",
+        "button": 6,
+        "event_type": "TOGGLE",
+        "loads": [
+          2242
+        ]
+      },
+      "button_7": {
+        "name": "Dim",
+        "button": 7,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2242,
+          2138
+        ]
+      },
+      "button_8": {
+        "name": "Kitchen Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2244,
+          2247,
+          2146
+        ]
+      }
+    }
+  },
+  "station_31": {
+    "name": "V57",
+    "station": 31,
+    "master": 1,
+    "buttons": {
+      "button_1": {
+        "name": "Entry On",
+        "button": 1,
+        "event_type": null,
+        "loads": []
+      },
+      "button_2": {
+        "name": "Medium",
+        "button": 2,
+        "event_type": null,
+        "loads": []
+      },
+      "button_3": {
+        "name": "Dim",
+        "button": 3,
+        "event_type": null,
+        "loads": []
+      },
+      "button_4": {
+        "name": "Entry Off",
+        "button": 4,
+        "event_type": null,
+        "loads": []
+      },
+      "button_5": {
+        "name": "Hall",
+        "button": 5,
+        "event_type": null,
+        "loads": [
+          1226
+        ]
+      },
+      "button_6": {
+        "name": "Walk Around",
+        "button": 6,
+        "event_type": "TOGGLE",
+        "loads": [
+          1234
+        ]
+      },
+      "button_7": {
+        "name": "Scoon",
+        "button": 7,
+        "event_type": null,
+        "loads": [
+          1125
+        ]
+      },
+      "button_8": {
+        "name": "1st Fl Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2237,
+          2145
+        ]
+      }
+    }
+  },
+  "station_30": {
+    "name": "V56",
+    "station": 30,
+    "master": 1,
+    "buttons": {
+      "button_2": {
+        "name": "Stairs",
+        "button": 2,
+        "event_type": "DIM",
+        "loads": [
+          1318
+        ]
+      },
+      "button_3": {
+        "name": "Hall",
+        "button": 3,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_32": {
+    "name": "V35",
+    "station": 32,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Path",
+        "button": 1,
+        "event_type": null,
+        "loads": []
+      },
+      "button_2": {
+        "name": "Wall",
+        "button": 2,
+        "event_type": "DIM",
+        "loads": [
+          2117,
+          2113
+        ]
+      },
+      "button_3": {
+        "name": "Art",
+        "button": 3,
+        "event_type": "DIM",
+        "loads": [
+          2113
+        ]
+      },
+      "button_4": {
+        "name": "Ceiling",
+        "button": 4,
+        "event_type": "DIM",
+        "loads": [
+          2148
+        ]
+      },
+      "button_5": {
+        "name": "Hall On",
+        "button": 5,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2113,
+          2116,
+          2117,
+          2148
+        ]
+      },
+      "button_6": {
+        "name": "Medium",
+        "button": 6,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2113,
+          2116,
+          2117,
+          2148
+        ]
+      },
+      "button_7": {
+        "name": "Dim",
+        "button": 7,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2113,
+          2116,
+          2117,
+          2148
+        ]
+      },
+      "button_8": {
+        "name": "Hall Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2113,
+          2116,
+          2117,
+          2148
+        ]
+      }
+    }
+  },
+  "station_34": {
+    "name": "V37",
+    "station": 34,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Button1",
+        "button": 1,
+        "event_type": null,
+        "loads": []
+      },
+      "button_2": {
+        "name": "Button 2",
+        "button": 2,
+        "event_type": null,
+        "loads": []
+      },
+      "button_3": {
+        "name": "Button 3",
+        "button": 3,
+        "event_type": null,
+        "loads": []
+      },
+      "button_4": {
+        "name": "Button 4",
+        "button": 4,
+        "event_type": null,
+        "loads": []
+      },
+      "button_5": {
+        "name": "Hall>",
+        "button": 5,
+        "event_type": null,
+        "loads": []
+      },
+      "button_6": {
+        "name": "Button 6",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "Button 7",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Button 8",
+        "button": 8,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_35": {
+    "name": "V38",
+    "station": 35,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Room On",
+        "button": 1,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2127,
+          2126
+        ]
+      },
+      "button_2": {
+        "name": "Ceiling",
+        "button": 2,
+        "event_type": "DIM",
+        "loads": [
+          2126
+        ]
+      },
+      "button_3": {
+        "name": "Window Lights",
+        "button": 3,
+        "event_type": "DIM",
+        "loads": [
+          2127
+        ]
+      },
+      "button_4": {
+        "name": "Room Off",
+        "button": 4,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2127,
+          2126
+        ]
+      }
+    }
+  },
+  "station_25": {
+    "name": "V28",
+    "station": 25,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Breakfast Room",
+        "button": 1,
+        "event_type": null,
+        "loads": [
+          2243,
+          2143
+        ]
+      },
+      "button_5": {
+        "name": "Kitchen",
+        "button": 5,
+        "event_type": null,
+        "loads": [
+          2244,
+          2247,
+          2146
+        ]
+      },
+      "button_8": {
+        "name": "Family Room",
+        "button": 8,
+        "event_type": null,
+        "loads": [
+          2234,
+          2214,
+          2215,
+          2237,
+          2145
+        ]
+      }
+    }
+  },
+  "station_26": {
+    "name": "V26",
+    "station": 26,
+    "master": 1,
+    "buttons": {
+      "button_1": {
+        "name": "Path",
+        "button": 1,
+        "event_type": null,
+        "loads": []
+      },
+      "button_2": {
+        "name": "Ceiling",
+        "button": 2,
+        "event_type": "DIM",
+        "loads": [
+          2234,
+          2214,
+          2237
+        ]
+      },
+      "button_3": {
+        "name": "Art",
+        "button": 3,
+        "event_type": "DIM",
+        "loads": [
+          2215
+        ]
+      },
+      "button_4": {
+        "name": "Under Cabinet",
+        "button": 4,
+        "event_type": "DIM",
+        "loads": [
+          2145
+        ]
+      },
+      "button_5": {
+        "name": "Family Rm On",
+        "button": 5,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2234,
+          2214,
+          2215,
+          2237,
+          2145
+        ]
+      },
+      "button_6": {
+        "name": "Medium",
+        "button": 6,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2234,
+          2214,
+          2215,
+          2237,
+          2145
+        ]
+      },
+      "button_7": {
+        "name": "Dim",
+        "button": 7,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2234,
+          2214,
+          2215,
+          2237,
+          2145
+        ]
+      },
+      "button_8": {
+        "name": "Family Rm Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2234,
+          2214,
+          2215,
+          2237,
+          2145
+        ]
+      }
+    }
+  },
+  "station_27": {
+    "name": "V53",
+    "station": 27,
+    "master": 1,
+    "buttons": {
+      "button_1": {
+        "name": "His Closet",
+        "button": 1,
+        "event_type": "TOGGLE",
+        "loads": [
+          1222
+        ]
+      },
+      "button_4": {
+        "name": "Foyer",
+        "button": 4,
+        "event_type": null,
+        "loads": [
+          1327
+        ]
+      },
+      "button_5": {
+        "name": "Her Closet",
+        "button": 5,
+        "event_type": "TOGGLE",
+        "loads": [
+          1223,
+          1224
+        ]
+      },
+      "button_8": {
+        "name": "Bath",
+        "button": 8,
+        "event_type": null,
+        "loads": [
+          1218,
+          1221,
+          1326
+        ]
+      }
+    }
+  },
+  "station_28": {
+    "name": "V54",
+    "station": 28,
+    "master": 1,
+    "buttons": {
+      "button_1": {
+        "name": "Hall",
+        "button": 1,
+        "event_type": "TOGGLE",
+        "loads": [
+          1226
+        ]
+      },
+      "button_2": {
+        "name": "Under cabinet Lights",
+        "button": 2,
+        "event_type": null,
+        "loads": []
+      },
+      "button_3": {
+        "name": "Theater",
+        "button": 3,
+        "event_type": null,
+        "loads": [
+          1138,
+          1137
+        ]
+      },
+      "button_5": {
+        "name": "Sitting On",
+        "button": 5,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1213
+        ]
+      },
+      "button_6": {
+        "name": "Master Bedroom",
+        "button": 6,
+        "event_type": null,
+        "loads": [
+          1323
+        ]
+      },
+      "button_7": {
+        "name": "Suite Off",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Sitting Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          1213
+        ]
+      }
+    }
+  },
+  "station_36": {
+    "name": "V39",
+    "station": 36,
+    "master": 2,
+    "buttons": {
+      "button_2": {
+        "name": "Stairs",
+        "button": 2,
+        "event_type": null,
+        "loads": []
+      },
+      "button_3": {
+        "name": "Hall",
+        "button": 3,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_15": {
+    "name": "V65",
+    "station": 15,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Toilet Light",
+        "button": 1,
+        "event_type": "DIM",
+        "loads": [
+          2136
+        ]
+      },
+      "button_2": {
+        "name": "Toilet Fan",
+        "button": 2,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2133
+        ]
+      },
+      "button_4": {
+        "name": "Shower",
+        "button": 4,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_20": {
+    "name": "V70",
+    "station": 20,
+    "master": 2,
+    "buttons": {
+      "button_1": {
+        "name": "Room On",
+        "button": 1,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2226
+        ]
+      },
+      "button_2": {
+        "name": "Medium",
+        "button": 2,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2226
+        ]
+      },
+      "button_3": {
+        "name": "Dim",
+        "button": 3,
+        "event_type": "PRESET_ON",
+        "loads": [
+          2226
+        ]
+      },
+      "button_4": {
+        "name": "Room Off",
+        "button": 4,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          2226
+        ]
+      },
+      "button_5": {
+        "name": "Hall",
+        "button": 5,
+        "event_type": null,
+        "loads": []
+      },
+      "button_6": {
+        "name": "Button 6",
+        "button": 6,
+        "event_type": null,
+        "loads": []
+      },
+      "button_7": {
+        "name": "Button 7",
+        "button": 7,
+        "event_type": null,
+        "loads": []
+      },
+      "button_8": {
+        "name": "Button 8",
+        "button": 8,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_21": {
+    "name": "V71",
+    "station": 21,
+    "master": 2,
+    "buttons": {
+      "button_2": {
+        "name": "Stairs",
+        "button": 2,
+        "event_type": "DIM",
+        "loads": [
+          2137
+        ]
+      },
+      "button_3": {
+        "name": "Hall",
+        "button": 3,
+        "event_type": null,
+        "loads": []
+      }
+    }
+  },
+  "station_50": {
+    "name": "V50",
+    "station": 50,
+    "master": 1,
+    "buttons": {
+      "button_1": {
+        "name": "Outside",
+        "button": 1,
+        "event_type": "DIM",
+        "loads": [
+          1232
+        ]
+      },
+      "button_2": {
+        "name": "All Off Outside",
+        "button": 2,
+        "event_type": null,
+        "loads": []
+      },
+      "button_3": {
+        "name": "House Off",
+        "button": 3,
+        "event_type": null,
+        "loads": []
+      },
+      "button_4": {
+        "name": "Sitting Room",
+        "button": 4,
+        "event_type": null,
+        "loads": [
+          1213
+        ]
+      },
+      "button_5": {
+        "name": "Room On",
+        "button": 5,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1323
+        ]
+      },
+      "button_6": {
+        "name": "Medium",
+        "button": 6,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1323
+        ]
+      },
+      "button_7": {
+        "name": "Dim",
+        "button": 7,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1323
+        ]
+      },
+      "button_8": {
+        "name": "Suite Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          1327,
+          1222,
+          1223,
+          1224
+        ]
+      }
+    }
+  },
+  "station_48": {
+    "name": "V48",
+    "station": 48,
+    "master": 1,
+    "buttons": {
+      "button_1": {
+        "name": "Shower",
+        "button": 1,
+        "event_type": "TOGGLE",
+        "loads": [
+          1217
+        ]
+      },
+      "button_2": {
+        "name": "Tub",
+        "button": 2,
+        "event_type": "DIM",
+        "loads": [
+          1225
+        ]
+      },
+      "button_3": {
+        "name": "Make Up",
+        "button": 3,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1218,
+          1221,
+          1326
+        ]
+      },
+      "button_4": {
+        "name": "Ceiling",
+        "button": 4,
+        "event_type": "TOGGLE",
+        "loads": [
+          1326
+        ]
+      },
+      "button_5": {
+        "name": "Room On",
+        "button": 5,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1218,
+          1221,
+          1326
+        ]
+      },
+      "button_6": {
+        "name": "Medium",
+        "button": 6,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1218,
+          1221,
+          1326
+        ]
+      },
+      "button_7": {
+        "name": "Dim",
+        "button": 7,
+        "event_type": "PRESET_ON",
+        "loads": [
+          1218,
+          1221,
+          1326
+        ]
+      },
+      "button_8": {
+        "name": "Room Off",
+        "button": 8,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          1324,
+          1325
+        ]
+      }
+    }
+  },
+  "station_49": {
+    "name": "V49",
+    "station": 49,
+    "master": 1,
+    "buttons": {
+      "button_1": {
+        "name": "Toilet Light",
+        "button": 1,
+        "event_type": "DIM",
+        "loads": [
+          1325
+        ]
+      },
+      "button_2": {
+        "name": "Toilet Fan",
+        "button": 2,
+        "event_type": "PRESET_OFF",
+        "loads": [
+          1324
+        ]
+      },
+      "button_4": {
+        "name": "Shower",
+        "button": 4,
+        "event_type": "TOGGLE",
+        "loads": [
+          1217
+        ]
+      }
+    }
+  },
+  "station_46": {
+    "name": "V46",
+    "station": 46,
+    "master": 1,
+    "buttons": {
+      "button_2": {
+        "name": "Closet",
+        "button": 2,
+        "event_type": "TOGGLE",
+        "loads": [
+          1222
+        ]
+      }
+    }
+  },
+  "station_47": {
+    "name": "V47",
+    "station": 47,
+    "master": 1,
+    "buttons": {
+      "button_2": {
+        "name": "Closet",
+        "button": 2,
+        "event_type": "TOGGLE",
+        "loads": [
+          1223,
+          1224
+        ]
+      }
+    }
+  }
+}

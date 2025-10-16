@@ -1,0 +1,1671 @@
+"""Vantage QLink HTTP bridge (single clean implementation).
+
+This module provides a minimal FastAPI app that forwards ASCII commands to a
+Vantage IP-Enabler. Writes use VLO (per your requirement). A small static UI
+is mounted at /ui when `app/static` exists.
+"""
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import Optional
+import os
+import socket
+import logging
+from time import perf_counter
+
+
+app = FastAPI(title="qlink-bridge")
+
+
+# Serve static UI at /ui when available
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(static_dir):
+    app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")
+
+
+def _env(name: str, default: str) -> str:
+    v = os.getenv(name)
+    return v if v not in (None, "") else default
+
+
+VANTAGE_IP = _env("VANTAGE_IP", "192.168.1.200")
+VANTAGE_PORT = int(_env("VANTAGE_PORT", "23"))
+QLINK_EOL = _env("Q_LINK_EOL", "CR").upper()
+EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
+QLINK_TIMEOUT = float(_env("QLINK_TIMEOUT", "2.0"))
+QLINK_FADE = _env("QLINK_FADE", "2.3")
+
+
+logger = logging.getLogger("qlink")
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
+
+
+def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
+    """Send a single ASCII command to the Vantage IP-Enabler and return response.
+
+    Raises HTTPException on connect/timeout errors so FastAPI returns proper status.
+    """
+    t0 = perf_counter()
+    to = timeout or QLINK_TIMEOUT
+    try:
+        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
+            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+            s.settimeout(to)
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                data = b""
+    except socket.timeout as ex:
+        raise HTTPException(status_code=504, detail="Timeout contacting Vantage IP-Enabler") from ex
+    except OSError as ex:
+        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+    finally:
+        dt = (perf_counter() - t0) * 1000
+        logger.info("cmd=%s elapsedMs=%.1f", cmd, dt)
+    return data.decode("ascii", errors="ignore").strip()
+
+
+
+class LevelCmd(BaseModel):
+    level: Optional[int] = None
+    switch: Optional[str] = None
+
+
+@app.get("/about")
+def about():
+    return {"name": "qlink-bridge"}
+
+
+@app.get("/config")
+def get_config():
+    return {"ip": VANTAGE_IP, "port": VANTAGE_PORT, "fade": QLINK_FADE}
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
+@app.get("/send/{cmd}")
+def send_raw(cmd: str):
+    # Read-style commands typically use VGL; user can call any ASCII command
+    return {"command": cmd, "response": qlink_send(cmd)}
+
+
+@app.post("/device/{id}/set")
+def set_device(id: int, body: LevelCmd):
+    """Set device level using VLO (preferred) or switch on/off mapped to VLO 100/0.
+
+    Uses QLINK_FADE for fade parameter.
+    """
+    fade = QLINK_FADE
+    if body.switch:
+        if body.switch.lower() == "on":
+            return {"resp": qlink_send(f"VLO {id} 100 {fade}")}
+        if body.switch.lower() == "off":
+            return {"resp": qlink_send(f"VLO {id} 0 {fade}")}
+        raise HTTPException(400, "switch must be on/off")
+    if body.level is not None:
+        lvl = max(0, min(100, int(body.level)))
+        return {"resp": qlink_send(f"VLO {id} {lvl} {fade}")}
+    raise HTTPException(400, "provide switch or level")
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"ok": False, "detail": exc.detail})
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled error: %s", exc)
+    return JSONResponse(status_code=500, content={"ok": False, "error": "Internal Server Error", "detail": str(exc)})
+
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import Optional
+import os
+import socket
+import logging
+from time import perf_counter
+
+app = FastAPI(title="qlink-bridge")
+
+# Mount UI if present
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(static_dir):
+    app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")
+
+def _env(name: str, default: str) -> str:
+    v = os.getenv(name)
+    return v if v not in (None, "") else default
+
+VANTAGE_IP = _env("VANTAGE_IP", "192.168.1.200")
+VANTAGE_PORT = int(_env("VANTAGE_PORT", "23"))
+EOL = "\r\n" if _env("Q_LINK_EOL", "CR").upper() == "CRLF" else "\r"
+TIMEOUT = float(_env("QLINK_TIMEOUT", "2.0"))
+FADE = _env("QLINK_FADE", "2.3")
+
+logger = logging.getLogger("qlink")
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
+
+
+def qlink_send(cmd: str) -> str:
+    t0 = perf_counter()
+    try:
+        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=TIMEOUT) as s:
+            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+            s.settimeout(TIMEOUT)
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                data = b""
+    except socket.timeout:
+        raise HTTPException(status_code=504, detail="Timeout contacting Vantage")
+    except OSError as ex:
+        raise HTTPException(status_code=502, detail=str(ex))
+    finally:
+        logger.info("cmd=%s elapsed=%.1fms", cmd, (perf_counter() - t0) * 1000)
+    return data.decode("ascii", errors="ignore").strip()
+
+
+class LevelCmd(BaseModel):
+    level: Optional[int] = None
+    switch: Optional[str] = None
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
+@app.get("/send/{cmd}")
+def send_raw(cmd: str):
+    return {"response": qlink_send(cmd)}
+
+
+@app.post("/device/{id}/set")
+def set_device(id: int, body: LevelCmd):
+    if body.switch:
+        s = body.switch.lower()
+        if s == "on":
+            return {"resp": qlink_send(f"VLO {id} 100 {FADE}")}
+        if s == "off":
+            return {"resp": qlink_send(f"VLO {id} 0 {FADE}")}
+        raise HTTPException(status_code=400, detail="switch must be 'on' or 'off'")
+    if body.level is not None:
+        lvl = max(0, min(100, int(body.level)))
+        return {"resp": qlink_send(f"VLO {id} {lvl} {FADE}")}
+    raise HTTPException(status_code=400, detail="provide level or switch")
+
+
+@app.exception_handler(Exception)
+async def all_exc(request: Request, exc: Exception):
+    logger.exception("Unhandled: %s", exc)
+    return JSONResponse(status_code=500, content={"ok": False, "error": str(exc)})
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+import os
+import socket
+import logging
+from time import perf_counter
+
+app = FastAPI(title="qlink-bridge")
+
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(static_dir):
+    app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")
+
+def _env(n, d):
+    v = os.getenv(n)
+    return v if v not in (None, "") else d
+
+VANTAGE_IP = _env("VANTAGE_IP", "192.168.1.200")
+VANTAGE_PORT = int(_env("VANTAGE_PORT", "23"))
+EOL = "\r\n" if _env("Q_LINK_EOL", "CR").upper() == "CRLF" else "\r"
+TIMEOUT = float(_env("QLINK_TIMEOUT", "2.0"))
+FADE = _env("QLINK_FADE", "2.3")
+
+logger = logging.getLogger("qlink")
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
+
+def qlink_send(cmd: str) -> str:
+    t0 = perf_counter()
+    try:
+        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=TIMEOUT) as s:
+            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+            s.settimeout(TIMEOUT)
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                data = b""
+    except socket.timeout:
+        raise HTTPException(status_code=504, detail="Timeout contacting Vantage")
+    except OSError as ex:
+        raise HTTPException(status_code=502, detail=str(ex))
+    finally:
+        logger.info("cmd=%s elapsed=%.1fms", cmd, (perf_counter() - t0) * 1000)
+    return data.decode("ascii", errors="ignore").strip()
+
+
+class LevelCmd(BaseModel):
+    level: int | None = None
+    switch: str | None = None
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
+@app.get("/send/{cmd}")
+def send_raw(cmd: str):
+    return {"response": qlink_send(cmd)}
+
+
+@app.post("/device/{id}/set")
+def set_device(id: int, body: LevelCmd):
+    if body.switch:
+        s = body.switch.lower()
+        if s == "on":
+            return {"resp": qlink_send(f"VLO {id} 100 {FADE}")}
+        if s == "off":
+            return {"resp": qlink_send(f"VLO {id} 0 {FADE}")}
+        raise HTTPException(status_code=400, detail="switch must be 'on' or 'off'")
+    if body.level is not None:
+        lvl = max(0, min(100, int(body.level)))
+        return {"resp": qlink_send(f"VLO {id} {lvl} {FADE}")}
+    raise HTTPException(status_code=400, detail="provide level or switch")
+
+
+@app.exception_handler(Exception)
+async def all_exc(request: Request, exc: Exception):
+    logger.exception("Unhandled: %s", exc)
+    return JSONResponse(status_code=500, content={"ok": False, "error": str(exc)})
+"""Vantage QLink HTTP bridge (clean, single-file implementation).
+
+This module provides a minimal FastAPI app that forwards ASCII commands to a
+Vantage IP-Enabler. Writes use VLO (per your requirement). A small static UI
+is mounted at /ui when `app/static` exists.
+"""
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import Optional
+import os
+import socket
+import logging
+from time import perf_counter
+
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except Exception:
+    pass
+
+
+app = FastAPI(title="Vantage QLink Bridge")
+
+
+# Serve static UI at /ui when available
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(static_dir):
+    app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")
+
+
+def _env(name: str, default: str) -> str:
+    v = os.getenv(name)
+    return v if v not in (None, "") else default
+
+
+VANTAGE_IP = _env("VANTAGE_IP", "192.168.1.200")
+VANTAGE_PORT = int(_env("VANTAGE_PORT", "23"))
+QLINK_EOL = _env("Q_LINK_EOL", "CR").upper()
+EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
+QLINK_TIMEOUT = float(_env("QLINK_TIMEOUT", "2.0"))
+QLINK_FADE = _env("QLINK_FADE", "2.3")
+
+logger = logging.getLogger("qlink")
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
+
+
+def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
+    """Send a single ASCII command to the Vantage IP-Enabler and return response.
+
+    Raises HTTPException on connect/timeout errors so FastAPI returns proper status.
+    """
+    t0 = perf_counter()
+    to = timeout or QLINK_TIMEOUT
+    try:
+        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
+            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+            s.settimeout(to)
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                data = b""
+    except socket.timeout as ex:
+        raise HTTPException(status_code=504, detail="Timeout contacting Vantage IP-Enabler") from ex
+    except OSError as ex:
+        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+    finally:
+        dt = (perf_counter() - t0) * 1000
+        logger.info("cmd=%s elapsedMs=%.1f", cmd, dt)
+    return data.decode("ascii", errors="ignore").strip()
+
+
+class LevelCmd(BaseModel):
+    level: Optional[int] = None
+    switch: Optional[str] = None
+
+
+@app.get("/about")
+def about():
+    return {"name": "qlink-bridge"}
+
+
+@app.get("/config")
+def get_config():
+    return {"ip": VANTAGE_IP, "port": VANTAGE_PORT, "fade": QLINK_FADE}
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
+@app.get("/send/{cmd}")
+def send_raw(cmd: str):
+    # Read-style commands typically use VGL; user can call any ASCII command
+    return {"command": cmd, "response": qlink_send(cmd)}
+
+
+@app.post("/device/{id}/set")
+def set_device(id: int, body: LevelCmd):
+    """Set device level using VLO (preferred) or switch on/off mapped to VLO 100/0.
+
+    Uses QLINK_FADE for fade parameter.
+    """
+    fade = QLINK_FADE
+    if body.switch:
+        if body.switch.lower() == "on":
+            return {"resp": qlink_send(f"VLO {id} 100 {fade}")}
+        if body.switch.lower() == "off":
+            return {"resp": qlink_send(f"VLO {id} 0 {fade}")}
+        raise HTTPException(400, "switch must be on/off")
+    if body.level is not None:
+        lvl = max(0, min(100, int(body.level)))
+        return {"resp": qlink_send(f"VLO {id} {lvl} {fade}")}
+    raise HTTPException(400, "provide switch or level")
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"ok": False, "detail": exc.detail})
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled error: %s", exc)
+    return JSONResponse(status_code=500, content={"ok": False, "error": "Internal Server Error", "detail": str(exc)})
+"""Vantage QLink HTTP bridge (clean, single-file implementation).
+
+This module provides a minimal FastAPI app that forwards ASCII commands to a
+Vantage IP-Enabler. Writes use VLO (per your requirement). A small static UI
+is mounted at /ui when `app/static` exists.
+"""
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import Optional
+import os
+import socket
+import logging
+from time import perf_counter
+
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except Exception:
+    pass
+
+
+app = FastAPI(title="Vantage QLink Bridge")
+
+
+# Serve static UI at /ui when available
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(static_dir):
+    app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")
+
+
+def _env(name: str, default: str) -> str:
+    v = os.getenv(name)
+    return v if v not in (None, "") else default
+
+
+VANTAGE_IP = _env("VANTAGE_IP", "192.168.1.200")
+VANTAGE_PORT = int(_env("VANTAGE_PORT", "23"))
+QLINK_EOL = _env("Q_LINK_EOL", "CR").upper()
+EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
+QLINK_TIMEOUT = float(_env("QLINK_TIMEOUT", "2.0"))
+QLINK_FADE = _env("QLINK_FADE", "2.3")
+
+logger = logging.getLogger("qlink")
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
+
+
+def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
+    """Send a single ASCII command to the Vantage IP-Enabler and return response.
+
+    Raises HTTPException on connect/timeout errors so FastAPI returns proper status.
+    """
+    t0 = perf_counter()
+    to = timeout or QLINK_TIMEOUT
+    try:
+        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
+            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+            s.settimeout(to)
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                data = b""
+    except socket.timeout as ex:
+        raise HTTPException(status_code=504, detail="Timeout contacting Vantage IP-Enabler") from ex
+    except OSError as ex:
+        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+    finally:
+        dt = (perf_counter() - t0) * 1000
+        logger.info("cmd=%s elapsedMs=%.1f", cmd, dt)
+    return data.decode("ascii", errors="ignore").strip()
+
+
+class LevelCmd(BaseModel):
+    level: Optional[int] = None
+    switch: Optional[str] = None
+
+
+@app.get("/about")
+def about():
+    return {"name": "qlink-bridge"}
+
+
+@app.get("/config")
+def get_config():
+    return {"ip": VANTAGE_IP, "port": VANTAGE_PORT, "fade": QLINK_FADE}
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
+@app.get("/send/{cmd}")
+def send_raw(cmd: str):
+    # Read-style commands typically use VGL; user can call any ASCII command
+    return {"command": cmd, "response": qlink_send(cmd)}
+
+
+@app.post("/device/{id}/set")
+def set_device(id: int, body: LevelCmd):
+    """Set device level using VLO (preferred) or switch on/off mapped to VLO 100/0.
+
+    Uses QLINK_FADE for fade parameter.
+    """
+    fade = QLINK_FADE
+    if body.switch:
+        if body.switch.lower() == "on":
+            return {"resp": qlink_send(f"VLO {id} 100 {fade}")}
+        if body.switch.lower() == "off":
+            return {"resp": qlink_send(f"VLO {id} 0 {fade}")}
+        raise HTTPException(400, "switch must be on/off")
+    if body.level is not None:
+        lvl = max(0, min(100, int(body.level)))
+        return {"resp": qlink_send(f"VLO {id} {lvl} {fade}")}
+    raise HTTPException(400, "provide switch or level")
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"ok": False, "detail": exc.detail})
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled error: %s", exc)
+    return JSONResponse(status_code=500, content={"ok": False, "error": "Internal Server Error", "detail": str(exc)})
+"""Clean Vantage QLink bridge implementation.
+
+This file is a single, minimal FastAPI app that forwards ASCII commands to the
+Vantage IP-Enabler and returns responses. Writes use VLO per project policy.
+"""
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import Optional
+import os
+import socket
+import logging
+from time import perf_counter
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
+
+app = FastAPI(title="Vantage QLink Bridge")
+
+
+# static UI mount at /ui
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(static_dir):
+    app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")
+
+
+def _env(name: str, default: str) -> str:
+    v = os.getenv(name)
+    return v if v not in (None, "") else default
+
+
+VANTAGE_IP = _env("VANTAGE_IP", "192.168.1.200")
+VANTAGE_PORT = int(_env("VANTAGE_PORT", "23"))
+QLINK_EOL = _env("Q_LINK_EOL", "CR").upper()
+EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
+QLINK_TIMEOUT = float(_env("QLINK_TIMEOUT", "2.0"))
+QLINK_FADE = _env("QLINK_FADE", "2.3")
+
+logger = logging.getLogger("qlink")
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
+
+
+def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
+    t0 = perf_counter()
+    to = timeout or QLINK_TIMEOUT
+    try:
+        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
+            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+            s.settimeout(to)
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                data = b""
+    except socket.timeout as ex:
+        raise HTTPException(status_code=504, detail="Timeout contacting Vantage IP-Enabler") from ex
+    except OSError as ex:
+        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+    finally:
+        dt = (perf_counter() - t0) * 1000
+        logger.info("cmd=%s elapsedMs=%.1f", cmd, dt)
+    return data.decode("ascii", errors="ignore").strip()
+
+
+class LevelCmd(BaseModel):
+    level: Optional[int] = None
+    switch: Optional[str] = None
+
+
+@app.get("/about")
+def about():
+    return {"name": "qlink-bridge"}
+
+
+@app.get("/config")
+def get_config():
+    return {"ip": VANTAGE_IP, "port": VANTAGE_PORT, "fade": QLINK_FADE}
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
+@app.get("/send/{cmd}")
+def send_raw(cmd: str):
+    return {"command": cmd, "response": qlink_send(cmd)}
+
+
+@app.post("/device/{id}/set")
+def set_device(id: int, body: LevelCmd):
+    fade = QLINK_FADE
+    if body.switch:
+        if body.switch.lower() == "on":
+            return {"resp": qlink_send(f"VLO {id} 100 {fade}")}
+        if body.switch.lower() == "off":
+            return {"resp": qlink_send(f"VLO {id} 0 {fade}")}
+        raise HTTPException(400, "switch must be on/off")
+    if body.level is not None:
+        lvl = max(0, min(100, int(body.level)))
+        return {"resp": qlink_send(f"VLO {id} {lvl} {fade}")}
+    raise HTTPException(400, "provide switch or level")
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"ok": False, "detail": exc.detail})
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled error: %s", exc)
+    return JSONResponse(status_code=500, content={"ok": False, "error": "Internal Server Error", "detail": str(exc)})
+"""Vantage QLink HTTP bridge (single clean implementation).
+
+Small FastAPI app forwarding ASCII commands to a Vantage IP-Enabler.
+Writes use VLO, reads can use VGL via /send. Mounts a static UI at /ui
+when `app/static` exists.
+"""
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import Optional
+import os
+import socket
+import logging
+from time import perf_counter
+
+try:
+    # optional dotenv for local development
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except Exception:
+    pass
+
+
+app = FastAPI(title="Vantage QLink Bridge")
+
+
+# Serve static UI at /ui
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(static_dir):
+    app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")
+
+
+def _env(name: str, default: str) -> str:
+    v = os.getenv(name)
+    return v if v not in (None, "") else default
+
+
+VANTAGE_IP = _env("VANTAGE_IP", "192.168.1.200")
+VANTAGE_PORT = int(_env("VANTAGE_PORT", "23"))
+QLINK_EOL = _env("Q_LINK_EOL", "CR").upper()
+EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
+QLINK_TIMEOUT = float(_env("QLINK_TIMEOUT", "2.0"))
+QLINK_FADE = _env("QLINK_FADE", "2.3")
+
+logger = logging.getLogger("qlink")
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
+
+
+def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
+    """Send a single ASCII command to the Vantage IP-Enabler and return response.
+
+    Raises HTTPException on connect/timeout errors so FastAPI returns proper status.
+    """
+    t0 = perf_counter()
+    to = timeout or QLINK_TIMEOUT
+    try:
+        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
+            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+            s.settimeout(to)
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                data = b""
+    except socket.timeout as ex:
+        raise HTTPException(status_code=504, detail="Timeout contacting Vantage IP-Enabler") from ex
+    except OSError as ex:
+        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+    finally:
+        dt = (perf_counter() - t0) * 1000
+        logger.info("cmd=%s elapsedMs=%.1f", cmd, dt)
+    return data.decode("ascii", errors="ignore").strip()
+
+
+class LevelCmd(BaseModel):
+    level: Optional[int] = None
+    switch: Optional[str] = None
+
+
+@app.get("/about")
+def about():
+    return {"name": "qlink-bridge"}
+
+
+@app.get("/config")
+def get_config():
+    return {"ip": VANTAGE_IP, "port": VANTAGE_PORT, "fade": QLINK_FADE}
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
+@app.get("/send/{cmd}")
+def send_raw(cmd: str):
+    # Read-style commands typically use VGL; user can call any ASCII command
+    return {"command": cmd, "response": qlink_send(cmd)}
+
+
+@app.post("/device/{id}/set")
+def set_device(id: int, body: LevelCmd):
+    """Set device level using VLO (preferred) or switch on/off mapped to VLO 100/0.
+
+    Uses QLINK_FADE for fade parameter.
+    """
+    fade = QLINK_FADE
+    if body.switch:
+        if body.switch.lower() == "on":
+            return {"resp": qlink_send(f"VLO {id} 100 {fade}")}
+        if body.switch.lower() == "off":
+            return {"resp": qlink_send(f"VLO {id} 0 {fade}")}
+        raise HTTPException(400, "switch must be on/off")
+    if body.level is not None:
+        lvl = max(0, min(100, int(body.level)))
+        return {"resp": qlink_send(f"VLO {id} {lvl} {fade}")}
+    raise HTTPException(400, "provide switch or level")
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"ok": False, "detail": exc.detail})
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled error: %s", exc)
+    return JSONResponse(status_code=500, content={"ok": False, "error": "Internal Server Error", "detail": str(exc)})
+"""Minimal QLink bridge - single clean implementation.
+
+Replaces previous duplicated content. Provides a small set of endpoints and
+mounts a local UI under /ui when `app/static` exists.
+"""
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+import os
+import socket
+import logging
+from time import perf_counter
+
+
+app = FastAPI(title="Vantage QLink Bridge")
+
+
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(static_dir):
+    app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")
+
+
+def _env(name: str, default: str) -> str:
+    v = os.getenv(name)
+    return v if v not in (None, "") else default
+
+
+VANTAGE_IP = _env("VANTAGE_IP", "192.168.1.200")
+VANTAGE_PORT = int(_env("VANTAGE_PORT", "23"))
+EOL = "\r\n" if _env("Q_LINK_EOL", "CR").upper() == "CRLF" else "\r"
+QLINK_TIMEOUT = float(_env("QLINK_TIMEOUT", "2.0"))
+QLINK_FADE = _env("QLINK_FADE", "2.3")
+
+logger = logging.getLogger("qlink")
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
+
+
+def qlink_send(cmd: str, timeout: float | None = None) -> str:
+    t0 = perf_counter()
+    to = timeout or QLINK_TIMEOUT
+    try:
+        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
+            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+            s.settimeout(to)
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                data = b""
+    except socket.timeout as ex:
+        raise HTTPException(status_code=504, detail="Timeout contacting Vantage IP-Enabler") from ex
+    except OSError as ex:
+        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+    finally:
+        dt = (perf_counter() - t0) * 1000
+        logger.info("cmd=%s elapsedMs=%.1f", cmd, dt)
+    return data.decode("ascii", errors="ignore").strip()
+
+
+class LevelCmd(BaseModel):
+    level: int | None = None
+    switch: str | None = None
+
+
+@app.get("/about")
+def about():
+    return {"name": "qlink-bridge"}
+
+
+@app.get("/config")
+def get_config():
+    return {"ip": VANTAGE_IP, "port": VANTAGE_PORT, "fade": QLINK_FADE}
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
+@app.get("/send/{cmd}")
+def send_raw(cmd: str):
+    return {"command": cmd, "response": qlink_send(cmd)}
+
+
+@app.post("/device/{id}/set")
+def set_device(id: int, body: LevelCmd):
+    fade = QLINK_FADE
+    if body.switch:
+        if body.switch.lower() == "on":
+            return {"resp": qlink_send(f"VLO {id} 100 {fade}")}
+        if body.switch.lower() == "off":
+            return {"resp": qlink_send(f"VLO {id} 0 {fade}")}
+        raise HTTPException(400, "switch must be on/off")
+    if body.level is not None:
+        lvl = max(0, min(100, int(body.level)))
+        return {"resp": qlink_send(f"VLO {id} {lvl} {fade}")}
+    raise HTTPException(400, "provide switch or level")
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"ok": False, "detail": exc.detail})
+
+"""Minimal, single-file QLink bridge.
+
+This file provides a compact FastAPI bridge that forwards simple Vantage
+ASCII commands to an IP-Enabler. It intentionally keeps a small surface to
+"""Vantage QLink HTTP bridge (clean implementation).
+
+Drop-in clean alternative to `app/bridge.py`. I couldn't safely overwrite the
+existing `app/bridge.py` because it contains repeated/garbled content from
+previous edits. I created this file as a single, audited implementation you can
+swap in (or I can replace `app/bridge.py` for you if you want).
+
+Endpoints:
+- GET /about
+- GET /config
+- GET /healthz
+- GET /send/{cmd}
+- POST /device/{id}/set  (uses VLO for writes)
+
+Serves a static UI from `app/static` at /ui when the directory exists.
+"""
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import Optional
+import os
+import socket
+import logging
+from time import perf_counter
+
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except Exception:
+    pass
+
+app = FastAPI(title="Vantage QLink Bridge (fixed)")
+
+# static UI mount
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(static_dir):
+    app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")
+
+
+def _env(name: str, default: str) -> str:
+    v = os.getenv(name)
+    return v if v not in (None, "") else default
+
+
+VANTAGE_IP = _env("VANTAGE_IP", "192.168.1.200")
+VANTAGE_PORT = int(_env("VANTAGE_PORT", "23"))
+QLINK_EOL = _env("Q_LINK_EOL", "CR").upper()
+EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
+QLINK_TIMEOUT = float(_env("QLINK_TIMEOUT", "2.0"))
+QLINK_FADE = _env("QLINK_FADE", "2.3")
+
+logger = logging.getLogger("qlink")
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
+
+
+def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
+    """Send a single ASCII command to the Vantage IP-Enabler and return response.
+
+    Raises HTTPException on connect/timeout errors so FastAPI returns proper status.
+    """
+    t0 = perf_counter()
+    to = timeout or QLINK_TIMEOUT
+    try:
+        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
+            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+            s.settimeout(to)
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                data = b""
+    except socket.timeout as ex:
+        raise HTTPException(status_code=504, detail="Timeout contacting Vantage IP-Enabler") from ex
+    except OSError as ex:
+        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+    finally:
+        dt = (perf_counter() - t0) * 1000
+        logger.info("cmd=%s elapsedMs=%.1f", cmd, dt)
+    return data.decode("ascii", errors="ignore").strip()
+
+
+
+class LevelCmd(BaseModel):
+    level: Optional[int] = None
+    switch: Optional[str] = None
+
+
+@app.get("/about")
+def about():
+    return {"name": "qlink-bridge"}
+
+
+@app.get("/config")
+def get_config():
+    return {"ip": VANTAGE_IP, "port": VANTAGE_PORT, "fade": QLINK_FADE}
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
+@app.get("/send/{cmd}")
+def send_raw(cmd: str):
+    return {"command": cmd, "response": qlink_send(cmd)}
+
+
+@app.post("/device/{id}/set")
+def set_device(id: int, body: LevelCmd):
+    fade = QLINK_FADE
+    if body.switch:
+        if body.switch.lower() == "on":
+            return {"resp": qlink_send(f"VLO {id} 100 {fade}")}
+        if body.switch.lower() == "off":
+            return {"resp": qlink_send(f"VLO {id} 0 {fade}")}
+        raise HTTPException(400, "switch must be on/off")
+    if body.level is not None:
+        lvl = max(0, min(100, int(body.level)))
+        return {"resp": qlink_send(f"VLO {id} {lvl} {fade}")}
+    raise HTTPException(400, "provide switch or level")
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"ok": False, "detail": exc.detail})
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled error: %s", exc)
+    return JSONResponse(status_code=500, content={"ok": False, "error": "Internal Server Error", "detail": str(exc)})
+
+VANTAGE_IP = _env("VANTAGE_IP", "192.168.1.200")
+VANTAGE_PORT = int(_env("VANTAGE_PORT", "23"))
+EOL = "\r\n" if _env("Q_LINK_EOL", "CR").upper() == "CRLF" else "\r"
+QLINK_TIMEOUT = float(_env("QLINK_TIMEOUT", "2.0"))
+QLINK_FADE = _env("QLINK_FADE", "2.3")
+
+logger = logging.getLogger("qlink")
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
+
+
+def qlink_send(cmd: str, timeout: float | None = None) -> str:
+    t0 = perf_counter()
+    to = timeout or QLINK_TIMEOUT
+    try:
+        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
+            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+            s.settimeout(to)
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                data = b""
+    except socket.timeout as ex:
+        raise HTTPException(status_code=504, detail="Timeout contacting Vantage IP-Enabler") from ex
+    except OSError as ex:
+        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+    finally:
+        dt = (perf_counter() - t0) * 1000
+        logger.info("cmd=%s elapsedMs=%.1f", cmd, dt)
+    return data.decode("ascii", errors="ignore").strip()
+
+
+class LevelCmd(BaseModel):
+    level: int | None = None
+    switch: str | None = None
+
+
+@app.get("/about")
+def about():
+    return {"name": "qlink-bridge"}
+
+
+@app.get("/config")
+def get_config():
+    return {"ip": VANTAGE_IP, "port": VANTAGE_PORT, "fade": QLINK_FADE}
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
+@app.get("/send/{cmd}")
+def send_raw(cmd: str):
+    return {"command": cmd, "response": qlink_send(cmd)}
+
+
+@app.post("/device/{id}/set")
+def set_device(id: int, body: LevelCmd):
+    fade = QLINK_FADE
+    if body.switch:
+        if body.switch.lower() == "on":
+            return {"resp": qlink_send(f"VLO {id} 100 {fade}")}
+        if body.switch.lower() == "off":
+            return {"resp": qlink_send(f"VLO {id} 0 {fade}")}
+        raise HTTPException(400, "switch must be on/off")
+    if body.level is not None:
+        lvl = max(0, min(100, int(body.level)))
+        return {"resp": qlink_send(f"VLO {id} {lvl} {fade}")}
+    raise HTTPException(400, "provide switch or level")
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"ok": False, "detail": exc.detail})
+
+
+
+"""Vantage QLink HTTP bridge (single clean implementation).
+
+Small FastAPI app forwarding ASCII commands to a Vantage IP-Enabler.
+Writes use VLO, reads can use VGL via /send. Mounts a static UI at /ui
+when `app/static` exists.
+"""
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+import os
+import socket
+import logging
+from time import perf_counter
+
+try:
+    # optional dotenv for local development
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except Exception:
+    pass
+
+
+app = FastAPI(title="Vantage QLink Bridge")
+
+
+# Serve static UI at /ui
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(static_dir):
+    app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")
+
+
+def _env(name: str, default: str) -> str:
+    v = os.getenv(name)
+    return v if v not in (None, "") else default
+
+
+VANTAGE_IP = _env("VANTAGE_IP", "192.168.1.200")
+VANTAGE_PORT = int(_env("VANTAGE_PORT", "23"))
+QLINK_EOL = _env("Q_LINK_EOL", "CR").upper()
+EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
+QLINK_TIMEOUT = float(_env("QLINK_TIMEOUT", "2.0"))
+QLINK_FADE = _env("QLINK_FADE", "2.3")
+
+logger = logging.getLogger("qlink")
+if not logger.handlers:
+    logger.addHandler(logging.StreamHandler())
+    except Exception:
+        # Fallback to console logging if file handler fails
+        ch = logging.StreamHandler()
+        logger.addHandler(ch)
+
+
+def qlink_send(cmd: str, timeout: float | None = None) -> str:
+    """Send a single ASCII command to the Vantage IP-Enabler and return response (may be empty)."""
+    t0 = perf_counter()
+    to = timeout or QLINK_TIMEOUT
+    try:
+        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
+            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+            s.settimeout(to)
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                data = b""
+    except socket.timeout as ex:
+        raise HTTPException(status_code=504, detail="Timeout contacting Vantage IP-Enabler") from ex
+    except OSError as ex:
+        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+    finally:
+        dt = (perf_counter() - t0) * 1000
+        logger.info("cmd=%s elapsedMs=%.1f", cmd, dt)
+    return data.decode("ascii", errors="ignore").strip()
+
+
+class LevelCmd(BaseModel):
+    level: int | None = None
+    switch: str | None = None  # "on"|"off"
+
+
+@app.get("/about")
+def about():
+    return {"name": "qlink-bridge", "version": VERSION, "ip": VANTAGE_IP, "port": VANTAGE_PORT}
+
+
+@app.get("/config")
+def get_config():
+    return {
+        "name": "qlink-bridge",
+        "version": VERSION,
+        "ip": VANTAGE_IP,
+        "port": VANTAGE_PORT,
+        "eol": "CRLF" if EOL == "\r\n" else "CR",
+        "timeout": QLINK_TIMEOUT,
+        "log_file": LOG_FILE,
+    }
+
+
+@app.get("/manifest")
+def manifest(request: Request):
+    host = request.client.host if request.client else "0.0.0.0"
+    base_url = f"http://{host}:8000"
+    return {
+        "name": "qlink-bridge",
+        "version": VERSION,
+        "baseUrl": base_url,
+        "endpoints": [
+            {"path": "/about", "method": "GET"},
+            {"path": "/healthz", "method": "GET"},
+            {"path": "/config", "method": "GET"},
+            {"path": "/send/{cmd}", "method": "GET"},
+            {"path": "/device/{id}/set", "method": "POST"},
+        ],
+        "devices": [],
+    }
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
+@app.get("/send/{cmd}")
+def send_raw(cmd: str):
+    return {"command": cmd, "response": qlink_send(cmd)}
+
+
+@app.post("/device/{id}/set")
+def set_device(id: int, body: LevelCmd):
+    """Set device level using VLO (preferred) or switch on/off mapped to VLO 100/0.
+
+    Uses QLINK_FADE for fade parameter.
+    """
+    fade = QLINK_FADE
+    if body.switch:
+        if body.switch.lower() == "on":
+            return {"resp": qlink_send(f"VLO {id} 100 {fade}")}
+        if body.switch.lower() == "off":
+            return {"resp": qlink_send(f"VLO {id} 0 {fade}")}
+        raise HTTPException(400, "switch must be on/off")
+    if body.level is not None:
+        lvl = max(0, min(100, int(body.level)))
+        return {"resp": qlink_send(f"VLO {id} {lvl} {fade}")}
+    raise HTTPException(400, "provide switch or level")
+
+
+# Structured error responses
+def _status_name(code: int) -> str:
+    try:
+        from http.client import responses
+
+        return responses.get(code, str(code))
+    except Exception:
+        return str(code)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "ok": False,
+            "error": _status_name(exc.status_code),
+            "detail": exc.detail,
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled error: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"ok": False, "error": "Internal Server Error", "detail": str(exc)},
+    )
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+import os, socket, logging
+from logging.handlers import RotatingFileHandler
+from time import perf_counter
+
+try:
+    # Optional .env support
+    from dotenv import load_dotenv
+
+    load_dotenv()  # load .env if present in working directory
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+import os, socket, logging
+from logging.handlers import RotatingFileHandler
+from time import perf_counter
+
+try:
+    # Optional .env support
+    from dotenv import load_dotenv
+
+    load_dotenv()  # load .env if present in working directory
+except Exception:
+    pass
+
+VERSION = "0.3.1"
+app = FastAPI(title="Vantage QLink Bridge")
+
+# Serve a small static UI at /ui (files located in app/static)
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(static_dir):
+    app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")
+
+def _env_str(name: str, default: str) -> str:
+    v = os.getenv(name)
+    return v if v not in (None, "") else default
+
+
+def _env_int(name: str, default: int) -> int:
+    v = os.getenv(name)
+    try:
+        return int(v) if v not in (None, "") else default
+    except Exception:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    v = os.getenv(name)
+    try:
+        return float(v) if v not in (None, "") else default
+    except Exception:
+        return default
+
+
+VANTAGE_IP = _env_str("VANTAGE_IP", "192.168.1.200")
+VANTAGE_PORT = _env_int("VANTAGE_PORT", 23)
+QLINK_EOL = _env_str("Q_LINK_EOL", "CR").upper()  # CR or CRLF
+EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
+QLINK_TIMEOUT = _env_float("QLINK_TIMEOUT", 2.0)
+QLINK_FADE = _env_str("QLINK_FADE", "2.3")
+
+# Logging setup (default to system log path, fallback handled below)
+LOG_FILE = os.getenv("LOG_FILE", "/var/log/qlink-bridge.log")
+logger = logging.getLogger("qlink")
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
+    try:
+        fh = RotatingFileHandler(LOG_FILE, maxBytes=1_000_000, backupCount=3)
+        fmt = logging.Formatter(
+            fmt="%(asctime)s %(levelname)s %(name)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+        fh.setFormatter(fmt)
+    logger.setLevel(logging.INFO)
+
+
+def qlink_send(cmd: str, timeout: float | None = None) -> str:
+    t0 = perf_counter()
+    to = timeout or QLINK_TIMEOUT
+    try:
+        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
+            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+            s.settimeout(to)
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                data = b""
+    except socket.timeout as ex:
+        raise HTTPException(status_code=504, detail="Timeout contacting Vantage IP-Enabler") from ex
+    except OSError as ex:
+        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+    finally:
+        dt = (perf_counter() - t0) * 1000
+        logger.info("cmd=%s elapsedMs=%.1f", cmd, dt)
+    return data.decode("ascii", errors="ignore").strip()
+
+
+
+class LevelCmd(BaseModel):
+    level: int | None = None
+    switch: str | None = None
+
+
+@app.get("/about")
+def about():
+    return {"name": "qlink-bridge"}
+
+
+@app.get("/config")
+def get_config():
+    return {"ip": VANTAGE_IP, "port": VANTAGE_PORT, "fade": QLINK_FADE}
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
+@app.get("/send/{cmd}")
+def send_raw(cmd: str):
+    # Read-style commands typically use VGL; user can call any ASCII command
+    return {"command": cmd, "response": qlink_send(cmd)}
+
+
+@app.post("/device/{id}/set")
+def set_device(id: int, body: LevelCmd):
+    fade = QLINK_FADE
+    if body.switch:
+        if body.switch.lower() == "on":
+            return {"resp": qlink_send(f"VLO {id} 100 {fade}")}
+        if body.switch.lower() == "off":
+            return {"resp": qlink_send(f"VLO {id} 0 {fade}")}
+        raise HTTPException(400, "switch must be on/off")
+    if body.level is not None:
+        lvl = max(0, min(100, int(body.level)))
+        return {"resp": qlink_send(f"VLO {id} {lvl} {fade}")}
+    raise HTTPException(400, "provide switch or level")
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"ok": False, "detail": exc.detail})
+
+    except Exception:
+        # Fallback to console logging if file handler fails
+        ch = logging.StreamHandler()
+        logger.addHandler(ch)
+
+def qlink_send(cmd: str, timeout: float | None = None) -> str:
+    """Send a single ASCII command to the Vantage IP-Enabler and return response (may be empty)."""
+    t0 = perf_counter()
+    to = timeout or QLINK_TIMEOUT
+    try:
+        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
+            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+            s.settimeout(to)
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                data = b""
+    except socket.timeout as ex:
+        raise HTTPException(status_code=504, detail="Timeout contacting Vantage IP-Enabler") from ex
+    except OSError as ex:
+        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+    finally:
+        dt = (perf_counter() - t0) * 1000
+        logger.info("cmd=%s elapsedMs=%.1f", cmd, dt)
+    return data.decode("ascii", errors="ignore").strip()
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+import os, socket, logging
+from logging.handlers import RotatingFileHandler
+from time import perf_counter
+
+try:
+    # Optional .env support
+    from dotenv import load_dotenv
+
+    load_dotenv()  # load .env if present in working directory
+except Exception:
+    pass
+
+VERSION = "0.3.1"
+app = FastAPI(title="Vantage QLink Bridge")
+
+# Serve a small static UI at /ui (files located in app/static)
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(static_dir):
+    app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")
+
+
+def _env_str(name: str, default: str) -> str:
+    v = os.getenv(name)
+    return v if v not in (None, "") else default
+
+
+def _env_int(name: str, default: int) -> int:
+    v = os.getenv(name)
+    try:
+        return int(v) if v not in (None, "") else default
+    except Exception:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    v = os.getenv(name)
+    try:
+        return float(v) if v not in (None, "") else default
+    except Exception:
+        return default
+
+
+VANTAGE_IP = _env_str("VANTAGE_IP", "192.168.1.200")
+VANTAGE_PORT = _env_int("VANTAGE_PORT", 23)
+QLINK_EOL = _env_str("Q_LINK_EOL", "CR").upper()  # CR or CRLF
+EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
+QLINK_TIMEOUT = _env_float("QLINK_TIMEOUT", 2.0)
+QLINK_FADE = _env_str("QLINK_FADE", "2.3")
+
+# Logging setup (default to system log path, fallback handled below)
+LOG_FILE = os.getenv("LOG_FILE", "/var/log/qlink-bridge.log")
+logger = logging.getLogger("qlink")
+if not logger.handlers:
+    logger.setLevel(logging.INFO)
+    try:
+        fh = RotatingFileHandler(LOG_FILE, maxBytes=1_000_000, backupCount=3)
+        fmt = logging.Formatter(
+            fmt="%(asctime)s %(levelname)s %(name)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+        fh.setFormatter(fmt)
+        logger.addHandler(fh)
+    except Exception:
+        # Fallback to console logging if file handler fails
+        ch = logging.StreamHandler()
+        logger.addHandler(ch)
+
+
+def qlink_send(cmd: str, timeout: float | None = None) -> str:
+    """Send a single ASCII command to the Vantage IP-Enabler and return response (may be empty)."""
+    t0 = perf_counter()
+    to = timeout or QLINK_TIMEOUT
+    try:
+        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
+            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+            s.settimeout(to)
+            try:
+                data = s.recv(4096)
+            except socket.timeout:
+                data = b""
+    except socket.timeout as ex:
+        raise HTTPException(status_code=504, detail="Timeout contacting Vantage IP-Enabler") from ex
+    except OSError as ex:
+        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+    finally:
+        dt = (perf_counter() - t0) * 1000
+        logger.info("cmd=%s elapsedMs=%.1f", cmd, dt)
+    return data.decode("ascii", errors="ignore").strip()
+
+
+class LevelCmd(BaseModel):
+    level: int | None = None
+    switch: str | None = None  # "on"|"off"
+
+
+@app.get("/about")
+def about():
+    return {"name": "qlink-bridge", "version": VERSION, "ip": VANTAGE_IP, "port": VANTAGE_PORT}
+
+
+@app.get("/config")
+def get_config():
+    return {
+        "name": "qlink-bridge",
+        "version": VERSION,
+        "ip": VANTAGE_IP,
+        "port": VANTAGE_PORT,
+        "eol": "CRLF" if EOL == "\r\n" else "CR",
+        "timeout": QLINK_TIMEOUT,
+        "log_file": LOG_FILE,
+    }
+
+
+@app.get("/manifest")
+def manifest(request: Request):
+    host = request.client.host if request.client else "0.0.0.0"
+    base_url = f"http://{host}:8000"
+    return {
+        "name": "qlink-bridge",
+        "version": VERSION,
+        "baseUrl": base_url,
+        "endpoints": [
+            {"path": "/about", "method": "GET"},
+            {"path": "/healthz", "method": "GET"},
+            {"path": "/config", "method": "GET"},
+            {"path": "/send/{cmd}", "method": "GET"},
+            {"path": "/device/{id}/set", "method": "POST"},
+        ],
+        "devices": [],
+    }
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
+@app.get("/send/{cmd}")
+def send_raw(cmd: str):
+    return {"command": cmd, "response": qlink_send(cmd)}
+
+
+@app.post("/device/{id}/set")
+def set_device(id: int, body: LevelCmd):
+    """Set device level using VLO (preferred) or switch on/off mapped to VLO 100/0.
+
+    Uses QLINK_FADE for fade parameter.
+    """
+    fade = QLINK_FADE
+    if body.switch:
+        if body.switch.lower() == "on":
+            return {"resp": qlink_send(f"VLO {id} 100 {fade}")}
+        if body.switch.lower() == "off":
+            return {"resp": qlink_send(f"VLO {id} 0 {fade}")}
+        raise HTTPException(400, "switch must be on/off")
+    if body.level is not None:
+        lvl = max(0, min(100, int(body.level)))
+        return {"resp": qlink_send(f"VLO {id} {lvl} {fade}")}
+    raise HTTPException(400, "provide switch or level")
+
+
+# Structured error responses
+def _status_name(code: int) -> str:
+    try:
+        from http.client import responses
+
+        return responses.get(code, str(code))
+    except Exception:
+        return str(code)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "ok": False,
+            "error": _status_name(exc.status_code),
+            "detail": exc.detail,
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled error: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"ok": False, "error": "Internal Server Error", "detail": str(exc)},
+    )

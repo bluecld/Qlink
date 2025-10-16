@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Vantage Q-Link Bridge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e4e4e4;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: rgba(0, 0, 0, 0.2);
+            color: #e4e4e4;
+            padding: 30px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header p {
+            color: #b0b0b0;
+        }
+
+        nav {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px 30px;
+            display: flex;
+            gap: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        nav a {
+            color: #b0b0b0;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        nav a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e4e4e4;
+        }
+
+        nav a.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        main {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #e4e4e4;
+            font-size: 0.95em;
+        }
+
+        .help-text {
+            display: block;
+            font-size: 0.85em;
+            color: #b0b0b0;
+            margin-top: 4px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            font-size: 1em;
+            color: #e4e4e4;
+            transition: all 0.3s;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(0, 0, 0, 0.4);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #e4e4e4;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            flex: 1;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+            border: 1px solid;
+        }
+
+        .alert-success {
+            background: rgba(74, 222, 128, 0.15);
+            color: #4ade80;
+            border-color: #4ade80;
+        }
+
+        .alert-warning {
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+            border-color: #fbbf24;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border-color: #ef4444;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-connected {
+            background: #4ade80;
+            box-shadow: 0 0 15px #4ade80;
+        }
+
+        .status-disconnected {
+            background: #ef4444;
+            box-shadow: 0 0 15px #ef4444;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1);
+            }
+        }
+
+        .info-box {
+            background: rgba(102, 126, 234, 0.15);
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            color: #e4e4e4;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #0066cc;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>⚙️ Bridge Settings</h1>
+            <p>Configure your Vantage Q-Link Bridge</p>
+        </header>
+
+        <nav>
+            <a href="/">🏠 Home</a>
+            <a href="/ui/">🎛️ Control</a>
+            <a href="/ui/settings.html" class="active">⚙️ Settings</a>
+            <a href="/ui/config.html">🔧 Configuration</a>
+            <a href="/monitor/status" target="_blank">📊 Status</a>
+        </nav>
+
+        <main>
+            <div id="alert" class="alert"></div>
+
+            <div class="info-box">
+                <strong>💡 Configuration Tips:</strong>
+                Changes to Vantage IP/Port require a bridge restart. Fade time and timeout changes apply immediately.
+            </div>
+
+            <form id="settingsForm">
+                <div class="form-group">
+                    <label for="vantage_ip">
+                        Vantage Controller IP Address
+                        <span class="help-text">IP address of your Vantage InFusion controller</span>
+                    </label>
+                    <input type="text" id="vantage_ip" name="vantage_ip" placeholder="192.168.1.200" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="vantage_port">
+                        Vantage Q-Link Port
+                        <span class="help-text">Port 3041 (read/write) or 3040 (read-only)</span>
+                    </label>
+                    <input type="number" id="vantage_port" name="vantage_port" min="1" max="65535" placeholder="3041"
+                        required>
+                </div>
+
+                <div class="form-group">
+                    <label for="qlink_fade">
+                        Default Fade Time (seconds)
+                        <span class="help-text">How fast lights transition (0.0 = instant, 10.0 = slow)</span>
+                    </label>
+                    <input type="number" id="qlink_fade" name="qlink_fade" min="0" max="60" step="0.1" placeholder="2.3"
+                        required>
+                </div>
+
+                <div class="form-group">
+                    <label for="qlink_timeout">
+                        Command Timeout (seconds)
+                        <span class="help-text">How long to wait for Vantage responses</span>
+                    </label>
+                    <input type="number" id="qlink_timeout" name="qlink_timeout" min="0.5" max="30" step="0.5"
+                        placeholder="2.0" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="qlink_eol">
+                        Line Terminator
+                        <span class="help-text">Command line ending (CR for most systems)</span>
+                    </label>
+                    <select id="qlink_eol" name="qlink_eol" required>
+                        <option value="CR">CR (\\r) - Standard</option>
+                        <option value="CRLF">CRLF (\\r\\n) - Windows</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="status_refresh">
+                        Status Refresh Interval (seconds)
+                        <span class="help-text">How often to refresh status display (0 = manual only)</span>
+                    </label>
+                    <input type="number" id="status_refresh" name="status_refresh" min="0" max="300" step="1"
+                        placeholder="10" value="10" required>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn-secondary" onclick="loadSettings()">↻ Reload</button>
+                    <button type="submit" class="btn-primary">💾 Save Settings</button>
+                </div>
+            </form>
+
+            <hr style="margin: 40px 0; border: none; border-top: 1px solid #dee2e6;">
+
+            <h3 style="margin-bottom: 15px;">📊 Current Status</h3>
+            <div id="statusInfo" style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                <p><strong>Loading status...</strong></p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Load current settings on page load
+        window.addEventListener('DOMContentLoaded', loadSettings);
+
+        async function loadSettings() {
+            try {
+                const response = await fetch('/settings');
+                const settings = await response.json();
+
+                document.getElementById('vantage_ip').value = settings.vantage_ip;
+                document.getElementById('vantage_port').value = settings.vantage_port;
+                document.getElementById('qlink_fade').value = settings.qlink_fade;
+                document.getElementById('qlink_timeout').value = settings.qlink_timeout;
+                document.getElementById('qlink_eol').value = settings.qlink_eol;
+
+                showAlert('Settings loaded successfully', 'success');
+                loadStatus();
+            } catch (error) {
+                showAlert('Failed to load settings: ' + error.message, 'error');
+            }
+        }
+
+        async function loadStatus() {
+            try {
+                const response = await fetch('/monitor/status');
+                const status = await response.json();
+
+                const connectedIndicator = status.event_listener_connected
+                    ? '<span class="status-indicator status-connected"></span>Connected'
+                    : '<span class="status-indicator status-disconnected"></span>Disconnected';
+
+                document.getElementById('statusInfo').innerHTML = `
+          <p><strong>Event Listener:</strong> ${connectedIndicator}</p>
+          <p><strong>Monitoring Enabled:</strong> ${status.monitoring_enabled ? '✅ Yes' : '❌ No'}</p>
+          <p><strong>WebSocket Clients:</strong> ${status.websocket_clients}</p>
+          <p><strong>Vantage IP:</strong> ${status.vantage_ip}</p>
+          <p><strong>Vantage Port:</strong> ${status.vantage_port}</p>
+        `;
+            } catch (error) {
+                document.getElementById('statusInfo').innerHTML = `<p style="color: #dc3545;">Failed to load status</p>`;
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const settings = Object.fromEntries(formData);
+
+            try {
+                const response = await fetch('/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(settings),
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'ok') {
+                    if (result.restart_required) {
+                        showAlert('⚠️ ' + result.message, 'warning');
+                    } else {
+                        showAlert('✅ ' + result.message, 'success');
+                    }
+
+                    // Reload status after a short delay
+                    setTimeout(loadStatus, 1000);
+                } else {
+                    showAlert('Failed to save settings', 'error');
+                }
+            } catch (error) {
+                showAlert('Error saving settings: ' + error.message, 'error');
+            }
+        });
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.className = `alert alert-${type} show`;
+            alert.textContent = message;
+
+            if (type === 'success') {
+                setTimeout(() => {
+                    alert.classList.remove('show');
+                }, 5000);
+            }
+        }
+
+        // Auto-refresh status with configurable interval
+        let refreshInterval = null;
+        let currentRefreshSeconds = 10;
+
+        function startAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            if (currentRefreshSeconds > 0) {
+                refreshInterval = setInterval(loadStatus, currentRefreshSeconds * 1000);
+            }
+        }
+
+        // Update refresh interval when setting changes
+        const refreshInput = document.getElementById('status_refresh');
+        if (refreshInput) {
+            // Set initial value
+            currentRefreshSeconds = parseInt(refreshInput.value) || 10;
+
+            refreshInput.addEventListener('change', (e) => {
+                currentRefreshSeconds = parseInt(e.target.value) || 0;
+                startAutoRefresh();
+                showAlert(`Status refresh interval updated to ${currentRefreshSeconds} seconds`, 'success');
+            });
+        }
+
+        startAutoRefresh();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,62 @@
+openapi: 3.0.3
+info:
+  title: Vantage Q-Link Bridge
+  version: 0.3.1
+paths:
+  /about:
+    get:
+      summary: About this service
+      responses:
+        "200":
+          description: Version and target
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+  /config:
+    get:
+      summary: Runtime configuration snapshot
+      responses:
+        "200":
+          description: Configuration
+  /manifest:
+    get:
+      summary: Bridge discovery manifest
+      responses:
+        "200":
+          description: Manifest
+  /send/{cmd}:
+    get:
+      summary: Send raw command
+      parameters:
+        - name: cmd
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Raw response JSON
+  /device/{id}/set:
+    post:
+      summary: Set device on/off/level
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                switch: { type: string, enum: [on, off] }
+                level: { type: integer, minimum: 0, maximum: 100 }
+      responses:
+        "200":
+          description: Result JSON
