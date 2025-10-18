@@ -25,6 +25,7 @@ import socket
 import logging
 import threading
 import time
+import json
 from datetime import datetime
 from time import perf_counter
 
@@ -77,6 +78,52 @@ event_listener_thread: Optional[threading.Thread] = None
 # Format: {"V23": {1: "on", 2: "off", 3: "blink", ...}, "V20": {...}}
 button_led_states: Dict[str, Dict[int, str]] = {}
 button_led_lock = threading.Lock()  # Thread-safe access
+
+# ===== Station to Master Mapping =====
+# Load actual station-to-master assignments from Vantage config
+# DO NOT GUESS based on station number - read from config file!
+STATION_MASTER_MAP: Dict[int, int] = {}
+
+def load_station_master_map():
+    """Load station-to-master mapping from config file."""
+    global STATION_MASTER_MAP
+    config_dir = os.path.join(os.path.dirname(__file__), "..", "config")
+    map_file = os.path.join(config_dir, "station_master_map.json")
+
+    try:
+        with open(map_file, "r") as f:
+            data = json.load(f)
+            # Convert string keys to integers
+            STATION_MASTER_MAP = {int(k): v for k, v in data.items()}
+        logger.info(f"✅ Loaded {len(STATION_MASTER_MAP)} station-to-master mappings")
+    except FileNotFoundError:
+        logger.warning(f"❌ Station master map not found: {map_file}")
+        logger.warning("⚠️  Will fall back to guessing (station >= 51 → master 2)")
+    except Exception as e:
+        logger.error(f"❌ Failed to load station master map: {e}")
+
+def get_station_master(station: int) -> int:
+    """Get the master controller for a station number.
+
+    Args:
+        station: Station number (e.g., 19, 55)
+
+    Returns:
+        Master number (1 or 2)
+
+    Note:
+        If mapping not found, falls back to guess (station >= 51 → master 2)
+        This is WRONG for many stations (23, 46-50, 53-58 are mixed!)
+    """
+    if station in STATION_MASTER_MAP:
+        return STATION_MASTER_MAP[station]
+    else:
+        # FALLBACK - this is often wrong!
+        logger.warning(f"⚠️  Station {station} not in map, guessing master")
+        return 2 if station >= 51 else 1
+
+# Load mapping on startup
+load_station_master_map()
 
 
 def decode_led_hex(on_hex: str, blink_hex: str) -> Dict[int, str]:
@@ -574,9 +621,8 @@ def get_station_leds(station: int):
     Command format: VLT@ <master> <station>
     Response format: R:V 01 02 03 04 05 06 07 08 (hex values, 00=off, FF=on)
     """
-    # Determine master based on station number
-    # Stations 1-50 typically on master 1, 51+ on master 2
-    master = 2 if station >= 51 else 1
+    # Get actual master from Vantage config mapping
+    master = get_station_master(station)
 
     response = qlink_send(f"VLT@ {master} {station}")
 
@@ -607,9 +653,8 @@ def press_button(station: int, button: int):
     State 4 = Simulate button press
     State 6 = Simulate press and release (alternative)
     """
-    # Determine master based on station number (consistent with LED query logic)
-    # Stations 1-50 typically on master 1, 51+ on master 2
-    master = 2 if station >= 51 else 1
+    # Get actual master from Vantage config mapping
+    master = get_station_master(station)
     state = 4  # 4 = button press, 6 = press and release
     return {"resp": qlink_send(f"VSW@ {master} {station} {button} {state}")}
 
