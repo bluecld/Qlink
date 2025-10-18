@@ -566,6 +566,38 @@ def get_load_status(id: int):
     return {"resp": qlink_send(f"VGL@ {id}")}
 
 
+@app.get("/api/leds/{station}")
+def get_station_leds(station: int):
+    """Get LED states for all 8 buttons on a station using VLT@ command.
+
+    Returns LED state for buttons 1-8 as array of integers (0=off, 255=on).
+    Command format: VLT@ <master> <station>
+    Response format: R:V 01 02 03 04 05 06 07 08 (hex values, 00=off, FF=on)
+    """
+    # Determine master based on station number
+    # Stations 1-50 typically on master 1, 51+ on master 2
+    master = 2 if station >= 51 else 1
+
+    response = qlink_send(f"VLT@ {master} {station}")
+
+    # Parse response: "R:V 01 02 03 04 05 06 07 08"
+    if response.startswith("R:V"):
+        parts = response.split()
+        if len(parts) >= 9:  # R:V + 8 LED values
+            led_values = parts[1:9]  # Skip "R:V", take next 8
+            # Convert hex strings to integers (00 -> 0, FF -> 255)
+            leds = []
+            for val in led_values:
+                try:
+                    leds.append(int(val, 16))
+                except ValueError:
+                    leds.append(0)
+            return {"station": station, "leds": leds, "raw": response}
+
+    # Fallback if parsing fails
+    return {"station": station, "leds": [0] * 8, "raw": response, "error": "Parse failed"}
+
+
 @app.post("/button/{station}/{button}")
 def press_button(station: int, button: int):
     """Simulate a button press on a station using VSW@ command.

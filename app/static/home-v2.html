@@ -860,8 +860,19 @@
 
                 if (response.ok) {
                     showToast(`${roomName}: ${sceneName}`);
-                    // Highlight active button
-                    highlightSceneButton(roomName, button);
+
+                    // Poll LED state immediately for quick feedback
+                    setTimeout(async () => {
+                        try {
+                            const ledResponse = await fetch(`/api/leds/${station}`);
+                            if (ledResponse.ok) {
+                                const data = await ledResponse.json();
+                                updateStationLEDs(station, data.leds);
+                            }
+                        } catch (e) {
+                            console.error('LED poll after button press failed:', e);
+                        }
+                    }, 300); // 300ms delay for Vantage to process
                 } else {
                     showToast(`Failed to activate scene`, true);
                 }
@@ -1017,6 +1028,145 @@
 
             // Do ONE initial poll on page load to show current status
             pollLoadStatus();
+
+            // NEW: Start LED polling for visible stations
+            startLEDPolling();
+        }
+
+        // LED Polling - Poll only visible stations
+        let ledPollInterval = null;
+
+        function getVisibleStations() {
+            // Get all currently visible station buttons
+            const visibleStations = new Set();
+
+            // Find all visible scene buttons and extract their station numbers
+            const visibleButtons = document.querySelectorAll('.scene-btn:not([style*="display: none"])');
+            visibleButtons.forEach(btn => {
+                // Button IDs are like: scene-foyer-19-1 (roomId-station-button)
+                const id = btn.id;
+                const match = id.match(/scene-[^-]+-(\d+)-\d+/);
+                if (match) {
+                    visibleStations.add(parseInt(match[1]));
+                }
+            });
+
+            // Also check for single-station format: scene-roomId-buttonNum
+            const singleStationButtons = document.querySelectorAll('.scene-btn[id^="scene-"]');
+            singleStationButtons.forEach(btn => {
+                const stationDiv = btn.closest('.scene-section');
+                if (stationDiv && !stationDiv.style.display || stationDiv.style.display !== 'none') {
+                    const label = stationDiv.querySelector('.scene-label');
+                    if (label) {
+                        const match = label.textContent.match(/V(\d+)/);
+                        if (match) {
+                            visibleStations.add(parseInt(match[1]));
+                        }
+                    }
+                }
+            });
+
+            // Alternative: Get stations from active station-content divs
+            const activeStations = document.querySelectorAll('.station-content.active');
+            activeStations.forEach(content => {
+                const buttons = content.querySelectorAll('.scene-btn');
+                buttons.forEach(btn => {
+                    const id = btn.id;
+                    const match = id.match(/scene-[^-]+-(\d+)-\d+/);
+                    if (match) {
+                        visibleStations.add(parseInt(match[1]));
+                    }
+                });
+            });
+
+            return Array.from(visibleStations);
+        }
+
+        async function pollVisibleLEDs() {
+            const stations = getVisibleStations();
+
+            if (stations.length === 0) return;
+
+            // Poll each visible station
+            for (const station of stations) {
+                try {
+                    const response = await fetch(`/api/leds/${station}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        updateStationLEDs(station, data.leds);
+                    }
+                } catch (error) {
+                    console.error(`Failed to poll LED state for station ${station}:`, error);
+                }
+            }
+        }
+
+        function updateStationLEDs(station, ledStates) {
+            if (!ledStates || ledStates.length !== 8) return;
+
+            // Update LED state for each button
+            ledStates.forEach((state, index) => {
+                const btnNum = index + 1;
+                // Try multi-station format first
+                const buttons = document.querySelectorAll(`[id*="-${station}-${btnNum}"]`);
+
+                buttons.forEach(btn => {
+                    if (state === 255 || state === 0xFF || state > 127) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+
+                // Also try single-station format (backwards compatibility)
+                if (buttons.length === 0) {
+                    const roomId = findRoomIdForStation(station);
+                    if (roomId) {
+                        const btn = document.getElementById(`scene-${roomId}-${btnNum}`);
+                        if (btn) {
+                            if (state === 255 || state === 0xFF || state > 127) {
+                                btn.classList.add('active');
+                            } else {
+                                btn.classList.remove('active');
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function findRoomIdForStation(station) {
+            if (!configData) return null;
+            for (const room of configData.rooms) {
+                if (room.station === station) {
+                    return room.name.replace(/\s+/g, '-').toLowerCase();
+                }
+            }
+            return null;
+        }
+
+        function startLEDPolling() {
+            // Poll every 2 seconds
+            ledPollInterval = setInterval(pollVisibleLEDs, 2000);
+
+            // Initial poll
+            pollVisibleLEDs();
+
+            // Pause polling when tab is hidden (save resources)
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    if (ledPollInterval) {
+                        clearInterval(ledPollInterval);
+                        ledPollInterval = null;
+                    }
+                } else {
+                    // Resume polling when tab becomes visible
+                    if (!ledPollInterval) {
+                        ledPollInterval = setInterval(pollVisibleLEDs, 2000);
+                        pollVisibleLEDs(); // Immediate poll
+                    }
+                }
+            });
         }
 
         function showToast(message, isError = false) {
