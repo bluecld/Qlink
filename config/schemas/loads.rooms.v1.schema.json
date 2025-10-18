@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:qlink:config:loads.rooms.v1",
+  "title": "QLink Loads Configuration (Rooms/Buttons v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "rooms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "floor": { "type": "string" },
+          "station": { "type": "integer", "minimum": 0 },
+          "loads": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "integer", "minimum": 0 },
+                "name": { "type": "string", "minLength": 1 },
+                "type": {
+                  "type": "string",
+                  "enum": ["dimmer", "relay", "switch"]
+                }
+              },
+              "required": ["id", "name", "type"]
+            }
+          },
+          "buttons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "number": { "type": "integer", "minimum": 1, "maximum": 16 },
+                "name": { "type": "string", "minLength": 1 },
+                "loads": {
+                  "type": "array",
+                  "items": { "type": "integer", "minimum": 0 }
+                },
+                "preset": { "type": "integer", "minimum": 0, "maximum": 100 },
+                "event": {
+                  "type": "string",
+                  "enum": [
+                    "DIM",
+                    "TOGGLE",
+                    "PRESET_ON",
+                    "PRESET_OFF",
+                    "PRESET_TOGGLE"
+                  ]
+                }
+              },
+              "required": ["number", "name"],
+              "allOf": [
+                {
+                  "if": { "properties": { "event": { "const": "DIM" } }, "required": ["event"] },
+                  "then": { "required": ["loads"] }
+                },
+                {
+                  "if": { "properties": { "event": { "enum": ["PRESET_ON", "PRESET_OFF", "PRESET_TOGGLE"] } }, "required": ["event"] },
+                  "then": { "required": ["loads"] }
+                }
+              ]
+            }
+          }
+        },
+        "required": ["name", "loads"]
+      }
+    }
+  },
+  "required": ["rooms"]
+}
+

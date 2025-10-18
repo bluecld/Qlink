@@ -533,7 +533,7 @@
         // Load loads.json
         async function loadLoadsJson() {
             try {
-                const response = await fetch('/config/loads.json');
+                const response = await fetch('/config');
                 if (!response.ok) {
                     // If file doesn't exist, show example
                     const example = {
@@ -554,10 +554,12 @@
                 }
 
                 const data = await response.json();
-                document.getElementById('loads-json').value = JSON.stringify(data, null, 2);
+                // Extract rooms array from config response
+                const loadsData = data.rooms || data;
+                document.getElementById('loads-json').value = JSON.stringify({ rooms: loadsData }, null, 2);
 
                 // Update stats
-                updateLoadsStats(data);
+                updateLoadsStats({ rooms: loadsData });
 
                 showAlert('✅ Loaded successfully', 'success');
             } catch (error) {
@@ -572,16 +574,19 @@
             let master1 = 0;
             let master2 = 0;
 
-            for (const room in data) {
-                rooms++;
-                if (data[room].loads) {
-                    totalLoads += data[room].loads.length;
-                    data[room].loads.forEach(load => {
-                        if (load >= 1000 && load < 2000) master1++;
-                        else if (load >= 2000) master2++;
+            const roomsArray = data.rooms || [];
+            rooms = roomsArray.filter(r => r.loads && r.loads.length > 0).length;
+
+            roomsArray.forEach(room => {
+                if (room.loads && Array.isArray(room.loads)) {
+                    totalLoads += room.loads.length;
+                    room.loads.forEach(load => {
+                        const id = load.id || load;
+                        if (id >= 100 && id < 1000) master1++;
+                        else if (id >= 1000) master2++;
                     });
                 }
-            }
+            });
 
             document.querySelector('#loads-stats .stat-card:nth-child(1) .stat-value').textContent = rooms;
             document.querySelector('#loads-stats .stat-card:nth-child(2) .stat-value').textContent = totalLoads;

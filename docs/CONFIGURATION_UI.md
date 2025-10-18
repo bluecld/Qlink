@@ -205,3 +205,26 @@ async def get_loads_config():
 ---
 
 **Ready to use!** Just deploy to your Pi and access via browser.
+
+## Validation (Schemas)
+
+Configuration JSON should conform to the project’s versioned schemas:
+
+- Rooms/Buttons: `config/schemas/loads.rooms.v1.schema.json`
+- Legacy Stations Map: `config/schemas/loads.legacy.stations.v1.schema.json`
+- Deployment Targets: `config/schemas/targets.v1.schema.json`
+
+Validate locally:
+
+```
+pip install -r app/requirements.txt
+python scripts/validate_config.py --strict
+```
+
+Notes:
+- CI enforces schema validation on each push/PR.
+- The bridge validates `config/loads.json` at runtime when using the rooms/buttons layout (logs warnings on failure).
+- You can add a `$schema` hint to JSON for editor support, for example:
+  ```json
+  { "$schema": "config/schemas/loads.rooms.v1.schema.json", "rooms": [] }
+  ```

@@ -5,6 +5,9 @@
 
 A modern REST API bridge for legacy Vantage lighting control systems. Run on a Raspberry Pi to control your Vantage devices via HTTP from any home automation platform, mobile app, or voice assistant.
 
+Note: Config Schemas and validation guidance live in docs/SCHEMAS.md.
+TODO (placeholder): After cleaning up README encoding artifacts, add a dedicated "Config Schemas" section here linking to docs/SCHEMAS.md and showing local/CI validation commands.
+
 ## 🌟 Features
 
 - **REST API** - Control lights and scenes via simple HTTP endpoints
@@ -438,4 +441,3 @@ This is an unofficial project and is not affiliated with or endorsed by Vantage 
 ---
 
 **Made with ❤️ for the smart home community**
-

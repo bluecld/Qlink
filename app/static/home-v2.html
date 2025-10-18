@@ -305,6 +305,68 @@
             box-shadow: 0 4px 16px rgba(102, 126, 234, 0.5);
         }
 
+        /* Station Tabs - for rooms with multiple faceplates */
+        .station-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+            padding-bottom: 8px;
+        }
+
+        .station-tab {
+            padding: 8px 16px;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 8px 8px 0 0;
+            color: #a78bfa;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .station-tab:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: rgba(102, 126, 234, 0.4);
+        }
+
+        .station-tab.active {
+            background: rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .station-content {
+            display: none;
+        }
+
+        .station-content.active {
+            display: block;
+        }
+
+        /* LED State Indicators */
+        .scene-btn.led-on {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-color: #10b981;
+            color: white;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.5);
+        }
+
+        .scene-btn.led-blink {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            border-color: #f59e0b;
+            color: white;
+            box-shadow: 0 4px 16px rgba(245, 158, 11, 0.5);
+            animation: blink-led 1s ease-in-out infinite;
+        }
+
+        @keyframes blink-led {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
         /* Load Controls */
         .loads-section {
             display: flex;
@@ -511,6 +573,7 @@
         let floorStates = {};
         let pollInterval = null;
         let activeButtons = {}; // Track active scene buttons per room
+        let buttonDebounce = {}; // Track last button press time for debouncing
 
         // Fetch configuration on load
         async function init() {
@@ -595,21 +658,56 @@
             if (room.loads.length === 0) return ''; // Skip separator entries
 
             const roomId = room.name.replace(/\s+/g, '-').toLowerCase();
+            const escapedRoomName = room.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
-            // Render actual button configurations from room.buttons array
+            // NEW: Support stations array for multiple faceplates
             let sceneButtons = '';
-            if (room.buttons && room.buttons.length > 0) {
-                const buttonHtml = room.buttons.map(btn => {
-                    const escapedRoomName = room.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                    const escapedBtnName = btn.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const stations = room.stations || [];
 
-                    // Smart sizing based on button name length
+            if (stations.length > 0) {
+                // Multiple stations - render with tabs
+                if (stations.length > 1) {
+                    const tabsHtml = stations.map((st, index) => {
+                        const activeClass = index === 0 ? 'active' : '';
+                        return `<div class="station-tab ${activeClass}"
+                                     onclick="switchStation('${roomId}', ${index})">
+                                    V${st.station}
+                                </div>`;
+                    }).join('');
+
+                    const stationsHtml = stations.map((st, index) => {
+                        const activeClass = index === 0 ? 'active' : '';
+                        const buttonsHtml = renderStationButtons(st, roomId, escapedRoomName);
+                        return `<div class="station-content ${activeClass}" id="${roomId}-station-${index}">
+                                    ${buttonsHtml}
+                                </div>`;
+                    }).join('');
+
+                    sceneButtons = `
+                        <div class="scene-section">
+                            <div class="station-tabs">
+                                ${tabsHtml}
+                            </div>
+                            ${stationsHtml}
+                        </div>
+                    `;
+                } else {
+                    // Single station - render normally
+                    const buttonsHtml = renderStationButtons(stations[0], roomId, escapedRoomName);
+                    sceneButtons = `
+                        <div class="scene-section">
+                            <div class="scene-label">Button Station V${stations[0].station}</div>
+                            ${buttonsHtml}
+                        </div>
+                    `;
+                }
+            } else if (room.buttons && room.buttons.length > 0) {
+                // FALLBACK: Old format (backwards compatibility)
+                const buttonHtml = room.buttons.map(btn => {
+                    const escapedBtnName = btn.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                     let sizeClass = '';
-                    if (btn.name.length > 18) {
-                        sizeClass = 'very-long-text';
-                    } else if (btn.name.length > 12) {
-                        sizeClass = 'long-text';
-                    }
+                    if (btn.name.length > 18) sizeClass = 'very-long-text';
+                    else if (btn.name.length > 12) sizeClass = 'long-text';
 
                     return `<div class="scene-btn ${sizeClass}"
                                  data-full-name="${btn.name}"
@@ -643,9 +741,60 @@
             `;
         }
 
+        function renderStationButtons(station, roomId, escapedRoomName) {
+            const buttonHtml = station.buttons.map(btn => {
+                const escapedBtnName = btn.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                let sizeClass = '';
+                if (btn.name.length > 18) sizeClass = 'very-long-text';
+                else if (btn.name.length > 12) sizeClass = 'long-text';
+
+                // Add behavior class for future styling
+                const behaviorClass = btn.behavior || 'toggle';
+
+                return `<div class="scene-btn ${sizeClass} btn-${behaviorClass}"
+                             data-full-name="${btn.name}"
+                             data-behavior="${behaviorClass}"
+                             onclick="pressButton(${station.station}, ${btn.number}, '${escapedRoomName}', '${escapedBtnName}')"
+                             id="scene-${roomId}-${station.station}-${btn.number}">${btn.name}</div>`;
+            }).join('');
+
+            return `<div class="scene-buttons">${buttonHtml}</div>`;
+        }
+
+        function switchStation(roomId, stationIndex) {
+            // Hide all station contents for this room
+            const allContents = document.querySelectorAll(`[id^="${roomId}-station-"]`);
+            allContents.forEach(content => content.classList.remove('active'));
+
+            // Hide all tabs for this room
+            const roomCard = document.querySelector(`[id*="${roomId}"]`)?.closest('.room-card');
+            if (roomCard) {
+                const allTabs = roomCard.querySelectorAll('.station-tab');
+                allTabs.forEach(tab => tab.classList.remove('active'));
+            }
+
+            // Show selected station content
+            const selectedContent = document.getElementById(`${roomId}-station-${stationIndex}`);
+            if (selectedContent) {
+                selectedContent.classList.add('active');
+            }
+
+            // Activate selected tab
+            if (roomCard) {
+                const allTabs = roomCard.querySelectorAll('.station-tab');
+                if (allTabs[stationIndex]) {
+                    allTabs[stationIndex].classList.add('active');
+                }
+            }
+        }
+
         function renderLoad(load, roomName) {
             const isDimmer = load.type === 'dimmer';
             const loadId = `load-${load.id}`;
+
+            // Escape special characters in names to prevent breaking onclick handlers
+            const escapedRoomName = roomName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const escapedLoadName = load.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
             return `
                 <div class="load-item" id="${loadId}">
@@ -655,16 +804,25 @@
                     </div>
                     <div class="load-controls">
                         ${isDimmer ? `<input type="range" class="slider" min="0" max="100" value="0"
-                            onchange="setLevel(${load.id}, this.value, '${roomName}', '${load.name}')"
+                            onchange="setLevel(${load.id}, this.value, '${escapedRoomName}', '${escapedLoadName}')"
                             id="${loadId}-slider">` : ''}
-                        <button class="btn btn-on" onclick="setLevel(${load.id}, 100, '${roomName}', '${load.name}')">On</button>
-                        <button class="btn btn-off" onclick="setLevel(${load.id}, 0, '${roomName}', '${load.name}')">Off</button>
+                        <button class="btn btn-on" onclick="setLevel(${load.id}, 100, '${escapedRoomName}', '${escapedLoadName}')">On</button>
+                        <button class="btn btn-off" onclick="setLevel(${load.id}, 0, '${escapedRoomName}', '${escapedLoadName}')">Off</button>
                     </div>
                 </div>
             `;
         }
 
         async function setLevel(id, level, roomName, loadName) {
+            // Debounce - prevent rapid clicks (500ms delay)
+            const debounceKey = `load-${id}`;
+            const now = Date.now();
+            if (buttonDebounce[debounceKey] && (now - buttonDebounce[debounceKey]) < 500) {
+                console.log(`Debounced: ${loadName}`);
+                return;
+            }
+            buttonDebounce[debounceKey] = now;
+
             try {
                 const response = await fetch(`/device/${id}/set`, {
                     method: 'POST',
@@ -686,6 +844,15 @@
         }
 
         async function pressButton(station, button, roomName, sceneName) {
+            // Debounce - prevent rapid clicks (500ms delay)
+            const debounceKey = `button-${station}-${button}`;
+            const now = Date.now();
+            if (buttonDebounce[debounceKey] && (now - buttonDebounce[debounceKey]) < 500) {
+                console.log(`Debounced: ${roomName} - ${sceneName}`);
+                return;
+            }
+            buttonDebounce[debounceKey] = now;
+
             try {
                 const response = await fetch(`/button/${station}/${button}`, {
                     method: 'POST'
@@ -738,7 +905,7 @@
             renderRooms();
         }
 
-        // Polling function to update load levels
+        // Polling function to update load levels and LED states
         async function pollLoadStatus() {
             if (!configData) return;
 
@@ -746,6 +913,7 @@
             document.getElementById('lastUpdate').textContent =
                 `Updated: ${now.toLocaleTimeString()}`;
 
+            // Poll load levels
             for (const room of configData.rooms) {
                 for (const load of room.loads) {
                     try {
@@ -761,17 +929,73 @@
                     }
                 }
             }
+
+            // Poll LED states for all stations
+            await pollLEDStates();
+        }
+
+        async function pollLEDStates() {
+            try {
+                const response = await fetch('/api/leds');
+                if (response.ok) {
+                    const data = await response.json();
+                    // data.stations contains { "V23": { "1": "on", "2": "off", ... }, ... }
+                    for (const [stationId, buttons] of Object.entries(data.stations)) {
+                        const stationNum = parseInt(stationId.substring(1)); // "V23" -> 23
+                        updateStationLEDs(stationNum, buttons);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to poll LED states:', error);
+            }
+        }
+
+        function updateStationLEDs(station, buttonStates) {
+            // Find all rooms with this station
+            const rooms = configData.rooms.filter(r => r.station === station);
+
+            for (const room of rooms) {
+                const roomId = room.name.replace(/\s+/g, '-').toLowerCase();
+
+                // Update each button's LED state
+                for (let btnNum = 1; btnNum <= 8; btnNum++) {
+                    const state = buttonStates[btnNum.toString()];
+                    const btnEl = document.getElementById(`scene-${roomId}-${btnNum}`);
+
+                    if (btnEl && state) {
+                        // Remove all LED state classes
+                        btnEl.classList.remove('led-on', 'led-blink');
+
+                        // Add appropriate class based on state
+                        if (state === 'on') {
+                            btnEl.classList.add('led-on');
+                        } else if (state === 'blink') {
+                            btnEl.classList.add('led-blink');
+                        }
+                        // 'off' state = no special class
+                    }
+                }
+            }
         }
 
         function parseLoadLevel(response) {
             // Handle various response formats
-            if (typeof response === 'number') return response;
-            if (typeof response === 'string') {
-                // Try to extract number from "R:V50" format
+            let level = 0;
+
+            if (typeof response === 'number') {
+                level = response;
+            } else if (typeof response === 'string') {
+                // Try to extract number from "R:V258" format
                 const match = response.match(/\d+/);
-                return match ? parseInt(match[0]) : 0;
+                level = match ? parseInt(match[0]) : 0;
             }
-            return 0;
+
+            // Vantage uses 0-255 scale, convert to 0-100 percentage
+            if (level > 100) {
+                level = Math.round((level / 255) * 100);
+            }
+
+            return level;
         }
 
         function updateLoadStatus(loadId, level) {
@@ -787,9 +1011,11 @@
         }
 
         function startPolling() {
+            // DISABLED: Continuous polling creates too many connections and exhausts Vantage port limit
             // Poll every 10 seconds
-            pollInterval = setInterval(pollLoadStatus, 10000);
-            // Initial poll
+            // pollInterval = setInterval(pollLoadStatus, 10000);
+
+            // Do ONE initial poll on page load to show current status
             pollLoadStatus();
         }
 
