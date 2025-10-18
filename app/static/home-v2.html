@@ -947,18 +947,19 @@
                 if (response.ok) {
                     showToast(`${roomName}: ${sceneName}`);
 
-                    // Poll LED state immediately for quick feedback
-                    setTimeout(async () => {
-                        try {
-                            const ledResponse = await fetch(`/api/leds/${station}`);
-                            if (ledResponse.ok) {
-                                const data = await ledResponse.json();
-                                updateStationLEDs(station, data.leds);
-                            }
-                        } catch (e) {
-                            console.error('LED poll after button press failed:', e);
-                        }
-                    }, 300); // 300ms delay for Vantage to process
+                    // DISABLED: LED poll after button press (contributes to port exhaustion)
+                    // TODO: Re-enable when connection pooling is implemented
+                    // setTimeout(async () => {
+                    //     try {
+                    //         const ledResponse = await fetch(`/api/leds/${station}`);
+                    //         if (ledResponse.ok) {
+                    //             const data = await ledResponse.json();
+                    //             updateStationLEDs(station, data.leds);
+                    //         }
+                    //     } catch (e) {
+                    //         console.error('LED poll after button press failed:', e);
+                    //     }
+                    // }, 300); // 300ms delay for Vantage to process
                 } else {
                     showToast(`Failed to activate scene`, true);
                 }
@@ -1149,8 +1150,11 @@
             // Do ONE initial poll on page load to show current status
             pollLoadStatus();
 
-            // NEW: Start LED polling for visible stations
-            startLEDPolling();
+            // DISABLED: LED polling causes port exhaustion (538+ TIME_WAIT connections)
+            // Issue: 20-30 visible stations × 30 polls/min = 600-900 new sockets/min
+            // Each socket stays in TIME_WAIT for 60-120 seconds → port exhaustion
+            // TODO: Implement connection pooling in bridge.py for proper LED polling
+            // startLEDPolling();
         }
 
         // LED Polling - Poll only visible stations
