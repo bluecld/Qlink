@@ -607,8 +607,9 @@ def press_button(station: int, button: int):
     State 4 = Simulate button press
     State 6 = Simulate press and release (alternative)
     """
-    # Assuming master=1 for single-master system (or lookup based on station if multi-master)
-    master = 1
+    # Determine master based on station number (consistent with LED query logic)
+    # Stations 1-50 typically on master 1, 51+ on master 2
+    master = 2 if station >= 51 else 1
     state = 4  # 4 = button press, 6 = press and release
     return {"resp": qlink_send(f"VSW@ {master} {station} {button} {state}")}
 
@@ -663,25 +664,28 @@ def get_all_led_states():
         return {"stations": button_led_states.copy(), "count": len(button_led_states)}
 
 
-@app.get("/api/leds/{station}")
-def get_station_led_states(station: int):
-    """Get current LED states for a specific station.
-
-    Args:
-        station: Station number (e.g., 23 for V23)
-
-    Returns:
-        {
-            "station": 23,
-            "station_id": "V23",
-            "buttons": {1: "on", 2: "off", 3: "blink", ...}
-        }
-    """
-    station_id = f"V{station}"
-    with button_led_lock:
-        buttons = button_led_states.get(station_id, {})
-
-    return {"station": station, "station_id": station_id, "buttons": buttons.copy()}
+## NOTE: DUPLICATE ROUTE - This endpoint is shadowed by the one at line 569
+## FastAPI will use the FIRST matching route, so this function is never called
+## TODO: Remove this duplicate or consolidate the two endpoints
+# @app.get("/api/leds/{station}")
+# def get_station_led_states(station: int):
+#     """Get current LED states for a specific station.
+#
+#     Args:
+#         station: Station number (e.g., 23 for V23)
+#
+#     Returns:
+#         {
+#             "station": 23,
+#             "station_id": "V23",
+#             "buttons": {1: "on", 2: "off", 3: "blink", ...}
+#         }
+#     """
+#     station_id = f"V{station}"
+#     with button_led_lock:
+#         buttons = button_led_states.get(station_id, {})
+#
+#     return {"station": station, "station_id": station_id, "buttons": buttons.copy()}
 
 
 @app.get("/settings")
