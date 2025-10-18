@@ -177,12 +177,53 @@
             margin-bottom: 15px;
             padding-bottom: 15px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .room-header:hover {
+            background: rgba(255, 255, 255, 0.02);
+            margin: -10px -10px 15px -10px;
+            padding: 10px 10px 15px 10px;
+            border-radius: 8px;
         }
 
         .room-name {
             font-size: 1.2em;
             font-weight: 500;
             color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .room-collapse-icon {
+            font-size: 0.8em;
+            color: #a78bfa;
+            transition: transform 0.3s;
+        }
+
+        .room-collapse-icon.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .room-summary {
+            font-size: 0.85em;
+            color: #94a3b8;
+            margin-left: 30px;
+            font-style: italic;
+        }
+
+        .room-content {
+            transition: all 0.3s ease;
+            max-height: 5000px;
+            overflow: hidden;
+        }
+
+        .room-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+            margin-bottom: -20px;
         }
 
         .room-all-off {
@@ -561,7 +602,9 @@
         <select id="floorFilter" class="dropdown">
             <option value="">Jump to Floor...</option>
         </select>
-        <button class="toggle-all" onclick="toggleAllFloors()">Expand/Collapse All</button>
+        <button class="toggle-all" onclick="toggleAllFloors()">Expand/Collapse All Floors</button>
+        <button class="toggle-all" onclick="collapseAllRooms()">Collapse All Rooms</button>
+        <button class="toggle-all" onclick="expandAllRooms()">Expand All Rooms</button>
     </div>
 
     <div id="floorsContainer"></div>
@@ -571,13 +614,36 @@
     <script>
         let configData = null;
         let floorStates = {};
+        let roomStates = {}; // Track collapsed state for each room
         let pollInterval = null;
         let activeButtons = {}; // Track active scene buttons per room
         let buttonDebounce = {}; // Track last button press time for debouncing
 
+        // LocalStorage helpers
+        function loadRoomStates() {
+            try {
+                const saved = localStorage.getItem('vantage_room_states');
+                if (saved) {
+                    roomStates = JSON.parse(saved);
+                }
+            } catch (error) {
+                console.error('Failed to load room states from localStorage:', error);
+                roomStates = {};
+            }
+        }
+
+        function saveRoomStates() {
+            try {
+                localStorage.setItem('vantage_room_states', JSON.stringify(roomStates));
+            } catch (error) {
+                console.error('Failed to save room states to localStorage:', error);
+            }
+        }
+
         // Fetch configuration on load
         async function init() {
             try {
+                loadRoomStates(); // Load saved collapsed states
                 const response = await fetch('/config');
                 configData = await response.json();
                 populateFloorDropdown();
@@ -660,9 +726,23 @@
             const roomId = room.name.replace(/\s+/g, '-').toLowerCase();
             const escapedRoomName = room.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
+            // Check if room is collapsed
+            const isCollapsed = roomStates[room.name] === true;
+
+            // Count buttons across all stations
+            const stations = room.stations || [];
+            let totalButtons = 0;
+            if (stations.length > 0) {
+                totalButtons = stations.reduce((sum, st) => sum + (st.buttons ? st.buttons.length : 0), 0);
+            } else if (room.buttons) {
+                totalButtons = room.buttons.length;
+            }
+
+            // Create summary text for collapsed state
+            const summary = `${room.loads.length} load${room.loads.length !== 1 ? 's' : ''}, ${totalButtons} button${totalButtons !== 1 ? 's' : ''}`;
+
             // NEW: Support stations array for multiple faceplates
             let sceneButtons = '';
-            const stations = room.stations || [];
 
             if (stations.length > 0) {
                 // Multiple stations - render with tabs
@@ -727,15 +807,21 @@
 
             return `
                 <div class="room-card">
-                    <div class="room-header">
-                        <div class="room-name">${room.name}</div>
-                        <button class="room-all-off" onclick="allOff('${room.name}')">All Off</button>
+                    <div class="room-header" onclick="toggleRoom('${escapedRoomName}', event)">
+                        <div class="room-name">
+                            <span class="room-collapse-icon ${isCollapsed ? 'collapsed' : ''}">▼</span>
+                            ${room.name}
+                        </div>
+                        <button class="room-all-off" onclick="allOff('${escapedRoomName}'); event.stopPropagation();">All Off</button>
                     </div>
+                    ${isCollapsed ? `<div class="room-summary">${summary}</div>` : ''}
 
-                    ${sceneButtons}
+                    <div class="room-content ${isCollapsed ? 'collapsed' : ''}">
+                        ${sceneButtons}
 
-                    <div class="loads-section">
-                        ${room.loads.map(load => renderLoad(load, room.name)).join('')}
+                        <div class="loads-section">
+                            ${room.loads.map(load => renderLoad(load, room.name)).join('')}
+                        </div>
                     </div>
                 </div>
             `;
@@ -901,6 +987,40 @@
                     setLevel(load.id, 0, roomName, load.name);
                 });
             }
+        }
+
+        function toggleRoom(roomName, event) {
+            // Stop propagation if event provided (to prevent conflicts with other clicks)
+            if (event) {
+                event.stopPropagation();
+            }
+
+            // Toggle room state
+            roomStates[roomName] = !roomStates[roomName];
+            saveRoomStates();
+            renderRooms();
+        }
+
+        function collapseAllRooms() {
+            // Set all rooms to collapsed
+            configData.rooms.forEach(room => {
+                if (room.loads.length > 0) { // Only rooms with content
+                    roomStates[room.name] = true;
+                }
+            });
+            saveRoomStates();
+            renderRooms();
+            showToast('All rooms collapsed');
+        }
+
+        function expandAllRooms() {
+            // Clear all collapsed states
+            configData.rooms.forEach(room => {
+                roomStates[room.name] = false;
+            });
+            saveRoomStates();
+            renderRooms();
+            showToast('All rooms expanded');
         }
 
         function toggleFloor(floor) {
