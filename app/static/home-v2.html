@@ -6,6 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vantage Control - Dark Theme</title>
     <style>
+        :root {
+            /* Spacing scale using clamp() for responsive sizing */
+            --spacing-xs: clamp(4px, 0.5vw, 6px);
+            --spacing-sm: clamp(8px, 1vw, 12px);
+            --spacing-md: clamp(12px, 1.5vw, 16px);
+            --spacing-lg: clamp(16px, 2vw, 24px);
+            --spacing-xl: clamp(24px, 3vw, 32px);
+
+            /* Colors */
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-card: rgba(255, 255, 255, 0.05);
+            --bg-card-hover: rgba(255, 255, 255, 0.08);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-primary: #e4e4e4;
+            --text-secondary: #94a3b8;
+            --text-accent: #667eea;
+            --accent-purple: #a78bfa;
+
+            /* Touch targets */
+            --touch-target-min: 44px;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -14,41 +37,84 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: #e4e4e4;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
             min-height: 100vh;
-            padding: 20px;
+            padding: var(--spacing-md);
         }
 
         .header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: var(--bg-card);
             backdrop-filter: blur(10px);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-lg);
+            flex: 1;
+            min-width: 0;
         }
 
         .header h1 {
-            font-size: 2.5em;
-            font-weight: 300;
+            font-size: clamp(1.25rem, 3vw, 1.75rem);
+            font-weight: 500;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            margin-bottom: 10px;
+            white-space: nowrap;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: var(--spacing-xs);
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: var(--spacing-xs);
+        }
+
+        .nav-tab {
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            white-space: nowrap;
+            min-height: var(--touch-target-min);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
         }
 
         .status-bar {
             display: flex;
-            justify-content: center;
             align-items: center;
-            gap: 15px;
-            margin-top: 15px;
-            padding: 10px;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-xs) var(--spacing-md);
             background: rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            white-space: nowrap;
         }
 
         .status-dot {
@@ -76,48 +142,136 @@
 
         .controls {
             display: flex;
-            gap: 15px;
-            margin-bottom: 30px;
+            gap: 16px;
+            /* 8px scale */
+            margin-bottom: 32px;
+            /* 8px scale */
             flex-wrap: wrap;
             justify-content: center;
         }
 
-        .dropdown,
-        .toggle-all {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 12px 20px;
-            border-radius: 12px;
-            color: #e4e4e4;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s;
+        /* Dismissible Quick Start tip */
+        .quick-start-tip {
+            position: relative;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            padding: var(--spacing-md) var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+            color: #c7d2fe;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            display: none;
+            /* Hidden by default, shown via JS */
         }
 
-        .dropdown:hover,
-        .toggle-all:hover {
+        .quick-start-tip.show {
+            display: block;
+        }
+
+        .quick-start-tip strong {
+            color: var(--text-primary);
+        }
+
+        .tip-close {
+            position: absolute;
+            top: var(--spacing-sm);
+            right: var(--spacing-sm);
             background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 1.25rem;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+
+        .tip-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--text-primary);
+        }
+
+        .tip-close:focus {
+            outline: 2px solid var(--text-accent);
+            outline-offset: 2px;
+        }
+
+        /* Compact controls grid */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .control-chip {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.8125rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: var(--touch-target-min);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .control-chip:hover {
+            background: var(--bg-card-hover);
             border-color: rgba(102, 126, 234, 0.5);
         }
 
-        .toggle-all {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            font-weight: 500;
+        .control-chip:active {
+            transform: scale(0.98);
+        }
+
+        /* Dropdown specific */
+        .dropdown {
+            appearance: none;
+            background: var(--bg-card) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8"><path fill="%23e4e4e4" d="M1.41 0L6 4.58 10.59 0 12 1.41l-6 6-6-6z"/></svg>') no-repeat right 12px center;
+            padding-right: 32px;
+            color: var(--text-primary);
+        }
+
+        .dropdown option {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        @media (min-width: 768px) {
+            .controls-grid {
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            }
         }
 
         .floor-section {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            /* 8px scale */
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(10px);
-            border-radius: 20px;
+            border-radius: 16px;
+            /* 8px scale */
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.3s;
         }
 
         .floor-header {
-            padding: 20px 25px;
+            padding: 24px;
+            /* 8px scale - simplified */
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
             cursor: pointer;
             display: flex;
@@ -146,10 +300,13 @@
         }
 
         .rooms-container {
-            padding: 20px;
+            padding: 24px;
+            /* 8px scale */
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            /* Increased for full text */
+            gap: 24px;
+            /* 8px scale */
         }
 
         .rooms-container.collapsed {
@@ -159,9 +316,11 @@
         .room-card {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 16px;
-            padding: 20px;
+            padding: 24px;
+            /* 8px scale */
             border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.3s;
+            cursor: move;
         }
 
         .room-card:hover {
@@ -170,19 +329,78 @@
             transform: translateY(-2px);
         }
 
+        .room-card.dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+            cursor: grabbing;
+        }
+
+        .room-card.drag-over {
+            border-color: rgba(102, 126, 234, 0.8);
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+            transform: translateY(-4px);
+        }
+
         .room-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
+            margin-bottom: 16px;
+            /* 8px scale */
+            padding-bottom: 16px;
+            /* 8px scale */
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .room-header:hover {
+            background: rgba(255, 255, 255, 0.02);
+            margin: -8px -8px 16px -8px;
+            /* 8px scale */
+            padding: 8px 8px 16px 8px;
+            /* 8px scale */
+            border-radius: 8px;
         }
 
         .room-name {
             font-size: 1.2em;
             font-weight: 500;
             color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            /* 8px scale */
+        }
+
+        .room-collapse-icon {
+            font-size: 0.8em;
+            color: #a78bfa;
+            transition: transform 0.3s;
+        }
+
+        .room-collapse-icon.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .room-summary {
+            font-size: 0.85em;
+            color: #94a3b8;
+            margin-left: 32px;
+            /* 8px scale */
+            font-style: italic;
+        }
+
+        .room-content {
+            transition: all 0.3s ease;
+            max-height: 5000px;
+            overflow: hidden;
+        }
+
+        .room-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+            margin-bottom: -20px;
         }
 
         .room-all-off {
@@ -203,8 +421,10 @@
 
         /* Scene Buttons Section */
         .scene-section {
-            margin-bottom: 20px;
-            padding: 15px;
+            margin-bottom: 16px;
+            /* 8px scale */
+            padding: 16px;
+            /* 8px scale */
             background: rgba(102, 126, 234, 0.05);
             border-radius: 12px;
             border: 1px solid rgba(102, 126, 234, 0.2);
@@ -213,9 +433,11 @@
         .scene-label {
             font-size: 0.85em;
             color: #a78bfa;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            margin-bottom: 8px;
+            /* 8px scale */
+            /* Removed text-transform: uppercase for consistency */
+            letter-spacing: 0.5px;
+            /* Reduced letter spacing */
             font-weight: 600;
         }
 
@@ -226,13 +448,16 @@
         }
 
         .scene-btn {
-            flex: 1;
-            min-width: 60px;
-            max-width: 150px;
-            padding: 10px 12px;
+            flex: 1 1 auto;
+            /* Allow buttons to grow */
+            min-width: 80px;
+            /* Increased minimum width */
+            padding: 8px 16px;
+            /* 8px scale - wider padding for text */
             background: rgba(102, 126, 234, 0.2);
             border: 1px solid rgba(102, 126, 234, 0.3);
-            border-radius: 10px;
+            border-radius: 8px;
+            /* 8px scale */
             color: #c7d2fe;
             cursor: pointer;
             font-size: 0.9em;
@@ -240,25 +465,11 @@
             transition: all 0.3s;
             text-align: center;
             position: relative;
-            /* Text truncation */
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            /* Smart sizing for longer text */
-            line-height: 1.3;
-        }
-
-        /* Smaller font for longer button names */
-        .scene-btn.long-text {
-            font-size: 0.75em;
-            padding: 10px 8px;
-        }
-
-        /* Even smaller for very long names */
-        .scene-btn.very-long-text {
-            font-size: 0.7em;
-            padding: 8px 6px;
-            line-height: 1.2;
+            /* Allow text wrapping instead of truncation */
+            white-space: normal;
+            word-wrap: break-word;
+            line-height: 1.4;
+            /* Remove max-width to allow full text display */
         }
 
         .scene-btn:hover {
@@ -268,36 +479,6 @@
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
 
-        /* Tooltip for full button name on hover */
-        .scene-btn::after {
-            content: attr(data-full-name);
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%) translateY(-5px);
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 0.85em;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: all 0.3s;
-            z-index: 1000;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-
-        .scene-btn:hover::after {
-            opacity: 1;
-            transform: translateX(-50%) translateY(-8px);
-        }
-
-        /* Hide tooltip if name fits */
-        .scene-btn.fits::after {
-            display: none;
-        }
-
         .scene-btn.active {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-color: #667eea;
@@ -305,51 +486,228 @@
             box-shadow: 0 4px 16px rgba(102, 126, 234, 0.5);
         }
 
+        /* Station Tabs - for rooms with multiple faceplates */
+        .station-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+            padding-bottom: 8px;
+        }
+
+        .station-tab {
+            padding: 8px 16px;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 8px 8px 0 0;
+            color: #a78bfa;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .station-tab:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: rgba(102, 126, 234, 0.4);
+        }
+
+        .station-tab.active {
+            background: rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+            color: white;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .station-content {
+            display: none;
+        }
+
+        .station-content.active {
+            display: block;
+        }
+
+        /* LED State Indicators */
+        .scene-btn.led-on {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-color: #10b981;
+            color: white;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.5);
+        }
+
+        .scene-btn.led-blink {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            border-color: #f59e0b;
+            color: white;
+            box-shadow: 0 4px 16px rgba(245, 158, 11, 0.5);
+            animation: blink-led 1s ease-in-out infinite;
+        }
+
+        @keyframes blink-led {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
         /* Load Controls */
+        .loads-section-wrapper {
+            margin-top: 16px;
+        }
+
+        .loads-header {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            user-select: none;
+        }
+
+        .loads-header:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .loads-label {
+            font-size: 0.85em;
+            color: #a78bfa;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .loads-toggle-icon {
+            font-size: 0.8em;
+            transition: transform 0.3s;
+        }
+
+        .loads-toggle-icon.collapsed {
+            transform: rotate(-90deg);
+        }
+
         .loads-section {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 16px;
+            /* 8px scale */
+            transition: all 0.3s ease;
+            max-height: 5000px;
+            overflow: hidden;
+        }
+
+        .loads-section.collapsed {
+            max-height: 0;
+            opacity: 0;
+            margin-bottom: -16px;
         }
 
         .load-item {
-            display: grid;
-            grid-template-columns: 1fr auto auto;
-            gap: 10px;
-            align-items: center;
-            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 16px;
+            /* 8px scale */
             background: rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
+            border-radius: 8px;
+            /* 8px scale */
             border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .load-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .load-info {
+            flex: 1;
+            min-width: 0;
+            /* Allow text truncation if needed */
         }
 
         .load-name {
             font-size: 0.95em;
             color: #cbd5e1;
+            margin-bottom: 4px;
         }
 
-        .load-level {
-            font-size: 0.85em;
+        .load-level-badge {
+            display: inline-block;
+            font-size: 0.75em;
             color: #94a3b8;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2px 8px;
+            border-radius: 4px;
             font-family: monospace;
+            cursor: pointer;
+            transition: all 0.3s;
+            user-select: none;
+        }
+
+        .load-level-badge:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #c7d2fe;
         }
 
         .load-controls {
             display: flex;
             gap: 8px;
+            /* 8px scale */
             align-items: center;
         }
 
+        /* Slider section - collapsible */
+        .load-slider-section {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            opacity: 0;
+        }
+
+        .load-slider-section.expanded {
+            max-height: 60px;
+            opacity: 1;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+        }
+
+        .slider-label {
+            font-size: 0.75em;
+            color: #94a3b8;
+            min-width: 45px;
+        }
+
         .btn {
-            padding: 8px 16px;
+            /* Fixed dimensions for perfect alignment */
+            min-width: 56px;
+            height: 36px;
+            padding: 0 12px;
+            /* Horizontal padding only */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             border-radius: 8px;
+            /* 8px scale */
             border: none;
             cursor: pointer;
             font-size: 0.85em;
             font-weight: 600;
             transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
         }
 
         .btn-on {
@@ -373,12 +731,18 @@
         }
 
         .slider {
-            width: 120px;
+            flex: 1;
             height: 6px;
             border-radius: 3px;
             background: rgba(255, 255, 255, 0.1);
             outline: none;
+            appearance: none;
+            /* Standard property for compatibility */
             -webkit-appearance: none;
+            min-width: 100px;
+            touch-action: none;
+            /* Prevent scroll while dragging */
+            cursor: pointer;
         }
 
         .slider::-webkit-slider-thumb {
@@ -447,59 +811,156 @@
             pointer-events: none;
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
+        /* Responsive Design: 320px → 1440px */
+
+        /* Small phones: 320px - 480px */
+        @media (max-width: 480px) {
+            body {
+                padding: var(--spacing-sm);
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: var(--spacing-sm);
+            }
+
+            .header-left {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .nav-tabs {
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                /* Firefox */
+                -ms-overflow-style: none;
+                /* IE/Edge */
+            }
+
+            .nav-tabs::-webkit-scrollbar {
+                display: none;
+                /* Chrome/Safari */
+            }
+
+            .status-bar {
+                justify-content: center;
+            }
+
             .rooms-container {
                 grid-template-columns: 1fr;
+                padding: var(--spacing-md);
+                gap: var(--spacing-md);
             }
 
-            .load-item {
+            .room-card {
+                padding: var(--spacing-md);
+            }
+
+            .controls-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .btn {
+                min-width: 52px;
+                height: 34px;
+                font-size: 0.8em;
+            }
+        }
+
+        /* Medium phones: 481px - 640px */
+        @media (min-width: 481px) and (max-width: 640px) {
+            .header {
+                flex-wrap: wrap;
+            }
+
+            .nav-tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+
+            .nav-tabs::-webkit-scrollbar {
+                display: none;
+            }
+
+            .controls-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* Phones: 481px - 767px */
+        @media (min-width: 481px) and (max-width: 767px) {
+            .rooms-container {
                 grid-template-columns: 1fr;
+                gap: 20px;
             }
 
-            .load-controls {
-                justify-content: flex-end;
+            .controls {
+                gap: 12px;
+            }
+        }
+
+        /* Tablets: 768px - 1024px */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .rooms-container {
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            }
+        }
+
+        /* Laptops: 1025px - 1440px */
+        @media (min-width: 1025px) and (max-width: 1440px) {
+            .rooms-container {
+                grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            }
+        }
+
+        /* Large screens: 1441px+ */
+        @media (min-width: 1441px) {
+            .rooms-container {
+                grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
             }
         }
     </style>
 </head>
 
 <body>
+    <!-- Compact header with navigation -->
     <div class="header">
-        <h1>Vantage Control</h1>
+        <div class="header-left">
+            <h1>Vantage Control</h1>
+            <nav class="nav-tabs" role="navigation" aria-label="Main navigation">
+                <a href="/ui/" class="nav-tab active" aria-current="page">Control</a>
+                <a href="/ui/settings.html" class="nav-tab">Settings</a>
+                <a href="/ui/config.html" class="nav-tab">Config</a>
+                <a href="/monitor/status" class="nav-tab" target="_blank">Status</a>
+            </nav>
+        </div>
         <div class="status-bar">
-            <div class="status-dot"></div>
-            <span>System Online</span>
-            <span style="opacity: 0.6;">|</span>
-            <span id="lastUpdate" style="opacity: 0.6;">Updated: --:--:--</span>
+            <div class="status-dot" role="status" aria-live="polite" aria-label="System online"></div>
+            <span id="lastUpdate">--:--:--</span>
         </div>
     </div>
 
-    <!-- Navigation Bar -->
-    <div
-        style="background: rgba(0, 0, 0, 0.2); padding: 15px; margin-bottom: 20px; border-radius: 15px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; border: 1px solid rgba(255, 255, 255, 0.1);">
-        <a href="/ui/"
-            style="color: #e4e4e4; text-decoration: none; padding: 8px 16px; border-radius: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); transition: all 0.3s;">🎛️
-            Control</a>
-        <a href="/ui/settings.html"
-            style="color: #b0b0b0; text-decoration: none; padding: 8px 16px; border-radius: 8px; transition: all 0.3s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#e4e4e4'"
-            onmouseout="this.style.background='transparent'; this.style.color='#b0b0b0'">⚙️ Settings</a>
-        <a href="/ui/config.html"
-            style="color: #b0b0b0; text-decoration: none; padding: 8px 16px; border-radius: 8px; transition: all 0.3s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#e4e4e4'"
-            onmouseout="this.style.background='transparent'; this.style.color='#b0b0b0'">🔧 Configuration</a>
-        <a href="/monitor/status" target="_blank"
-            style="color: #b0b0b0; text-decoration: none; padding: 8px 16px; border-radius: 8px; transition: all 0.3s;"
-            onmouseover="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#e4e4e4'"
-            onmouseout="this.style.background='transparent'; this.style.color='#b0b0b0'">📊 Status</a>
+    <!-- Dismissible Quick Start tip -->
+    <div class="quick-start-tip" id="quickStartTip" role="alert" aria-live="polite">
+        <button class="tip-close" onclick="dismissQuickStart()" aria-label="Dismiss quick start tip"
+            title="Close">×</button>
+        <strong>Quick Start:</strong> Click room names to collapse/expand • Drag rooms to reorder • Use floor dropdown
+        to jump between levels • Tap loads to see details
     </div>
 
-    <div class="controls">
-        <select id="floorFilter" class="dropdown">
-            <option value="">Jump to Floor...</option>
+    <!-- Compact controls grid -->
+    <div class="controls-grid">
+        <select id="floorFilter" class="control-chip dropdown" aria-label="Jump to floor">
+            <option value="">Jump to floor...</option>
         </select>
-        <button class="toggle-all" onclick="toggleAllFloors()">Expand/Collapse All</button>
+        <button class="control-chip" onclick="toggleAllFloors()">Toggle floors</button>
+        <button class="control-chip" onclick="collapseAllRooms()">Collapse rooms</button>
+        <button class="control-chip" onclick="expandAllRooms()">Expand rooms</button>
+        <button class="control-chip" onclick="minimizeAllLoads()">Minimize all loads</button>
     </div>
 
     <div id="floorsContainer"></div>
@@ -509,21 +970,173 @@
     <script>
         let configData = null;
         let floorStates = {};
+        let roomStates = {}; // Track collapsed state for each room
+        let roomOrder = {}; // Track custom room order per floor
+        let selectedStationTabs = {}; // Track selected faceplate tab per room
+        let loadsVisibility = {}; // Track loads section visibility per room
         let pollInterval = null;
         let activeButtons = {}; // Track active scene buttons per room
+        let buttonDebounce = {}; // Track last button press time for debouncing
+
+        // LocalStorage helpers
+        function loadRoomStates() {
+            try {
+                const saved = localStorage.getItem('vantage_room_states');
+                if (saved) {
+                    roomStates = JSON.parse(saved);
+                }
+            } catch (error) {
+                console.error('Failed to load room states from localStorage:', error);
+                roomStates = {};
+            }
+        }
+
+        function saveRoomStates() {
+            try {
+                localStorage.setItem('vantage_room_states', JSON.stringify(roomStates));
+            } catch (error) {
+                console.error('Failed to save room states to localStorage:', error);
+            }
+        }
+
+        function loadRoomOrder() {
+            try {
+                const saved = localStorage.getItem('vantage_room_order');
+                if (saved) {
+                    roomOrder = JSON.parse(saved);
+                }
+            } catch (error) {
+                console.error('Failed to load room order from localStorage:', error);
+                roomOrder = {};
+            }
+        }
+
+        function saveRoomOrder() {
+            try {
+                localStorage.setItem('vantage_room_order', JSON.stringify(roomOrder));
+            } catch (error) {
+                console.error('Failed to save room order to localStorage:', error);
+            }
+        }
+
+        function sortRoomsByOrder(rooms, floor) {
+            if (!roomOrder[floor] || roomOrder[floor].length === 0) {
+                return rooms; // No custom order, return as-is
+            }
+
+            const order = roomOrder[floor];
+            const sorted = [];
+            const remaining = [...rooms];
+
+            // First, add rooms in the saved order
+            order.forEach(roomName => {
+                const index = remaining.findIndex(r => r.name === roomName);
+                if (index !== -1) {
+                    sorted.push(remaining[index]);
+                    remaining.splice(index, 1);
+                }
+            });
+
+            // Then add any new rooms that weren't in the saved order
+            return [...sorted, ...remaining];
+        }
+
+        // Station tab selection persistence
+        function loadSelectedStationTabs() {
+            try {
+                const saved = localStorage.getItem('vantage_selected_tabs');
+                if (saved) {
+                    selectedStationTabs = JSON.parse(saved);
+                }
+            } catch (error) {
+                console.error('Failed to load selected tabs from localStorage:', error);
+                selectedStationTabs = {};
+            }
+        }
+
+        function saveSelectedStationTabs() {
+            try {
+                localStorage.setItem('vantage_selected_tabs', JSON.stringify(selectedStationTabs));
+            } catch (error) {
+                console.error('Failed to save selected tabs to localStorage:', error);
+            }
+        }
+
+        // Loads visibility persistence
+        function loadLoadsVisibility() {
+            try {
+                const saved = localStorage.getItem('vantage_loads_visibility');
+                if (saved) {
+                    loadsVisibility = JSON.parse(saved);
+                }
+            } catch (error) {
+                console.error('Failed to load loads visibility from localStorage:', error);
+                loadsVisibility = {};
+            }
+        }
+
+        function saveLoadsVisibility() {
+            try {
+                localStorage.setItem('vantage_loads_visibility', JSON.stringify(loadsVisibility));
+            } catch (error) {
+                console.error('Failed to save loads visibility to localStorage:', error);
+            }
+        }
+
+        // Quick Start tip management
+        function showQuickStartTip() {
+            const dismissed = localStorage.getItem('quick_start_dismissed');
+            if (!dismissed) {
+                const tip = document.getElementById('quickStartTip');
+                if (tip) {
+                    tip.classList.add('show');
+                }
+            }
+        }
+
+        function dismissQuickStart() {
+            const tip = document.getElementById('quickStartTip');
+            if (tip) {
+                tip.classList.remove('show');
+                localStorage.setItem('quick_start_dismissed', 'true');
+            }
+        }
 
         // Fetch configuration on load
         async function init() {
             try {
+                loadRoomStates(); // Load saved collapsed states
+                loadRoomOrder(); // Load saved room order
+                loadSelectedStationTabs(); // Load saved faceplate tab selections
+                loadLoadsVisibility(); // Load saved loads visibility
+                showQuickStartTip(); // Show quick start tip if not dismissed
                 const response = await fetch('/config');
                 configData = await response.json();
                 populateFloorDropdown();
                 renderRooms();
                 startPolling();
+                setupSliderTouchHandlers(); // Setup non-passive touch listeners
             } catch (error) {
                 showToast('Failed to load configuration', true);
                 console.error('Config error:', error);
             }
+        }
+
+        // Setup non-passive touch event listeners for sliders
+        function setupSliderTouchHandlers() {
+            // Add touch event listeners to all sliders after render
+            setTimeout(() => {
+                const sliders = document.querySelectorAll('.slider');
+                sliders.forEach(slider => {
+                    slider.addEventListener('touchstart', function (e) {
+                        e.stopPropagation();
+                    }, { passive: false });
+
+                    slider.addEventListener('touchmove', function (e) {
+                        e.stopPropagation();
+                    }, { passive: false });
+                });
+            }, 100);
         }
 
         function populateFloorDropdown() {
@@ -577,39 +1190,107 @@
 
                 const isCollapsed = !floorStates[floor];
 
+                // Sort rooms by custom order
+                const sortedRooms = sortRoomsByOrder(rooms, floor);
+
                 floorSection.innerHTML = `
                     <div class="floor-header" onclick="toggleFloor('${floor}')">
                         <h2>${floor}</h2>
                         <span class="floor-arrow ${isCollapsed ? 'collapsed' : ''}">▼</span>
                     </div>
-                    <div class="rooms-container ${isCollapsed ? 'collapsed' : ''}" id="rooms-${floor}">
-                        ${rooms.map(room => renderRoom(room)).join('')}
+                    <div class="rooms-container ${isCollapsed ? 'collapsed' : ''}" id="rooms-${floor}" data-floor="${floor}">
+                        ${sortedRooms.map(room => renderRoom(room, floor)).join('')}
                     </div>
                 `;
 
                 container.appendChild(floorSection);
             });
+
+            // Add drag-and-drop event listeners to all room cards
+            setupDragAndDrop();
+
+            // Setup slider touch handlers after render
+            setupSliderTouchHandlers();
         }
 
-        function renderRoom(room) {
+        function renderRoom(room, floor) {
             if (room.loads.length === 0) return ''; // Skip separator entries
 
             const roomId = room.name.replace(/\s+/g, '-').toLowerCase();
+            const escapedRoomName = room.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
-            // Render actual button configurations from room.buttons array
+            // Check if room is collapsed
+            const isCollapsed = roomStates[room.name] === true;
+
+            // Count buttons across all stations
+            const stations = room.stations || [];
+            let totalButtons = 0;
+            if (stations.length > 0) {
+                totalButtons = stations.reduce((sum, st) => sum + (st.buttons ? st.buttons.length : 0), 0);
+            } else if (room.buttons) {
+                totalButtons = room.buttons.length;
+            }
+
+            // Create summary text for collapsed state
+            const summary = `${room.loads.length} load${room.loads.length !== 1 ? 's' : ''}, ${totalButtons} button${totalButtons !== 1 ? 's' : ''}`;
+
+            // NEW: Support stations array for multiple faceplates
             let sceneButtons = '';
-            if (room.buttons && room.buttons.length > 0) {
-                const buttonHtml = room.buttons.map(btn => {
-                    const escapedRoomName = room.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                    const escapedBtnName = btn.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const hasMultipleStations = stations.length > 1;
 
-                    // Smart sizing based on button name length
+            // Determine which tab should be active (saved selection or default to 0)
+            const selectedTabIndex = selectedStationTabs[roomId] !== undefined ? selectedStationTabs[roomId] : 0;
+
+            // Determine if loads section should be visible (default hidden for rooms with multiple faceplates)
+            if (loadsVisibility[roomId] === undefined && hasMultipleStations) {
+                loadsVisibility[roomId] = false; // Default hidden for multi-faceplate rooms
+            }
+            const loadsVisible = loadsVisibility[roomId] !== false; // Default visible otherwise
+
+            if (stations.length > 0) {
+                // Multiple stations - render with tabs
+                if (stations.length > 1) {
+                    const tabsHtml = stations.map((st, index) => {
+                        const activeClass = index === selectedTabIndex ? 'active' : '';
+                        return `<div class="station-tab ${activeClass}"
+                                     onclick="switchStation('${roomId}', ${index})">
+                                    V${st.station}
+                                </div>`;
+                    }).join('');
+
+                    const stationsHtml = stations.map((st, index) => {
+                        const activeClass = index === selectedTabIndex ? 'active' : '';
+                        const buttonsHtml = renderStationButtons(st, roomId, escapedRoomName);
+                        return `<div class="station-content ${activeClass}" id="${roomId}-station-${index}">
+                                    ${buttonsHtml}
+                                </div>`;
+                    }).join('');
+
+                    sceneButtons = `
+                        <div class="scene-section">
+                            <div class="station-tabs">
+                                ${tabsHtml}
+                            </div>
+                            ${stationsHtml}
+                        </div>
+                    `;
+                } else {
+                    // Single station - render normally
+                    const buttonsHtml = renderStationButtons(stations[0], roomId, escapedRoomName);
+                    sceneButtons = `
+                        <div class="scene-section">
+                            <div class="scene-label">Button station V${stations[0].station}</div>
+                            ${buttonsHtml}
+                        </div>
+                    `;
+                }
+            } else if (room.buttons && room.buttons.length > 0) {
+                // FALLBACK: Old format (backwards compatibility)
+                const buttonHtml = room.buttons.map(btn => {
+                    const escapedBtnName = btn.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                     let sizeClass = '';
-                    if (btn.name.length > 18) {
-                        sizeClass = 'very-long-text';
-                    } else if (btn.name.length > 12) {
-                        sizeClass = 'long-text';
-                    }
+                    if (btn.name.length > 18) sizeClass = 'very-long-text';
+                    else if (btn.name.length > 12) sizeClass = 'long-text';
 
                     return `<div class="scene-btn ${sizeClass}"
                                  data-full-name="${btn.name}"
@@ -619,7 +1300,7 @@
 
                 sceneButtons = `
                     <div class="scene-section">
-                        <div class="scene-label">Button Station V${room.station || '?'}</div>
+                        <div class="scene-label">Button station V${room.station || '?'}</div>
                         <div class="scene-buttons">
                             ${buttonHtml}
                         </div>
@@ -628,43 +1309,134 @@
             }
 
             return `
-                <div class="room-card">
-                    <div class="room-header">
-                        <div class="room-name">${room.name}</div>
-                        <button class="room-all-off" onclick="allOff('${room.name}')">All Off</button>
+                <div class="room-card" draggable="true" data-room-name="${room.name}" data-floor="${floor}">
+                    <div class="room-header" onclick="toggleRoom('${escapedRoomName}', event)">
+                        <div class="room-name">
+                            <span class="room-collapse-icon ${isCollapsed ? 'collapsed' : ''}">▼</span>
+                            ${room.name}
+                        </div>
+                        <button class="room-all-off" onclick="allOff('${escapedRoomName}'); event.stopPropagation();">All Off</button>
+                        <button class="room-get-status" onclick="getStatus('${escapedRoomName}'); event.stopPropagation();">Get Status</button>
                     </div>
+                    ${isCollapsed ? `<div class="room-summary">${summary}</div>` : ''}
 
-                    ${sceneButtons}
+                    <div class="room-content ${isCollapsed ? 'collapsed' : ''}">
+                        ${sceneButtons}
 
-                    <div class="loads-section">
-                        ${room.loads.map(load => renderLoad(load, room.name)).join('')}
+                        ${room.loads.length > 0 ? `
+                        <div class="loads-section-wrapper">
+                            <div class="loads-header" onclick="toggleLoads('${roomId}')">
+                                <span class="loads-label">
+                                    <span class="loads-toggle-icon ${loadsVisible ? '' : 'collapsed'}">▼</span>
+                                    Loads (${room.loads.length})
+                                </span>
+                            </div>
+                            <div class="loads-section ${loadsVisible ? '' : 'collapsed'}" id="${roomId}-loads">
+                                ${room.loads.map(load => renderLoad(load, room.name)).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
+        }
+
+        function renderStationButtons(station, roomId, escapedRoomName) {
+            const buttonHtml = station.buttons.map(btn => {
+                const escapedBtnName = btn.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                let sizeClass = '';
+                if (btn.name.length > 18) sizeClass = 'very-long-text';
+                else if (btn.name.length > 12) sizeClass = 'long-text';
+
+                // Add behavior class for future styling
+                const behaviorClass = btn.behavior || 'toggle';
+
+                return `<div class="scene-btn ${sizeClass} btn-${behaviorClass}"
+                             data-full-name="${btn.name}"
+                             data-behavior="${behaviorClass}"
+                             onclick="pressButton(${station.station}, ${btn.number}, '${escapedRoomName}', '${escapedBtnName}')"
+                             id="scene-${roomId}-${station.station}-${btn.number}">${btn.name}</div>`;
+            }).join('');
+
+            return `<div class="scene-buttons">${buttonHtml}</div>`;
+        }
+
+        function switchStation(roomId, stationIndex) {
+            // Hide all station contents for this room
+            const allContents = document.querySelectorAll(`[id^="${roomId}-station-"]`);
+            allContents.forEach(content => content.classList.remove('active'));
+
+            // Hide all tabs for this room
+            const roomCard = document.querySelector(`[id*="${roomId}"]`)?.closest('.room-card');
+            if (roomCard) {
+                const allTabs = roomCard.querySelectorAll('.station-tab');
+                allTabs.forEach(tab => tab.classList.remove('active'));
+            }
+
+            // Show selected station content
+            const selectedContent = document.getElementById(`${roomId}-station-${stationIndex}`);
+            if (selectedContent) {
+                selectedContent.classList.add('active');
+            }
+
+            // Activate selected tab
+            if (roomCard) {
+                const allTabs = roomCard.querySelectorAll('.station-tab');
+                if (allTabs[stationIndex]) {
+                    allTabs[stationIndex].classList.add('active');
+                }
+            }
+
+            // Save selected tab to localStorage
+            selectedStationTabs[roomId] = stationIndex;
+            saveSelectedStationTabs();
         }
 
         function renderLoad(load, roomName) {
             const isDimmer = load.type === 'dimmer';
             const loadId = `load-${load.id}`;
 
+            // Escape special characters in names to prevent breaking onclick handlers
+            const escapedRoomName = roomName.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const escapedLoadName = load.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
             return `
                 <div class="load-item" id="${loadId}">
-                    <div>
-                        <div class="load-name">${load.name}</div>
-                        <div class="load-level" id="${loadId}-level">Level: --</div>
+                    <div class="load-header">
+                        <div class="load-info">
+                            <div class="load-name">${load.name}</div>
+                            ${isDimmer ? `<span class="load-level-badge" id="${loadId}-badge" onclick="toggleSlider('${loadId}')">Level: --</span>` : ''}
+                        </div>
+                        <div class="load-controls">
+                            <button class="btn btn-on" onclick="setLevel(${load.id}, 100, '${escapedRoomName}', '${escapedLoadName}')">On</button>
+                            <button class="btn btn-off" onclick="setLevel(${load.id}, 0, '${escapedRoomName}', '${escapedLoadName}')">Off</button>
+                        </div>
                     </div>
-                    <div class="load-controls">
-                        ${isDimmer ? `<input type="range" class="slider" min="0" max="100" value="0"
-                            onchange="setLevel(${load.id}, this.value, '${roomName}', '${load.name}')"
-                            id="${loadId}-slider">` : ''}
-                        <button class="btn btn-on" onclick="setLevel(${load.id}, 100, '${roomName}', '${load.name}')">On</button>
-                        <button class="btn btn-off" onclick="setLevel(${load.id}, 0, '${roomName}', '${load.name}')">Off</button>
+                    ${isDimmer ? `
+                    <div class="load-slider-section" id="${loadId}-slider-section">
+                        <div class="slider-container">
+                            <span class="slider-label">Adjust:</span>
+                            <input type="range" class="slider" min="0" max="100" value="0"
+                                onchange="setLevel(${load.id}, this.value, '${escapedRoomName}', '${escapedLoadName}')"
+                                oninput="updateSliderPreview(${load.id}, this.value)"
+                                id="${loadId}-slider">
+                        </div>
                     </div>
+                    ` : ''}
                 </div>
             `;
         }
 
         async function setLevel(id, level, roomName, loadName) {
+            // Debounce - prevent rapid clicks (500ms delay)
+            const debounceKey = `load-${id}`;
+            const now = Date.now();
+            if (buttonDebounce[debounceKey] && (now - buttonDebounce[debounceKey]) < 500) {
+                console.log(`Debounced: ${loadName}`);
+                return;
+            }
+            buttonDebounce[debounceKey] = now;
+
             try {
                 const response = await fetch(`/device/${id}/set`, {
                     method: 'POST',
@@ -686,15 +1458,53 @@
         }
 
         async function pressButton(station, button, roomName, sceneName) {
+            // Debounce - prevent rapid clicks (500ms delay)
+            const debounceKey = `button-${station}-${button}`;
+            const now = Date.now();
+            if (buttonDebounce[debounceKey] && (now - buttonDebounce[debounceKey]) < 500) {
+                console.log(`Debounced: ${roomName} - ${sceneName}`);
+                return;
+            }
+            buttonDebounce[debounceKey] = now;
+
+            // Find the button element to get its behavior attribute
+            // Try multiple ID formats (with/without roomId prefix)
+            let behavior = 'toggle'; // default
+            const possibleIds = [
+                `scene-${roomName.replace(/[^a-z0-9]/gi, '-')}-${station}-${button}`,
+                `scene-${roomName.replace(/[^a-z0-9]/gi, '-')}-${button}`
+            ];
+
+            for (const id of possibleIds) {
+                const buttonElement = document.getElementById(id);
+                if (buttonElement && buttonElement.dataset.behavior) {
+                    behavior = buttonElement.dataset.behavior;
+                    break;
+                }
+            }
+
             try {
-                const response = await fetch(`/button/${station}/${button}`, {
+                // Pass behavior as query parameter
+                const response = await fetch(`/button/${station}/${button}?behavior=${behavior}`, {
                     method: 'POST'
                 });
 
                 if (response.ok) {
                     showToast(`${roomName}: ${sceneName}`);
-                    // Highlight active button
-                    highlightSceneButton(roomName, button);
+
+                    // DISABLED: LED poll after button press (contributes to port exhaustion)
+                    // TODO: Re-enable when connection pooling is implemented
+                    // setTimeout(async () => {
+                    //     try {
+                    //         const ledResponse = await fetch(`/api/leds/${station}`);
+                    //         if (ledResponse.ok) {
+                    //             const data = await ledResponse.json();
+                    //             updateStationLEDs(station, data.leds);
+                    //         }
+                    //     } catch (e) {
+                    //         console.error('LED poll after button press failed:', e);
+                    //     }
+                    // }, 300); // 300ms delay for Vantage to process
                 } else {
                     showToast(`Failed to activate scene`, true);
                 }
@@ -725,6 +1535,121 @@
             }
         }
 
+        function setupDragAndDrop() {
+            const roomCards = document.querySelectorAll('.room-card[draggable="true"]');
+            let draggedElement = null;
+
+            roomCards.forEach(card => {
+                card.addEventListener('dragstart', function (e) {
+                    draggedElement = this;
+                    this.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/html', this.innerHTML);
+                });
+
+                card.addEventListener('dragend', function (e) {
+                    this.classList.remove('dragging');
+                    // Remove all drag-over classes
+                    document.querySelectorAll('.room-card').forEach(c => c.classList.remove('drag-over'));
+                });
+
+                card.addEventListener('dragover', function (e) {
+                    if (e.preventDefault) {
+                        e.preventDefault(); // Allows us to drop
+                    }
+                    e.dataTransfer.dropEffect = 'move';
+
+                    // Only allow dropping on cards in the same floor
+                    const draggedFloor = draggedElement?.dataset.floor;
+                    const targetFloor = this.dataset.floor;
+
+                    if (draggedElement && draggedElement !== this && draggedFloor === targetFloor) {
+                        this.classList.add('drag-over');
+                    }
+
+                    return false;
+                });
+
+                card.addEventListener('dragleave', function (e) {
+                    this.classList.remove('drag-over');
+                });
+
+                card.addEventListener('drop', function (e) {
+                    if (e.stopPropagation) {
+                        e.stopPropagation(); // Stops browser from redirecting
+                    }
+
+                    const draggedFloor = draggedElement?.dataset.floor;
+                    const targetFloor = this.dataset.floor;
+
+                    // Only allow reordering within the same floor
+                    if (draggedElement && draggedElement !== this && draggedFloor === targetFloor) {
+                        // Get the container and all cards
+                        const container = this.parentNode;
+                        const allCards = Array.from(container.querySelectorAll('.room-card'));
+
+                        // Get positions
+                        const draggedIndex = allCards.indexOf(draggedElement);
+                        const targetIndex = allCards.indexOf(this);
+
+                        // Reorder in DOM
+                        if (draggedIndex < targetIndex) {
+                            container.insertBefore(draggedElement, this.nextSibling);
+                        } else {
+                            container.insertBefore(draggedElement, this);
+                        }
+
+                        // Update the room order in localStorage
+                        const floor = draggedFloor;
+                        const newOrder = Array.from(container.querySelectorAll('.room-card'))
+                            .map(card => card.dataset.roomName)
+                            .filter(name => name); // Filter out any undefined
+
+                        roomOrder[floor] = newOrder;
+                        saveRoomOrder();
+                        showToast('Room order saved');
+                    }
+
+                    this.classList.remove('drag-over');
+                    return false;
+                });
+            });
+        }
+
+        function toggleRoom(roomName, event) {
+            // Stop propagation if event provided (to prevent conflicts with other clicks)
+            if (event) {
+                event.stopPropagation();
+            }
+
+            // Toggle room state
+            roomStates[roomName] = !roomStates[roomName];
+            saveRoomStates();
+            renderRooms();
+        }
+
+        function collapseAllRooms() {
+            // Set all rooms to collapsed
+            configData.rooms.forEach(room => {
+                if (room.loads.length > 0) { // Only rooms with content
+                    roomStates[room.name] = true;
+                }
+            });
+            saveRoomStates();
+            renderRooms();
+            showToast('All rooms collapsed');
+        }
+
+        function expandAllRooms() {
+            // Clear all collapsed states
+            configData.rooms.forEach(room => {
+                roomStates[room.name] = false;
+            });
+            saveRoomStates();
+            renderRooms();
+            showToast('All rooms expanded');
+        }
+
         function toggleFloor(floor) {
             floorStates[floor] = !floorStates[floor];
             renderRooms();
@@ -738,7 +1663,7 @@
             renderRooms();
         }
 
-        // Polling function to update load levels
+        // Polling function to update load levels and LED states
         async function pollLoadStatus() {
             if (!configData) return;
 
@@ -746,6 +1671,7 @@
             document.getElementById('lastUpdate').textContent =
                 `Updated: ${now.toLocaleTimeString()}`;
 
+            // Poll load levels
             for (const room of configData.rooms) {
                 for (const load of room.loads) {
                     try {
@@ -761,23 +1687,124 @@
                     }
                 }
             }
+
+            // Poll LED states for all stations
+            await pollLEDStates();
+        }
+
+        async function pollLEDStates() {
+            try {
+                const response = await fetch('/api/leds');
+                if (response.ok) {
+                    const data = await response.json();
+                    // data.stations contains { "V23": { "1": "on", "2": "off", ... }, ... }
+                    for (const [stationId, buttons] of Object.entries(data.stations)) {
+                        const stationNum = parseInt(stationId.substring(1)); // "V23" -> 23
+                        updateStationLEDs(stationNum, buttons);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to poll LED states:', error);
+            }
+        }
+
+        function updateStationLEDs(station, buttonStates) {
+            // Find all rooms with this station
+            const rooms = configData.rooms.filter(r => r.station === station);
+
+            for (const room of rooms) {
+                const roomId = room.name.replace(/\s+/g, '-').toLowerCase();
+
+                // Update each button's LED state
+                for (let btnNum = 1; btnNum <= 8; btnNum++) {
+                    const state = buttonStates[btnNum.toString()];
+                    const btnEl = document.getElementById(`scene-${roomId}-${btnNum}`);
+
+                    if (btnEl && state) {
+                        // Remove all LED state classes
+                        btnEl.classList.remove('led-on', 'led-blink');
+
+                        // Add appropriate class based on state
+                        if (state === 'on') {
+                            btnEl.classList.add('led-on');
+                        } else if (state === 'blink') {
+                            btnEl.classList.add('led-blink');
+                        }
+                        // 'off' state = no special class
+                    }
+                }
+            }
         }
 
         function parseLoadLevel(response) {
             // Handle various response formats
-            if (typeof response === 'number') return response;
-            if (typeof response === 'string') {
-                // Try to extract number from "R:V50" format
+            let level = 0;
+
+            if (typeof response === 'number') {
+                level = response;
+            } else if (typeof response === 'string') {
+                // Try to extract number from "R:V258" format
                 const match = response.match(/\d+/);
-                return match ? parseInt(match[0]) : 0;
+                level = match ? parseInt(match[0]) : 0;
             }
-            return 0;
+
+            // Vantage uses 0-255 scale, convert to 0-100 percentage
+            if (level > 100) {
+                level = Math.round((level / 255) * 100);
+            }
+
+            return level;
+        }
+
+        function toggleSlider(loadId) {
+            const sliderSection = document.getElementById(`${loadId}-slider-section`);
+            if (sliderSection) {
+                sliderSection.classList.toggle('expanded');
+            }
+        }
+
+        function updateSliderPreview(loadId, value) {
+            const badge = document.getElementById(`load-${loadId}-badge`);
+            if (badge) {
+                badge.textContent = `Level: ${value}%`;
+            }
+        }
+
+        function toggleLoads(roomId) {
+            const loadsSection = document.getElementById(`${roomId}-loads`);
+            const toggleIcon = loadsSection?.previousElementSibling?.querySelector('.loads-toggle-icon');
+
+            if (loadsSection) {
+                loadsSection.classList.toggle('collapsed');
+            }
+
+            if (toggleIcon) {
+                toggleIcon.classList.toggle('collapsed');
+            }
+
+            // Save state to localStorage
+            loadsVisibility[roomId] = !loadsSection?.classList.contains('collapsed');
+            saveLoadsVisibility();
+        }
+
+        function minimizeAllLoads() {
+            if (!configData) return;
+
+            // Collapse all loads sections
+            configData.rooms.forEach(room => {
+                const roomId = room.name.replace(/\s+/g, '-').toLowerCase();
+                loadsVisibility[roomId] = false;
+            });
+
+            saveLoadsVisibility();
+            renderRooms();
+            showToast('All loads minimized');
         }
 
         function updateLoadStatus(loadId, level) {
-            const levelEl = document.getElementById(`load-${loadId}-level`);
-            if (levelEl) {
-                levelEl.textContent = `Level: ${level}%`;
+            const badge = document.getElementById(`load-${loadId}-badge`);
+            if (badge) {
+                badge.textContent = `Level: ${level}%`;
             }
 
             const sliderEl = document.getElementById(`load-${loadId}-slider`);
@@ -787,10 +1814,154 @@
         }
 
         function startPolling() {
+            // DISABLED: Continuous polling creates too many connections and exhausts Vantage port limit
             // Poll every 10 seconds
-            pollInterval = setInterval(pollLoadStatus, 10000);
-            // Initial poll
+            // pollInterval = setInterval(pollLoadStatus, 10000);
+
+            // Do ONE initial poll on page load to show current status
             pollLoadStatus();
+
+            // DISABLED: LED polling causes port exhaustion (538+ TIME_WAIT connections)
+            // Issue: 20-30 visible stations × 30 polls/min = 600-900 new sockets/min
+            // Each socket stays in TIME_WAIT for 60-120 seconds → port exhaustion
+            // TODO: Implement connection pooling in bridge.py for proper LED polling
+            // startLEDPolling();
+        }
+
+        // LED Polling - Poll only visible stations
+        let ledPollInterval = null;
+
+        function getVisibleStations() {
+            // Get all currently visible station buttons
+            const visibleStations = new Set();
+
+            // Find all visible scene buttons and extract their station numbers
+            const visibleButtons = document.querySelectorAll('.scene-btn:not([style*="display: none"])');
+            visibleButtons.forEach(btn => {
+                // Button IDs are like: scene-foyer-19-1 (roomId-station-button)
+                const id = btn.id;
+                const match = id.match(/scene-[^-]+-(\d+)-\d+/);
+                if (match) {
+                    visibleStations.add(parseInt(match[1]));
+                }
+            });
+
+            // Also check for single-station format: scene-roomId-buttonNum
+            const singleStationButtons = document.querySelectorAll('.scene-btn[id^="scene-"]');
+            singleStationButtons.forEach(btn => {
+                const stationDiv = btn.closest('.scene-section');
+                if (stationDiv && !stationDiv.style.display || stationDiv.style.display !== 'none') {
+                    const label = stationDiv.querySelector('.scene-label');
+                    if (label) {
+                        const match = label.textContent.match(/V(\d+)/);
+                        if (match) {
+                            visibleStations.add(parseInt(match[1]));
+                        }
+                    }
+                }
+            });
+
+            // Alternative: Get stations from active station-content divs
+            const activeStations = document.querySelectorAll('.station-content.active');
+            activeStations.forEach(content => {
+                const buttons = content.querySelectorAll('.scene-btn');
+                buttons.forEach(btn => {
+                    const id = btn.id;
+                    const match = id.match(/scene-[^-]+-(\d+)-\d+/);
+                    if (match) {
+                        visibleStations.add(parseInt(match[1]));
+                    }
+                });
+            });
+
+            return Array.from(visibleStations);
+        }
+
+        async function pollVisibleLEDs() {
+            const stations = getVisibleStations();
+
+            if (stations.length === 0) return;
+
+            // Poll each visible station
+            for (const station of stations) {
+                try {
+                    const response = await fetch(`/api/leds/${station}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        updateStationLEDs(station, data.leds);
+                    }
+                } catch (error) {
+                    console.error(`Failed to poll LED state for station ${station}:`, error);
+                }
+            }
+        }
+
+        function updateStationLEDs(station, ledStates) {
+            if (!ledStates || ledStates.length !== 8) return;
+
+            // Update LED state for each button
+            ledStates.forEach((state, index) => {
+                const btnNum = index + 1;
+                // Try multi-station format first
+                const buttons = document.querySelectorAll(`[id*="-${station}-${btnNum}"]`);
+
+                buttons.forEach(btn => {
+                    if (state === 255 || state === 0xFF || state > 127) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+
+                // Also try single-station format (backwards compatibility)
+                if (buttons.length === 0) {
+                    const roomId = findRoomIdForStation(station);
+                    if (roomId) {
+                        const btn = document.getElementById(`scene-${roomId}-${btnNum}`);
+                        if (btn) {
+                            if (state === 255 || state === 0xFF || state > 127) {
+                                btn.classList.add('active');
+                            } else {
+                                btn.classList.remove('active');
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function findRoomIdForStation(station) {
+            if (!configData) return null;
+            for (const room of configData.rooms) {
+                if (room.station === station) {
+                    return room.name.replace(/\s+/g, '-').toLowerCase();
+                }
+            }
+            return null;
+        }
+
+        function startLEDPolling() {
+            // Poll every 2 seconds
+            ledPollInterval = setInterval(pollVisibleLEDs, 2000);
+
+            // Initial poll
+            pollVisibleLEDs();
+
+            // Pause polling when tab is hidden (save resources)
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    if (ledPollInterval) {
+                        clearInterval(ledPollInterval);
+                        ledPollInterval = null;
+                    }
+                } else {
+                    // Resume polling when tab becomes visible
+                    if (!ledPollInterval) {
+                        ledPollInterval = setInterval(pollVisibleLEDs, 2000);
+                        pollVisibleLEDs(); // Immediate poll
+                    }
+                }
+            });
         }
 
         function showToast(message, isError = false) {
@@ -826,6 +1997,45 @@
         init();
         setInterval(checkHealth, 10000);
         checkHealth();
+
+        // Implement 'Get Status' functionality
+        async function getStatus(roomName) {
+            const room = configData.rooms.find(r => r.name === roomName);
+            if (!room) {
+                showToast(`Room not found: ${roomName}`, true);
+                return;
+            }
+
+            try {
+                // Poll load levels
+                for (const load of room.loads) {
+                    const response = await fetch(`/load/${load.id}/status`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        const level = parseLoadLevel(data.resp);
+                        updateLoadStatus(load.id, level);
+                    } else {
+                        console.error(`Failed to get status for load ${load.id}`);
+                    }
+                }
+
+                // Poll LED states for the room's stations
+                for (const station of room.stations || []) {
+                    const response = await fetch(`/api/leds/${station.station}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        updateStationLEDs(station.station, data.leds);
+                    } else {
+                        console.error(`Failed to get LED status for station ${station.station}`);
+                    }
+                }
+
+                showToast(`Status updated for ${roomName}`);
+            } catch (error) {
+                showToast(`Failed to get status for ${roomName}`, true);
+                console.error(`Error getting status for ${roomName}:`, error);
+            }
+        }
     </script>
 </body>
 

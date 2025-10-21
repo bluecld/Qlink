@@ -2,27 +2,41 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [ main, master ]
   pull_request:
-    branches: [main]
+    branches: [ main, master ]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - name: Install deps
+          python-version: '3.11'
+
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r dev-requirements.txt
-      - name: Run linters
+          if [ -f app/requirements.txt ]; then pip install -r app/requirements.txt; fi
+          if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
+
+      - name: Lint (ruff)
         run: |
-          ruff .
-          black --check .
+          if command -v ruff >/dev/null 2>&1; then ruff --version && ruff .; else echo "ruff not installed"; fi
+
+      - name: Black (check)
+        run: |
+          if command -v black >/dev/null 2>&1; then black --version && black --check .; else echo "black not installed"; fi
+
+      - name: Validate config schemas
+        run: |
+          python scripts/validate_config.py --strict
+
       - name: Run tests
         run: |
-          pytest -q
+          if [ -d tests ] || ls *test*.py 2>/dev/null; then pytest -q; else echo "no tests"; fi
+

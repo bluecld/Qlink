@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:qlink:config:targets.v1",
+  "title": "Deployment Targets Configuration v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "host": { "type": "string", "minLength": 1 },
+    "user": { "type": "string", "minLength": 1 },
+    "key": { "type": "string" },
+    "remote_dir": { "type": "string", "minLength": 1 },
+    "env": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "properties": {
+        "VANTAGE_IP": { "type": "string" },
+        "VANTAGE_PORT": { "type": "string" },
+        "Q_LINK_EOL": { "type": "string", "enum": ["CR", "CRLF"] },
+        "QLINK_TIMEOUT": { "type": "string" }
+      }
+    }
+  },
+  "required": ["host", "user", "remote_dir"]
+}
+

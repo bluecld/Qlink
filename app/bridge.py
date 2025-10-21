@@ -19,14 +19,21 @@ from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconn
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional, Set
+from typing import Optional, Set, Dict
 import os
 import socket
 import logging
 import threading
 import time
+import json
 from datetime import datetime
 from time import perf_counter
+
+# Optional: jsonschema for config validation
+try:
+    from jsonschema import Draft202012Validator  # type: ignore
+except Exception:
+    Draft202012Validator = None  # type: ignore
 
 try:
     from dotenv import load_dotenv
@@ -48,8 +55,8 @@ def _env(name: str, default: str) -> str:
     return v if v not in (None, "") else default
 
 
-VANTAGE_IP = _env("VANTAGE_IP", "192.168.0.180")
-VANTAGE_PORT = int(_env("VANTAGE_PORT", "3041"))
+VANTAGE_IP = _env("VANTAGE_IP", "192.168.1.200")
+VANTAGE_PORT = int(_env("VANTAGE_PORT", "3040"))
 QLINK_EOL = _env("Q_LINK_EOL", "CR").upper()
 EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
 QLINK_TIMEOUT = float(_env("QLINK_TIMEOUT", "2.0"))
@@ -65,6 +72,149 @@ event_socket_connected = False
 event_monitoring_enabled = False
 websocket_clients: Set[WebSocket] = set()
 event_listener_thread: Optional[threading.Thread] = None
+
+# ===== LED State Storage =====
+# Track button LED states for all stations
+# Format: {"V23": {1: "on", 2: "off", 3: "blink", ...}, "V20": {...}}
+button_led_states: Dict[str, Dict[int, str]] = {}
+button_led_lock = threading.Lock()  # Thread-safe access
+
+# ===== Station to Master Mapping =====
+# Load actual station-to-master assignments from Vantage config
+# DO NOT GUESS based on station number - read from config file!
+STATION_MASTER_MAP: Dict[int, int] = {}
+STATION_PHYSICAL_MAP: Dict[int, int] = {}
+
+def load_station_master_map():
+    """Load station-to-master mapping from config file."""
+    global STATION_MASTER_MAP
+    config_dir = os.path.join(os.path.dirname(__file__), "..", "config")
+    map_file = os.path.join(config_dir, "station_master_map.json")
+
+    try:
+        with open(map_file, "r") as f:
+            data = json.load(f)
+            # Convert string keys to integers
+            STATION_MASTER_MAP = {int(k): v for k, v in data.items()}
+        logger.info(f"✅ Loaded {len(STATION_MASTER_MAP)} station-to-master mappings")
+    except FileNotFoundError:
+        logger.warning(f"❌ Station master map not found: {map_file}")
+        logger.warning("⚠️  Will fall back to guessing (station >= 51 → master 2)")
+    except Exception as e:
+        logger.error(f"❌ Failed to load station master map: {e}")
+
+def load_station_physical_map():
+    """Load virtual-to-physical station number mapping from config file.
+
+    IMPORTANT: Vantage has both virtual (V-numbers) and physical station numbers:
+    - VLT@ commands use virtual station numbers (e.g., V55)
+    - VSW commands use physical station numbers (e.g., 6 for V55)
+
+    This mapping is extracted from the Vantage config file field:
+    Station: V{virtual},{?},{master},{physical},...
+    """
+    global STATION_PHYSICAL_MAP
+    config_dir = os.path.join(os.path.dirname(__file__), "..", "config")
+    map_file = os.path.join(config_dir, "station_physical_map.json")
+
+    try:
+        with open(map_file, "r") as f:
+            data = json.load(f)
+            # Convert string keys to integers
+            STATION_PHYSICAL_MAP = {int(k): v for k, v in data.items()}
+        logger.info(f"✅ Loaded {len(STATION_PHYSICAL_MAP)} virtual-to-physical station mappings")
+    except FileNotFoundError:
+        logger.warning(f"❌ Station physical map not found: {map_file}")
+        logger.warning("⚠️  VSW commands may not work - will use virtual station numbers as fallback")
+    except Exception as e:
+        logger.error(f"❌ Failed to load station physical map: {e}")
+
+def get_station_physical(station_virtual: int) -> int:
+    """Get the physical station number for a virtual station number.
+
+    Args:
+        station_virtual: Virtual station number (e.g., 55)
+
+    Returns:
+        Physical station number (e.g., 6 for V55)
+    """
+    if station_virtual in STATION_PHYSICAL_MAP:
+        return STATION_PHYSICAL_MAP[station_virtual]
+    else:
+        # FALLBACK - assume virtual = physical (often wrong!)
+        logger.warning(f"⚠️  Virtual station {station_virtual} not in physical map, using as-is")
+        return station_virtual
+
+def get_station_master(station: int) -> int:
+    """Get the master controller for a station number.
+
+    Args:
+        station: Station number (e.g., 19, 55)
+
+    Returns:
+        Master number (1 or 2)
+
+    Note:
+        If mapping not found, falls back to guess (station >= 51 → master 2)
+        This is WRONG for many stations (23, 46-50, 53-58 are mixed!)
+    """
+    if station in STATION_MASTER_MAP:
+        return STATION_MASTER_MAP[station]
+    else:
+        # FALLBACK - this is often wrong!
+        logger.warning(f"⚠️  Station {station} not in map, guessing master")
+        return 2 if station >= 51 else 1
+
+# Load mappings on startup
+load_station_master_map()
+load_station_physical_map()
+
+
+def decode_led_hex(on_hex: str, blink_hex: str) -> Dict[int, str]:
+    """Decode LED hex values to button states.
+
+    Args:
+        on_hex: Hex string for LEDs that are ON (e.g., "4C")
+        blink_hex: Hex string for LEDs that are BLINKING (e.g., "20")
+
+    Returns:
+        Dict mapping button numbers (1-8) to states ("on", "off", "blink")
+
+    Example:
+        decode_led_hex("4C", "20") returns:
+        {1: "off", 2: "off", 3: "on", 4: "on", 5: "off", 6: "blink", 7: "on", 8: "off"}
+
+        4C hex = 01001100 binary = buttons 3, 4, 7
+        20 hex = 00100000 binary = button 6
+    """
+    try:
+        on_bits = int(on_hex, 16)
+        blink_bits = int(blink_hex, 16)
+    except ValueError:
+        logger.warning(f"Invalid LED hex values: on={on_hex}, blink={blink_hex}")
+        return {}
+
+    states = {}
+    for btn_num in range(1, 9):  # Buttons 1-8
+        bit_mask = 1 << (btn_num - 1)  # Bit 0 = Button 1, Bit 7 = Button 8
+
+        if blink_bits & bit_mask:
+            states[btn_num] = "blink"
+        elif on_bits & bit_mask:
+            states[btn_num] = "on"
+        else:
+            states[btn_num] = "off"
+
+    return states
+
+
+def update_station_leds(station: int, button_states: Dict[int, str]):
+    """Thread-safe update of station LED states."""
+    station_id = f"V{station}"
+    with button_led_lock:
+        if station_id not in button_led_states:
+            button_led_states[station_id] = {}
+        button_led_states[station_id].update(button_states)
 
 
 def parse_vantage_event(message: str) -> Optional[dict]:
@@ -133,29 +283,51 @@ def parse_vantage_event(message: str) -> Optional[dict]:
 
         # LED state change (keypad): LE <master> <station> <onleds_hex> <blinkleds_hex>
         elif parts[0] == "LE":
+            station_num = int(parts[2])
+            on_leds_hex = parts[3]
+            blink_leds_hex = parts[4]
+
+            # Decode hex to button states
+            button_states = decode_led_hex(on_leds_hex, blink_leds_hex)
+
+            # Update global state store
+            update_station_leds(station_num, button_states)
+
             event.update(
                 {
                     "type": "led_keypad",
                     "master": int(parts[1]),
-                    "station": int(parts[2]),
-                    "on_leds": parts[3],
-                    "blink_leds": parts[4],
+                    "station": station_num,
+                    "station_id": f"V{station_num}",
+                    "on_leds": on_leds_hex,
+                    "blink_leds": blink_leds_hex,
+                    "button_states": button_states,  # Include decoded states in event
                 }
             )
-            logger.info(f"🔆 LEDs V{parts[2]} on={parts[3]} blink={parts[4]}")
+            logger.info(
+                f"🔆 LEDs V{station_num} on={on_leds_hex} blink={blink_leds_hex} {button_states}"
+            )
 
         # LED state change (LCD): LC <master> <station> <button> <state>
         elif parts[0] == "LC":
+            station_num = int(parts[2])
+            button_num = int(parts[3])
+            led_state = "on" if parts[4] == "1" else "off"
+
+            # Update global state store (single button)
+            update_station_leds(station_num, {button_num: led_state})
+
             event.update(
                 {
                     "type": "led_lcd",
                     "master": int(parts[1]),
-                    "station": int(parts[2]),
-                    "button": int(parts[3]),
-                    "state": "on" if parts[4] == "1" else "off",
+                    "station": station_num,
+                    "station_id": f"V{station_num}",
+                    "button": button_num,
+                    "state": led_state,
                 }
             )
-            logger.info(f"🔆 LCD V{parts[2]} btn {parts[3]} LED {event['state']}")
+            logger.info(f"🔆 LCD V{station_num} btn {button_num} LED {led_state}")
 
         # Response to our monitoring enable commands (ignore)
         elif parts[0] in ("ROD", "ROL", "ROS"):
@@ -196,115 +368,191 @@ def broadcast_event_sync(event: dict):
         websocket_clients.discard(client)
 
 
-def event_listener_loop():
-    """Background thread that maintains persistent connection and listens for events"""
-    global event_socket, event_socket_connected, event_monitoring_enabled
+def led_polling_loop():
+    """Background thread that polls LED states using VLT command (port 3040 mode).
 
-    logger.info("🎧 Event listener thread started")
+    Since port 3040 doesn't support persistent event monitoring (VOD@/VOS@/VOL@),
+    we poll all stations every 5-10 seconds using the VLT@ command.
+    """
+    global event_socket_connected, event_monitoring_enabled
+    import json
+
+    logger.info("🔄 LED polling thread started (port 3040 mode)")
+
+    poll_interval = 5.0  # seconds between full polling cycles
+    master = 1  # Assume single master system
 
     while True:
         try:
-            logger.info(
-                f"🔌 Connecting event listener to {VANTAGE_IP}:{VANTAGE_PORT}..."
-            )
+            # Load station list from loads.json
+            stations = []
+            config_paths = [
+                os.path.join(os.path.dirname(__file__), "..", "config", "loads.json"),
+                "/home/pi/qlink-bridge/config/loads.json",
+                "config/loads.json",
+            ]
 
-            # Create persistent socket
-            event_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            event_socket.connect((VANTAGE_IP, VANTAGE_PORT))
-            event_socket.settimeout(None)  # Blocking mode for persistent connection
+            for path in config_paths:
+                if os.path.exists(path):
+                    try:
+                        with open(path, "r") as f:
+                            data = json.load(f)
+
+                            # Try new "rooms" array format first
+                            if "rooms" in data and isinstance(data["rooms"], list):
+                                for room in data["rooms"]:
+                                    if "station" in room:
+                                        station_num = room["station"]
+                                        if station_num not in stations:
+                                            stations.append(station_num)
+
+                            # Fallback: try old "station_X" key format
+                            else:
+                                for key, value in data.items():
+                                    if key.startswith("station_") and isinstance(value, dict):
+                                        if "station" in value:
+                                            station_num = value["station"]
+                                            if station_num not in stations:
+                                                stations.append(station_num)
+                        break
+                    except Exception as e:
+                        logger.warning(f"Failed to load stations from {path}: {e}")
+                        continue
+
+            if not stations:
+                logger.warning("⚠️  No stations configured in loads.json, will retry in 10s")
+                event_socket_connected = False
+                event_monitoring_enabled = False
+                time.sleep(10)
+                continue
+
+            logger.info(f"📡 Polling {len(stations)} stations: {sorted(stations)}")
             event_socket_connected = True
-
-            logger.info("✅ Event listener connected")
-
-            # Enable monitoring (settings persist, but good to send on each connect)
-            logger.info("📡 Enabling Vantage event monitoring...")
-            event_socket.send(b"VOS@ 1 1\r")  # Button monitoring with serial numbers
-            time.sleep(0.1)
-            event_socket.send(b"VOL@ 1\r")  # Load change monitoring
-            time.sleep(0.1)
-            event_socket.send(b"VOD@ 3\r")  # LED monitoring (all types)
-            time.sleep(0.1)
-
             event_monitoring_enabled = True
-            logger.info("✅ Event monitoring enabled (VOS@, VOL@, VOD@)")
 
-            # Listen for events continuously
-            buffer = ""
-            while True:
-                data = event_socket.recv(4096).decode("ascii", errors="ignore")
+            # Poll all stations
+            polled_count = 0
+            error_count = 0
 
-                if not data:
-                    logger.warning("⚠️  Connection closed by Vantage")
-                    raise ConnectionError("Socket closed by remote")
+            for station in sorted(stations):
+                try:
+                    # Query all LEDs for this station using VLT@
+                    # Format: VLT@ <master> <station>
+                    # Response: <onleds_hex> <blinkleds_hex>
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(2.0)
+                    sock.connect((VANTAGE_IP, VANTAGE_PORT))
+                    sock.sendall(f"VLT@ {master} {station}\r".encode("ascii"))
+                    response = sock.recv(1024).decode("ascii", errors="ignore").strip()
+                    sock.close()
 
-                buffer += data
+                    # Parse response: "81 0" or "4C 20"
+                    parts = response.split()
+                    if len(parts) >= 2:
+                        on_hex = parts[0]
+                        blink_hex = parts[1]
 
-                # Process complete messages (ending with \r)
-                while "\r" in buffer:
-                    message, buffer = buffer.split("\r", 1)
-                    message = message.strip()
+                        # Decode using existing function
+                        button_states = decode_led_hex(on_hex, blink_hex)
 
-                    if message:
-                        event = parse_vantage_event(message)
-                        if event:
-                            broadcast_event_sync(event)
+                        # Update global state
+                        update_station_leds(station, button_states)
+
+                        # Create event for WebSocket broadcast
+                        event = {
+                            "type": "led_poll",
+                            "master": master,
+                            "station": station,
+                            "station_id": f"V{station}",
+                            "on_leds": on_hex,
+                            "blink_leds": blink_hex,
+                            "button_states": button_states,
+                            "timestamp": datetime.now().isoformat(),
+                        }
+
+                        # Broadcast to WebSocket clients
+                        broadcast_event_sync(event)
+
+                        polled_count += 1
+                        logger.debug(f"📊 V{station}: on={on_hex} blink={blink_hex}")
+                    else:
+                        logger.warning(f"⚠️  V{station}: unexpected response '{response}'")
+                        error_count += 1
+
+                    # Small delay between stations to avoid overwhelming the system
+                    time.sleep(0.05)
+
+                except Exception as e:
+                    logger.debug(f"Failed to poll V{station}: {e}")
+                    error_count += 1
+                    continue
+
+            logger.info(f"✅ Poll cycle complete: {polled_count} stations, {error_count} errors")
+
+            # Wait before next poll cycle
+            time.sleep(poll_interval)
 
         except Exception as e:
-            logger.error(f"❌ Event listener error: {e}")
+            logger.error(f"❌ LED polling error: {e}")
             event_socket_connected = False
             event_monitoring_enabled = False
-
-            if event_socket:
-                try:
-                    event_socket.close()
-                except:
-                    pass
-                event_socket = None
-
-            logger.info("⏳ Reconnecting in 5 seconds...")
             time.sleep(5)
 
 
 def start_event_listener():
-    """Start the event listener background thread"""
+    """Start the LED polling background thread (renamed for backwards compatibility)"""
     global event_listener_thread
 
     if event_listener_thread and event_listener_thread.is_alive():
-        logger.info("Event listener already running")
+        logger.info("LED polling thread already running")
         return
 
     event_listener_thread = threading.Thread(
-        target=event_listener_loop, daemon=True, name="VantageEventListener"
+        target=led_polling_loop, daemon=True, name="VantageLEDPoller"
     )
     event_listener_thread.start()
-    logger.info("🚀 Event listener thread started")
+    logger.info("🚀 LED polling thread started")
 
 
 def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
     """Send a single ASCII command to the Vantage IP-Enabler and return response.
 
     Raises HTTPException on connect/timeout errors so FastAPI returns proper status.
+    Retries up to 3 times on connection refused (port may be busy with polling).
     """
     t0 = perf_counter()
     to = timeout or QLINK_TIMEOUT
-    try:
-        with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
-            s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
-            s.settimeout(to)
-            try:
-                data = s.recv(4096)
-            except socket.timeout:
-                data = b""
-    except socket.timeout as ex:
-        raise HTTPException(
-            status_code=504, detail="Timeout contacting Vantage IP-Enabler"
-        ) from ex
-    except OSError as ex:
-        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
-    finally:
-        dt = (perf_counter() - t0) * 1000
-        logger.info("cmd=%s elapsedMs=%.1f", cmd, dt)
-    return data.decode("ascii", errors="ignore").strip()
+    max_retries = 3
+    retry_delay = 0.1  # 100ms between retries
+
+    for attempt in range(max_retries):
+        try:
+            with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
+                s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+                s.settimeout(to)
+                try:
+                    data = s.recv(4096)
+                except socket.timeout:
+                    data = b""
+
+            dt = (perf_counter() - t0) * 1000
+            logger.info("cmd=%s elapsedMs=%.1f attempt=%d", cmd, dt, attempt + 1)
+            return data.decode("ascii", errors="ignore").strip()
+
+        except socket.timeout as ex:
+            raise HTTPException(
+                status_code=504, detail="Timeout contacting Vantage IP-Enabler"
+            ) from ex
+        except OSError as ex:
+            # Retry on connection refused (errno 111), fail immediately on other errors
+            if "refused" in str(ex).lower() and attempt < max_retries - 1:
+                logger.debug(f"Connection refused, retry {attempt + 1}/{max_retries}")
+                time.sleep(retry_delay)
+                continue
+            raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+
+    # Should never reach here
+    raise HTTPException(status_code=502, detail="Max retries exceeded")
 
 
 class LevelCmd(BaseModel):
@@ -346,6 +594,23 @@ def get_config():
             with open(config_file, "r") as f:
                 data = json.load(f)
                 rooms = data.get("rooms", [])
+                # Validate against JSON Schema if available and structure matches
+                if rooms and Draft202012Validator is not None:
+                    try:
+                        schema_path = os.path.normpath(
+                            os.path.join(
+                                os.path.dirname(__file__),
+                                "..",
+                                "config",
+                                "schemas",
+                                "loads.rooms.v1.schema.json",
+                            )
+                        )
+                        with open(schema_path, "r", encoding="utf-8") as sf:
+                            schema = json.load(sf)
+                        Draft202012Validator(schema).validate({"rooms": rooms})
+                    except Exception as ve:
+                        logger.warning(f"loads.json failed schema validation: {ve}")
         except Exception as e:
             logger.warning(f"Could not load loads.json: {e}")
 
@@ -362,7 +627,7 @@ def root():
     """Redirect to home page."""
     from fastapi.responses import RedirectResponse
 
-    return RedirectResponse(url="/ui/home.html")
+    return RedirectResponse(url="/ui/")
 
 
 @app.get("/send/{cmd}")
@@ -392,19 +657,69 @@ def get_load_status(id: int):
     return {"resp": qlink_send(f"VGL@ {id}")}
 
 
-@app.post("/button/{station}/{button}")
-def press_button(station: int, button: int):
-    """Simulate a button press on a station using VSW@ command.
+@app.get("/api/leds/{station}")
+def get_station_leds(station: int):
+    """Get LED states for all 8 buttons on a station using VLT@ command.
 
-    Uses VSW@ (Vantage Switch) command with state=4 for button press simulation.
-    Format: VSW@ <master> <station> <button> <state>
-    State 4 = Simulate button press
-    State 6 = Simulate press and release (alternative)
+    Returns LED state for buttons 1-8 as array of integers (0=off, 255=on).
+    Command format: VLT@ <master> <station>
+    Response format: R:V 01 02 03 04 05 06 07 08 (hex values, 00=off, FF=on)
     """
-    # Assuming master=1 for single-master system (or lookup based on station if multi-master)
-    master = 1
-    state = 4  # 4 = button press, 6 = press and release
-    return {"resp": qlink_send(f"VSW@ {master} {station} {button} {state}")}
+    # Get actual master from Vantage config mapping
+    master = get_station_master(station)
+
+    response = qlink_send(f"VLT@ {master} {station}")
+
+    # Parse response: "R:V 01 02 03 04 05 06 07 08"
+    if response.startswith("R:V"):
+        parts = response.split()
+        if len(parts) >= 9:  # R:V + 8 LED values
+            led_values = parts[1:9]  # Skip "R:V", take next 8
+            # Convert hex strings to integers (00 -> 0, FF -> 255)
+            leds = []
+            for val in led_values:
+                try:
+                    leds.append(int(val, 16))
+                except ValueError:
+                    leds.append(0)
+            return {"station": station, "leds": leds, "raw": response}
+
+    # Fallback if parsing fails
+    return {"station": station, "leds": [0] * 8, "raw": response, "error": "Parse failed"}
+
+
+@app.post("/button/{station}/{button}")
+def press_button(station: int, button: int, behavior: str = None):
+    """Simulate a button press on a station using VSW command.
+
+    IMPORTANT: VSW requires PHYSICAL station numbers, not virtual (V-numbers)!
+    - Input station parameter is VIRTUAL number (e.g., 55)
+    - We convert to PHYSICAL number (e.g., 6) for the VSW command
+    - VLT@ uses virtual numbers, but VSW uses physical numbers
+
+    Format: VSW <master> <physical_station> <button> <state>
+
+    State values (from QLINK2.rtf):
+    - 6 = Execute switch emulating a press and release (works for all button types)
+
+    Args:
+        station: VIRTUAL station number (e.g., 55 for V55)
+        button: Button number (1-10)
+        behavior: Optional button behavior (not currently used, always uses state 6)
+    """
+    # Get actual master and physical station from Vantage config mappings
+    master = get_station_master(station)
+    station_physical = get_station_physical(station)
+
+    # Use state 6 for ALL button types - emulates physical press and release
+    # State 6 triggers whatever function the button is programmed for:
+    # - PRESET_ON buttons will execute their ON function
+    # - PRESET_OFF buttons will execute their OFF function
+    # - DIM/TOGGLE buttons will toggle
+    state = 6
+
+    logger.info(f"Button press: virtual={station}, physical={station_physical}, button={button}, master={master}, state={state}")
+    return {"resp": qlink_send(f"VSW {master} {station_physical} {button} {state}")}
 
 
 @app.get("/button/{station}/{button}/status")
@@ -426,14 +741,59 @@ def get_button_status(station: int, button: int):
 
 @app.get("/monitor/status")
 def monitor_status():
-    """Get event monitoring status"""
+    """Get LED polling status"""
     return {
-        "event_listener_connected": event_socket_connected,
+        "mode": "polling",  # Port 3040 uses polling instead of event monitoring
+        "polling_active": event_socket_connected,
         "monitoring_enabled": event_monitoring_enabled,
         "websocket_clients": len(websocket_clients),
         "vantage_ip": VANTAGE_IP,
         "vantage_port": VANTAGE_PORT,
+        "stations_tracked": len(button_led_states),
+        "note": "Using VLT polling (port 3040 mode) - LED states update every 5 seconds",
     }
+
+
+@app.get("/api/leds")
+def get_all_led_states():
+    """Get current LED states for all stations.
+
+    Returns:
+        {
+            "stations": {
+                "V23": {1: "on", 2: "off", 3: "blink", ...},
+                "V20": {...},
+                ...
+            },
+            "count": 2
+        }
+    """
+    with button_led_lock:
+        return {"stations": button_led_states.copy(), "count": len(button_led_states)}
+
+
+## NOTE: DUPLICATE ROUTE - This endpoint is shadowed by the one at line 569
+## FastAPI will use the FIRST matching route, so this function is never called
+## TODO: Remove this duplicate or consolidate the two endpoints
+# @app.get("/api/leds/{station}")
+# def get_station_led_states(station: int):
+#     """Get current LED states for a specific station.
+#
+#     Args:
+#         station: Station number (e.g., 23 for V23)
+#
+#     Returns:
+#         {
+#             "station": 23,
+#             "station_id": "V23",
+#             "buttons": {1: "on", 2: "off", 3: "blink", ...}
+#         }
+#     """
+#     station_id = f"V{station}"
+#     with button_led_lock:
+#         buttons = button_led_states.get(station_id, {})
+#
+#     return {"station": station, "station_id": station_id, "buttons": buttons.copy()}
 
 
 @app.get("/settings")
@@ -539,8 +899,10 @@ async def websocket_endpoint(websocket: WebSocket):
 async def startup_event():
     """Start event listener on application startup"""
     logger.info("🚀 Starting Vantage QLink Bridge...")
-    start_event_listener()
-    logger.info("✅ Bridge ready")
+    # TEMPORARILY DISABLED: LED polling causes port exhaustion
+    # This was breaking load control (on/off buttons)
+    # start_event_listener()
+    logger.info("✅ Bridge ready (LED polling disabled to prevent port exhaustion)")
 
 
 @app.exception_handler(HTTPException)

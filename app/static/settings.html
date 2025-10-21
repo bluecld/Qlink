@@ -6,6 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - Vantage Q-Link Bridge</title>
     <style>
+        :root {
+            /* Spacing scale using clamp() for responsive sizing */
+            --spacing-xs: clamp(4px, 0.5vw, 6px);
+            --spacing-sm: clamp(8px, 1vw, 12px);
+            --spacing-md: clamp(12px, 1.5vw, 16px);
+            --spacing-lg: clamp(16px, 2vw, 24px);
+            --spacing-xl: clamp(24px, 3vw, 32px);
+
+            /* Colors */
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-card: rgba(255, 255, 255, 0.05);
+            --bg-card-hover: rgba(255, 255, 255, 0.08);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-primary: #e4e4e4;
+            --text-secondary: #94a3b8;
+            --text-accent: #667eea;
+            --accent-purple: #a78bfa;
+
+            /* Touch targets */
+            --touch-target-min: 44px;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -14,83 +37,104 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: #e4e4e4;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
             min-height: 100vh;
-            padding: 20px;
+            padding: var(--spacing-md);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-lg);
+            flex: 1;
+            min-width: 0;
+        }
+
+        .header h1 {
+            font-size: clamp(1.25rem, 3vw, 1.75rem);
+            font-weight: 500;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            white-space: nowrap;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: var(--spacing-xs);
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: var(--spacing-xs);
+        }
+
+        .nav-tab {
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            white-space: nowrap;
+            min-height: var(--touch-target-min);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-xs) var(--spacing-md);
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            white-space: nowrap;
         }
 
         .container {
             max-width: 800px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-        }
-
-        header {
-            background: rgba(0, 0, 0, 0.2);
-            color: #e4e4e4;
-            padding: 30px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        header h1 {
-            font-size: 2em;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        header p {
-            color: #b0b0b0;
-        }
-
-        nav {
-            background: rgba(0, 0, 0, 0.2);
-            padding: 15px 30px;
-            display: flex;
-            gap: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        nav a {
-            color: #b0b0b0;
-            text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
-
-        nav a:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #e4e4e4;
-        }
-
-        nav a.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
         }
 
         main {
-            padding: 30px;
+            padding: var(--spacing-md);
         }
 
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: var(--spacing-lg);
         }
 
         label {
             display: block;
             font-weight: 600;
-            margin-bottom: 8px;
-            color: #e4e4e4;
+            margin-bottom: var(--spacing-sm);
+            color: var(--text-primary);
             font-size: 0.95em;
         }
 
@@ -105,27 +149,27 @@
         input[type="number"],
         select {
             width: 100%;
-            padding: 12px 16px;
+            padding: var(--spacing-md);
             background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             font-size: 1em;
-            color: #e4e4e4;
+            color: var(--text-primary);
             transition: all 0.3s;
         }
 
         input:focus,
         select:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--text-accent);
             background: rgba(0, 0, 0, 0.4);
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
         .button-group {
             display: flex;
-            gap: 15px;
-            margin-top: 30px;
+            gap: var(--spacing-md);
+            margin-top: var(--spacing-xl);
         }
 
         button {
@@ -226,36 +270,89 @@
 
         .info-box {
             background: rgba(102, 126, 234, 0.15);
-            border-left: 4px solid #667eea;
-            padding: 15px;
+            border-left: 4px solid var(--text-accent);
+            padding: var(--spacing-md);
             border-radius: 10px;
-            margin-bottom: 25px;
-            color: #e4e4e4;
+            margin-bottom: var(--spacing-lg);
+            color: var(--text-primary);
         }
 
         .info-box strong {
             display: block;
-            margin-bottom: 5px;
-            color: #0066cc;
+            margin-bottom: var(--spacing-xs);
+            color: var(--text-primary);
+        }
+
+        /* Responsive Design: 320px → 1440px */
+
+        /* Small phones: 320px - 480px */
+        @media (max-width: 480px) {
+            body {
+                padding: var(--spacing-sm);
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: var(--spacing-sm);
+            }
+
+            .header-left {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .nav-tabs {
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none; /* Firefox */
+                -ms-overflow-style: none; /* IE/Edge */
+            }
+
+            .nav-tabs::-webkit-scrollbar {
+                display: none; /* Chrome/Safari */
+            }
+
+            .status-bar {
+                justify-content: center;
+            }
+        }
+
+        /* Medium phones: 481px - 640px */
+        @media (min-width: 481px) and (max-width: 640px) {
+            .header {
+                flex-wrap: wrap;
+            }
+
+            .nav-tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+
+            .nav-tabs::-webkit-scrollbar {
+                display: none;
+            }
         }
     </style>
 </head>
 
 <body>
+    <!-- Compact header with navigation -->
+    <div class="header">
+        <div class="header-left">
+            <h1>Bridge Settings</h1>
+            <nav class="nav-tabs" role="navigation" aria-label="Main navigation">
+                <a href="/ui/" class="nav-tab">Control</a>
+                <a href="/ui/settings.html" class="nav-tab active" aria-current="page">Settings</a>
+                <a href="/ui/config.html" class="nav-tab">Config</a>
+                <a href="/monitor/status" class="nav-tab" target="_blank">Status</a>
+            </nav>
+        </div>
+    </div>
+
     <div class="container">
-        <header>
-            <h1>⚙️ Bridge Settings</h1>
-            <p>Configure your Vantage Q-Link Bridge</p>
-        </header>
-
-        <nav>
-            <a href="/">🏠 Home</a>
-            <a href="/ui/">🎛️ Control</a>
-            <a href="/ui/settings.html" class="active">⚙️ Settings</a>
-            <a href="/ui/config.html">🔧 Configuration</a>
-            <a href="/monitor/status" target="_blank">📊 Status</a>
-        </nav>
-
         <main>
             <div id="alert" class="alert"></div>
 
@@ -328,8 +425,8 @@
 
             <hr style="margin: 40px 0; border: none; border-top: 1px solid #dee2e6;">
 
-            <h3 style="margin-bottom: 15px;">📊 Current Status</h3>
-            <div id="statusInfo" style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+            <h3 style="margin-bottom: var(--spacing-md);">Current Status</h3>
+            <div id="statusInfo" style="background: var(--bg-card); padding: var(--spacing-md); border-radius: 8px; border: 1px solid var(--border-color);">
                 <p><strong>Loading status...</strong></p>
             </div>
         </main>

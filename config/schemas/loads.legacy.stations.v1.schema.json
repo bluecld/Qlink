@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:qlink:config:loads.legacy.stations.v1",
+  "title": "QLink Loads Configuration (Legacy Station/Button map)",
+  "type": "object",
+  "patternProperties": {
+    "^station_\\d+$": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "station": { "type": "integer", "minimum": 0 },
+        "master": { "type": "integer", "minimum": 0 },
+        "buttons": {
+          "type": "object",
+          "patternProperties": {
+            "^button_\\d+$": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string" },
+                "button": { "type": "integer", "minimum": 1 },
+                "event_type": { "type": ["string", "null"] },
+                "loads": {
+                  "type": "array",
+                  "items": { "type": "integer", "minimum": 0 }
+                }
+              },
+              "required": ["name", "button", "loads"]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["name", "station", "master", "buttons"]
+    }
+  },
+  "additionalProperties": false
+}
+
