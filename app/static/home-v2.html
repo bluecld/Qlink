@@ -142,8 +142,10 @@
 
         .controls {
             display: flex;
-            gap: 16px; /* 8px scale */
-            margin-bottom: 32px; /* 8px scale */
+            gap: 16px;
+            /* 8px scale */
+            margin-bottom: 32px;
+            /* 8px scale */
             flex-wrap: wrap;
             justify-content: center;
         }
@@ -159,7 +161,8 @@
             color: #c7d2fe;
             font-size: 0.875rem;
             line-height: 1.5;
-            display: none; /* Hidden by default, shown via JS */
+            display: none;
+            /* Hidden by default, shown via JS */
         }
 
         .quick-start-tip.show {
@@ -255,17 +258,20 @@
         }
 
         .floor-section {
-            margin-bottom: 24px; /* 8px scale */
+            margin-bottom: 24px;
+            /* 8px scale */
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(10px);
-            border-radius: 16px; /* 8px scale */
+            border-radius: 16px;
+            /* 8px scale */
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.3s;
         }
 
         .floor-header {
-            padding: 24px; /* 8px scale - simplified */
+            padding: 24px;
+            /* 8px scale - simplified */
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
             cursor: pointer;
             display: flex;
@@ -294,10 +300,13 @@
         }
 
         .rooms-container {
-            padding: 24px; /* 8px scale */
+            padding: 24px;
+            /* 8px scale */
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); /* Increased for full text */
-            gap: 24px; /* 8px scale */
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            /* Increased for full text */
+            gap: 24px;
+            /* 8px scale */
         }
 
         .rooms-container.collapsed {
@@ -307,7 +316,8 @@
         .room-card {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 16px;
-            padding: 24px; /* 8px scale */
+            padding: 24px;
+            /* 8px scale */
             border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.3s;
             cursor: move;
@@ -335,8 +345,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px; /* 8px scale */
-            padding-bottom: 16px; /* 8px scale */
+            margin-bottom: 16px;
+            /* 8px scale */
+            padding-bottom: 16px;
+            /* 8px scale */
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             cursor: pointer;
             transition: all 0.3s;
@@ -344,8 +356,10 @@
 
         .room-header:hover {
             background: rgba(255, 255, 255, 0.02);
-            margin: -8px -8px 16px -8px; /* 8px scale */
-            padding: 8px 8px 16px 8px; /* 8px scale */
+            margin: -8px -8px 16px -8px;
+            /* 8px scale */
+            padding: 8px 8px 16px 8px;
+            /* 8px scale */
             border-radius: 8px;
         }
 
@@ -355,7 +369,8 @@
             color: #667eea;
             display: flex;
             align-items: center;
-            gap: 8px; /* 8px scale */
+            gap: 8px;
+            /* 8px scale */
         }
 
         .room-collapse-icon {
@@ -371,7 +386,8 @@
         .room-summary {
             font-size: 0.85em;
             color: #94a3b8;
-            margin-left: 32px; /* 8px scale */
+            margin-left: 32px;
+            /* 8px scale */
             font-style: italic;
         }
 
@@ -405,8 +421,10 @@
 
         /* Scene Buttons Section */
         .scene-section {
-            margin-bottom: 16px; /* 8px scale */
-            padding: 16px; /* 8px scale */
+            margin-bottom: 16px;
+            /* 8px scale */
+            padding: 16px;
+            /* 8px scale */
             background: rgba(102, 126, 234, 0.05);
             border-radius: 12px;
             border: 1px solid rgba(102, 126, 234, 0.2);
@@ -415,9 +433,11 @@
         .scene-label {
             font-size: 0.85em;
             color: #a78bfa;
-            margin-bottom: 8px; /* 8px scale */
+            margin-bottom: 8px;
+            /* 8px scale */
             /* Removed text-transform: uppercase for consistency */
-            letter-spacing: 0.5px; /* Reduced letter spacing */
+            letter-spacing: 0.5px;
+            /* Reduced letter spacing */
             font-weight: 600;
         }
 
@@ -428,12 +448,16 @@
         }
 
         .scene-btn {
-            flex: 1 1 auto; /* Allow buttons to grow */
-            min-width: 80px; /* Increased minimum width */
-            padding: 8px 16px; /* 8px scale - wider padding for text */
+            flex: 1 1 auto;
+            /* Allow buttons to grow */
+            min-width: 80px;
+            /* Increased minimum width */
+            padding: 8px 16px;
+            /* 8px scale - wider padding for text */
             background: rgba(102, 126, 234, 0.2);
             border: 1px solid rgba(102, 126, 234, 0.3);
-            border-radius: 8px; /* 8px scale */
+            border-radius: 8px;
+            /* 8px scale */
             color: #c7d2fe;
             cursor: pointer;
             font-size: 0.9em;
@@ -520,8 +544,15 @@
         }
 
         @keyframes blink-led {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
 
         /* Load Controls */
@@ -564,7 +595,8 @@
         .loads-section {
             display: flex;
             flex-direction: column;
-            gap: 16px; /* 8px scale */
+            gap: 16px;
+            /* 8px scale */
             transition: all 0.3s ease;
             max-height: 5000px;
             overflow: hidden;
@@ -580,9 +612,11 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            padding: 16px; /* 8px scale */
+            padding: 16px;
+            /* 8px scale */
             background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px; /* 8px scale */
+            border-radius: 8px;
+            /* 8px scale */
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
@@ -595,7 +629,8 @@
 
         .load-info {
             flex: 1;
-            min-width: 0; /* Allow text truncation if needed */
+            min-width: 0;
+            /* Allow text truncation if needed */
         }
 
         .load-name {
@@ -624,7 +659,8 @@
 
         .load-controls {
             display: flex;
-            gap: 8px; /* 8px scale */
+            gap: 8px;
+            /* 8px scale */
             align-items: center;
         }
 
@@ -658,11 +694,13 @@
             /* Fixed dimensions for perfect alignment */
             min-width: 56px;
             height: 36px;
-            padding: 0 12px; /* Horizontal padding only */
+            padding: 0 12px;
+            /* Horizontal padding only */
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 8px; /* 8px scale */
+            border-radius: 8px;
+            /* 8px scale */
             border: none;
             cursor: pointer;
             font-size: 0.85em;
@@ -698,9 +736,12 @@
             border-radius: 3px;
             background: rgba(255, 255, 255, 0.1);
             outline: none;
+            appearance: none;
+            /* Standard property for compatibility */
             -webkit-appearance: none;
             min-width: 100px;
-            touch-action: none; /* Prevent scroll while dragging */
+            touch-action: none;
+            /* Prevent scroll while dragging */
             cursor: pointer;
         }
 
@@ -793,12 +834,15 @@
                 overflow-x: auto;
                 overflow-y: hidden;
                 -webkit-overflow-scrolling: touch;
-                scrollbar-width: none; /* Firefox */
-                -ms-overflow-style: none; /* IE/Edge */
+                scrollbar-width: none;
+                /* Firefox */
+                -ms-overflow-style: none;
+                /* IE/Edge */
             }
 
             .nav-tabs::-webkit-scrollbar {
-                display: none; /* Chrome/Safari */
+                display: none;
+                /* Chrome/Safari */
             }
 
             .status-bar {
@@ -902,8 +946,10 @@
 
     <!-- Dismissible Quick Start tip -->
     <div class="quick-start-tip" id="quickStartTip" role="alert" aria-live="polite">
-        <button class="tip-close" onclick="dismissQuickStart()" aria-label="Dismiss quick start tip" title="Close">×</button>
-        <strong>Quick Start:</strong> Click room names to collapse/expand • Drag rooms to reorder • Use floor dropdown to jump between levels • Tap loads to see details
+        <button class="tip-close" onclick="dismissQuickStart()" aria-label="Dismiss quick start tip"
+            title="Close">×</button>
+        <strong>Quick Start:</strong> Click room names to collapse/expand • Drag rooms to reorder • Use floor dropdown
+        to jump between levels • Tap loads to see details
     </div>
 
     <!-- Compact controls grid -->
@@ -1082,11 +1128,11 @@
             setTimeout(() => {
                 const sliders = document.querySelectorAll('.slider');
                 sliders.forEach(slider => {
-                    slider.addEventListener('touchstart', function(e) {
+                    slider.addEventListener('touchstart', function (e) {
                         e.stopPropagation();
                     }, { passive: false });
 
-                    slider.addEventListener('touchmove', function(e) {
+                    slider.addEventListener('touchmove', function (e) {
                         e.stopPropagation();
                     }, { passive: false });
                 });
@@ -1270,6 +1316,7 @@
                             ${room.name}
                         </div>
                         <button class="room-all-off" onclick="allOff('${escapedRoomName}'); event.stopPropagation();">All Off</button>
+                        <button class="room-get-status" onclick="getStatus('${escapedRoomName}'); event.stopPropagation();">Get Status</button>
                     </div>
                     ${isCollapsed ? `<div class="room-summary">${summary}</div>` : ''}
 
@@ -1493,20 +1540,20 @@
             let draggedElement = null;
 
             roomCards.forEach(card => {
-                card.addEventListener('dragstart', function(e) {
+                card.addEventListener('dragstart', function (e) {
                     draggedElement = this;
                     this.classList.add('dragging');
                     e.dataTransfer.effectAllowed = 'move';
                     e.dataTransfer.setData('text/html', this.innerHTML);
                 });
 
-                card.addEventListener('dragend', function(e) {
+                card.addEventListener('dragend', function (e) {
                     this.classList.remove('dragging');
                     // Remove all drag-over classes
                     document.querySelectorAll('.room-card').forEach(c => c.classList.remove('drag-over'));
                 });
 
-                card.addEventListener('dragover', function(e) {
+                card.addEventListener('dragover', function (e) {
                     if (e.preventDefault) {
                         e.preventDefault(); // Allows us to drop
                     }
@@ -1523,11 +1570,11 @@
                     return false;
                 });
 
-                card.addEventListener('dragleave', function(e) {
+                card.addEventListener('dragleave', function (e) {
                     this.classList.remove('drag-over');
                 });
 
-                card.addEventListener('drop', function(e) {
+                card.addEventListener('drop', function (e) {
                     if (e.stopPropagation) {
                         e.stopPropagation(); // Stops browser from redirecting
                     }
@@ -1950,6 +1997,45 @@
         init();
         setInterval(checkHealth, 10000);
         checkHealth();
+
+        // Implement 'Get Status' functionality
+        async function getStatus(roomName) {
+            const room = configData.rooms.find(r => r.name === roomName);
+            if (!room) {
+                showToast(`Room not found: ${roomName}`, true);
+                return;
+            }
+
+            try {
+                // Poll load levels
+                for (const load of room.loads) {
+                    const response = await fetch(`/load/${load.id}/status`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        const level = parseLoadLevel(data.resp);
+                        updateLoadStatus(load.id, level);
+                    } else {
+                        console.error(`Failed to get status for load ${load.id}`);
+                    }
+                }
+
+                // Poll LED states for the room's stations
+                for (const station of room.stations || []) {
+                    const response = await fetch(`/api/leds/${station.station}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        updateStationLEDs(station.station, data.leds);
+                    } else {
+                        console.error(`Failed to get LED status for station ${station.station}`);
+                    }
+                }
+
+                showToast(`Status updated for ${roomName}`);
+            } catch (error) {
+                showToast(`Failed to get status for ${roomName}`, true);
+                console.error(`Error getting status for ${roomName}:`, error);
+            }
+        }
     </script>
 </body>
 

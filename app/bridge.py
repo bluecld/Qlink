@@ -83,6 +83,7 @@ button_led_lock = threading.Lock()  # Thread-safe access
 # Load actual station-to-master assignments from Vantage config
 # DO NOT GUESS based on station number - read from config file!
 STATION_MASTER_MAP: Dict[int, int] = {}
+STATION_PHYSICAL_MAP: Dict[int, int] = {}
 
 def load_station_master_map():
     """Load station-to-master mapping from config file."""
@@ -101,6 +102,48 @@ def load_station_master_map():
         logger.warning("⚠️  Will fall back to guessing (station >= 51 → master 2)")
     except Exception as e:
         logger.error(f"❌ Failed to load station master map: {e}")
+
+def load_station_physical_map():
+    """Load virtual-to-physical station number mapping from config file.
+
+    IMPORTANT: Vantage has both virtual (V-numbers) and physical station numbers:
+    - VLT@ commands use virtual station numbers (e.g., V55)
+    - VSW commands use physical station numbers (e.g., 6 for V55)
+
+    This mapping is extracted from the Vantage config file field:
+    Station: V{virtual},{?},{master},{physical},...
+    """
+    global STATION_PHYSICAL_MAP
+    config_dir = os.path.join(os.path.dirname(__file__), "..", "config")
+    map_file = os.path.join(config_dir, "station_physical_map.json")
+
+    try:
+        with open(map_file, "r") as f:
+            data = json.load(f)
+            # Convert string keys to integers
+            STATION_PHYSICAL_MAP = {int(k): v for k, v in data.items()}
+        logger.info(f"✅ Loaded {len(STATION_PHYSICAL_MAP)} virtual-to-physical station mappings")
+    except FileNotFoundError:
+        logger.warning(f"❌ Station physical map not found: {map_file}")
+        logger.warning("⚠️  VSW commands may not work - will use virtual station numbers as fallback")
+    except Exception as e:
+        logger.error(f"❌ Failed to load station physical map: {e}")
+
+def get_station_physical(station_virtual: int) -> int:
+    """Get the physical station number for a virtual station number.
+
+    Args:
+        station_virtual: Virtual station number (e.g., 55)
+
+    Returns:
+        Physical station number (e.g., 6 for V55)
+    """
+    if station_virtual in STATION_PHYSICAL_MAP:
+        return STATION_PHYSICAL_MAP[station_virtual]
+    else:
+        # FALLBACK - assume virtual = physical (often wrong!)
+        logger.warning(f"⚠️  Virtual station {station_virtual} not in physical map, using as-is")
+        return station_virtual
 
 def get_station_master(station: int) -> int:
     """Get the master controller for a station number.
@@ -122,8 +165,9 @@ def get_station_master(station: int) -> int:
         logger.warning(f"⚠️  Station {station} not in map, guessing master")
         return 2 if station >= 51 else 1
 
-# Load mapping on startup
+# Load mappings on startup
 load_station_master_map()
+load_station_physical_map()
 
 
 def decode_led_hex(on_hex: str, blink_hex: str) -> Dict[int, str]:
@@ -645,18 +689,37 @@ def get_station_leds(station: int):
 
 
 @app.post("/button/{station}/{button}")
-def press_button(station: int, button: int):
-    """Simulate a button press on a station using VSW@ command.
+def press_button(station: int, button: int, behavior: str = None):
+    """Simulate a button press on a station using VSW command.
 
-    Uses VSW@ (Vantage Switch) command with state=4 for button press simulation.
-    Format: VSW@ <master> <station> <button> <state>
-    State 4 = Simulate button press
-    State 6 = Simulate press and release (alternative)
+    IMPORTANT: VSW requires PHYSICAL station numbers, not virtual (V-numbers)!
+    - Input station parameter is VIRTUAL number (e.g., 55)
+    - We convert to PHYSICAL number (e.g., 6) for the VSW command
+    - VLT@ uses virtual numbers, but VSW uses physical numbers
+
+    Format: VSW <master> <physical_station> <button> <state>
+
+    State values (from QLINK2.rtf):
+    - 6 = Execute switch emulating a press and release (works for all button types)
+
+    Args:
+        station: VIRTUAL station number (e.g., 55 for V55)
+        button: Button number (1-10)
+        behavior: Optional button behavior (not currently used, always uses state 6)
     """
-    # Get actual master from Vantage config mapping
+    # Get actual master and physical station from Vantage config mappings
     master = get_station_master(station)
-    state = 4  # 4 = button press, 6 = press and release
-    return {"resp": qlink_send(f"VSW@ {master} {station} {button} {state}")}
+    station_physical = get_station_physical(station)
+
+    # Use state 6 for ALL button types - emulates physical press and release
+    # State 6 triggers whatever function the button is programmed for:
+    # - PRESET_ON buttons will execute their ON function
+    # - PRESET_OFF buttons will execute their OFF function
+    # - DIM/TOGGLE buttons will toggle
+    state = 6
+
+    logger.info(f"Button press: virtual={station}, physical={station_physical}, button={button}, master={master}, state={state}")
+    return {"resp": qlink_send(f"VSW {master} {station_physical} {button} {state}")}
 
 
 @app.get("/button/{station}/{button}/status")
