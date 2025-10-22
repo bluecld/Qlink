@@ -1494,11 +1494,16 @@
             buttonDebounce[debounceKey] = now;
 
             try {
+                const payload = { level: parseInt(level) };
+                console.debug('setLevel: sending', id, payload);
                 const response = await fetch(`/device/${id}/set`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ level: parseInt(level) })
+                    body: JSON.stringify(payload)
                 });
+
+                const text = await response.text();
+                console.debug('setLevel: response', response.status, text);
 
                 if (response.ok) {
                     showToast(`${loadName}: ${level}%`);
@@ -2070,16 +2075,24 @@
             if (headerBtn) headerBtn.classList.add('loading');
 
             try {
-                // Poll load levels
+                // Poll load levels sequentially with a small delay to avoid flooding the bridge
                 for (const load of room.loads) {
-                    const response = await fetch(`/load/${load.id}/status`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        const level = parseLoadLevel(data.resp);
-                        updateLoadStatus(load.id, level);
-                    } else {
-                        console.error(`Failed to get status for load ${load.id}`);
+                    try {
+                        const response = await fetch(`/load/${load.id}/status`);
+                        const raw = await response.text();
+                        console.debug('getStatus: load', load.id, 'rawResponse=', raw);
+                        if (response.ok) {
+                            const data = JSON.parse(raw);
+                            const level = parseLoadLevel(data.resp);
+                            updateLoadStatus(load.id, level);
+                        } else {
+                            console.error(`Failed to get status for load ${load.id}: ${response.status}`);
+                        }
+                    } catch (e) {
+                        console.error('getStatus: error fetching load', load.id, e);
                     }
+                    // small pause between requests
+                    await new Promise(r => setTimeout(r, 60));
                 }
 
                 // Poll LED states for the room's stations

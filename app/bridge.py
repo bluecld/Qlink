@@ -73,6 +73,8 @@ event_socket_connected = False
 event_monitoring_enabled = False
 websocket_clients: Set[WebSocket] = set()
 event_listener_thread: Optional[threading.Thread] = None
+# Lock to serialize access to the Vantage IP-Enabler to avoid port exhaustion
+qlink_io_lock = threading.Lock()
 event_loop: Optional[asyncio.AbstractEventLoop] = None
 
 # ===== LED State Storage =====
@@ -86,6 +88,7 @@ button_led_lock = threading.Lock()  # Thread-safe access
 # DO NOT GUESS based on station number - read from config file!
 STATION_MASTER_MAP: Dict[int, int] = {}
 STATION_PHYSICAL_MAP: Dict[int, int] = {}
+
 
 def load_station_master_map():
     """Load station-to-master mapping from config file."""
@@ -104,6 +107,7 @@ def load_station_master_map():
         logger.warning("⚠️  Will fall back to guessing (station >= 51 → master 2)")
     except Exception as e:
         logger.error(f"❌ Failed to load station master map: {e}")
+
 
 def load_station_physical_map():
     """Load virtual-to-physical station number mapping from config file.
@@ -124,12 +128,17 @@ def load_station_physical_map():
             data = json.load(f)
             # Convert string keys to integers
             STATION_PHYSICAL_MAP = {int(k): v for k, v in data.items()}
-        logger.info(f"✅ Loaded {len(STATION_PHYSICAL_MAP)} virtual-to-physical station mappings")
+        logger.info(
+            f"✅ Loaded {len(STATION_PHYSICAL_MAP)} virtual-to-physical station mappings"
+        )
     except FileNotFoundError:
         logger.warning(f"❌ Station physical map not found: {map_file}")
-        logger.warning("⚠️  VSW commands may not work - will use virtual station numbers as fallback")
+        logger.warning(
+            "⚠️  VSW commands may not work - will use virtual station numbers as fallback"
+        )
     except Exception as e:
         logger.error(f"❌ Failed to load station physical map: {e}")
+
 
 def get_station_physical(station_virtual: int) -> int:
     """Get the physical station number for a virtual station number.
@@ -144,8 +153,11 @@ def get_station_physical(station_virtual: int) -> int:
         return STATION_PHYSICAL_MAP[station_virtual]
     else:
         # FALLBACK - assume virtual = physical (often wrong!)
-        logger.warning(f"⚠️  Virtual station {station_virtual} not in physical map, using as-is")
+        logger.warning(
+            f"⚠️  Virtual station {station_virtual} not in physical map, using as-is"
+        )
         return station_virtual
+
 
 def get_station_master(station: int) -> int:
     """Get the master controller for a station number.
@@ -166,6 +178,7 @@ def get_station_master(station: int) -> int:
         # FALLBACK - this is often wrong!
         logger.warning(f"⚠️  Station {station} not in map, guessing master")
         return 2 if station >= 51 else 1
+
 
 # Load mappings on startup
 load_station_master_map()
@@ -432,14 +445,18 @@ def led_polling_loop():
                             # Try new "rooms" array format first
                             if "rooms" in data and isinstance(data["rooms"], list):
                                 for room in data["rooms"]:
-                                    candidate = normalize_station_id(room.get("station"))
+                                    candidate = normalize_station_id(
+                                        room.get("station")
+                                    )
                                     if candidate is not None:
                                         stations.add(candidate)
 
                             # Fallback: try old "station_X" key format
                             else:
                                 for key, value in data.items():
-                                    if key.startswith("station_") and isinstance(value, dict):
+                                    if key.startswith("station_") and isinstance(
+                                        value, dict
+                                    ):
                                         candidate = normalize_station_id(
                                             value.get("station")
                                         )
@@ -451,7 +468,9 @@ def led_polling_loop():
                         continue
 
             if not stations:
-                logger.warning("⚠️  No stations configured in loads.json, will retry in 10s")
+                logger.warning(
+                    "⚠️  No stations configured in loads.json, will retry in 10s"
+                )
                 event_socket_connected = False
                 event_monitoring_enabled = False
                 time.sleep(10)
@@ -507,7 +526,9 @@ def led_polling_loop():
                         polled_count += 1
                         logger.debug(f"📊 V{station}: on={on_hex} blink={blink_hex}")
                     else:
-                        logger.warning(f"⚠️  V{station}: unexpected response '{response}'")
+                        logger.warning(
+                            f"⚠️  V{station}: unexpected response '{response}'"
+                        )
                         error_count += 1
 
                     # Small delay between stations to avoid overwhelming the system
@@ -518,7 +539,9 @@ def led_polling_loop():
                     error_count += 1
                     continue
 
-            logger.info(f"✅ Poll cycle complete: {polled_count} stations, {error_count} errors")
+            logger.info(
+                f"✅ Poll cycle complete: {polled_count} stations, {error_count} errors"
+            )
 
             # Wait before next poll cycle
             time.sleep(poll_interval)
@@ -558,16 +581,24 @@ def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
 
     for attempt in range(max_retries):
         try:
-            with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=to) as s:
-                s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
-                s.settimeout(to)
-                try:
-                    data = s.recv(4096)
-                except socket.timeout:
-                    data = b""
+            # Serialize access to the Vantage IP-Enabler socket to avoid opening many
+            # simultaneous connections which exhaust the Pi's ephemeral ports.
+            with qlink_io_lock:
+                with socket.create_connection(
+                    (VANTAGE_IP, VANTAGE_PORT), timeout=to
+                ) as s:
+                    s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+                    s.settimeout(to)
+                    try:
+                        data = s.recv(4096)
+                    except socket.timeout:
+                        data = b""
 
             dt = (perf_counter() - t0) * 1000
             logger.info("cmd=%s elapsedMs=%.1f attempt=%d", cmd, dt, attempt + 1)
+            # Small backoff to avoid rapid successive connects from many web requests
+            if attempt == 0:
+                time.sleep(0.01)
             return data.decode("ascii", errors="ignore").strip()
 
         except socket.timeout as ex:
@@ -578,7 +609,7 @@ def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
             # Retry on connection refused (errno 111), fail immediately on other errors
             if "refused" in str(ex).lower() and attempt < max_retries - 1:
                 logger.debug(f"Connection refused, retry {attempt + 1}/{max_retries}")
-                time.sleep(retry_delay)
+                time.sleep(retry_delay * (attempt + 1))
                 continue
             raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
 
@@ -670,16 +701,36 @@ def send_raw(cmd: str):
 def set_device(id: int, body: LevelCmd):
     # Use VLO@ command format (not VLO with fade)
     # Format: VLO@ {load_id} {level}
-    if body.switch:
-        if body.switch.lower() == "on":
-            return {"resp": qlink_send(f"VLO@ {id} 100")}
-        if body.switch.lower() == "off":
-            return {"resp": qlink_send(f"VLO@ {id} 0")}
-        raise HTTPException(400, "switch must be on/off")
-    if body.level is not None:
-        lvl = max(0, min(100, int(body.level)))
-        return {"resp": qlink_send(f"VLO@ {id} {lvl}")}
-    raise HTTPException(400, "provide switch or level")
+    logger.info(f"set_device called: id={id} body={body}")
+
+    try:
+        if body.switch:
+            if body.switch.lower() == "on":
+                cmd = f"VLO@ {id} 100"
+                resp = qlink_send(cmd)
+                logger.info(f"set_device: cmd={cmd} resp={resp}")
+                return {"resp": resp}
+            if body.switch.lower() == "off":
+                cmd = f"VLO@ {id} 0"
+                resp = qlink_send(cmd)
+                logger.info(f"set_device: cmd={cmd} resp={resp}")
+                return {"resp": resp}
+            raise HTTPException(400, "switch must be on/off")
+
+        if body.level is not None:
+            lvl = max(0, min(100, int(body.level)))
+            cmd = f"VLO@ {id} {lvl}"
+            resp = qlink_send(cmd)
+            logger.info(f"set_device: cmd={cmd} resp={resp}")
+            return {"resp": resp}
+
+        raise HTTPException(400, "provide switch or level")
+    except HTTPException:
+        # Re-raise HTTPExceptions from qlink_send to preserve proper status codes
+        raise
+    except Exception as e:
+        logger.exception(f"set_device failed for id={id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/load/{id}/status")
@@ -716,7 +767,12 @@ def get_station_leds(station: int):
             return {"station": station, "leds": leds, "raw": response}
 
     # Fallback if parsing fails
-    return {"station": station, "leds": [0] * 8, "raw": response, "error": "Parse failed"}
+    return {
+        "station": station,
+        "leds": [0] * 8,
+        "raw": response,
+        "error": "Parse failed",
+    }
 
 
 @app.post("/button/{station}/{button}")
@@ -749,7 +805,9 @@ def press_button(station: int, button: int, behavior: str = None):
     # - DIM/TOGGLE buttons will toggle
     state = 6
 
-    logger.info(f"Button press: virtual={station}, physical={station_physical}, button={button}, master={master}, state={state}")
+    logger.info(
+        f"Button press: virtual={station}, physical={station_physical}, button={button}, master={master}, state={state}"
+    )
     return {"resp": qlink_send(f"VSW {master} {station_physical} {button} {state}")}
 
 
@@ -909,7 +967,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 "timestamp": datetime.now().isoformat(),
             }
         )
-    except:
+    except Exception:
         pass
 
     try:
