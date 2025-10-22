@@ -2112,9 +2112,11 @@
                 return;
             }
 
-            // find the button and set loading state
-            const headerBtn = Array.from(document.querySelectorAll('.room-card'))
-                .find(rc => rc.dataset.roomName === roomName)?.querySelector('.room-get-status');
+            // find the button and set loading state (use getAttribute for exact match)
+            const headerCard = Array.from(document.querySelectorAll('.room-card'))
+                .find(rc => rc.getAttribute('data-room-name') === roomName);
+            const headerBtn = headerCard ? headerCard.querySelector('.room-get-status') : null;
+            console.debug('getStatus: roomName=', roomName, 'headerCard=', headerCard, 'headerBtn=', headerBtn);
             if (headerBtn) headerBtn.classList.add('loading');
 
             try {
@@ -2140,8 +2142,8 @@
                         console.error(`Failed to get LED status for station ${station.station}`);
                     }
                 }
-
                 showToast(`Status updated for ${roomName}`);
+                console.debug('getStatus: completed for', roomName);
                 if (headerBtn) headerBtn.classList.remove('loading');
             } catch (error) {
                 showToast(`Failed to get status for ${roomName}`, true);
