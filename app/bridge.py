@@ -16,19 +16,21 @@ Serves a static UI from `app/static` at /ui when the directory exists.
 """
 
 import asyncio
+import json
+import logging
+import os
+import random
+import socket
+import threading
+import time
+from datetime import datetime
+from time import perf_counter
+from typing import Any, Dict, Optional, Set, cast
+
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional, Set, Dict
-import os
-import socket
-import logging
-import threading
-import time
-import json
-from datetime import datetime
-from time import perf_counter
 
 # Optional: jsonschema for config validation
 try:
@@ -53,15 +55,139 @@ if os.path.isdir(static_dir):
 
 def _env(name: str, default: str) -> str:
     v = os.getenv(name)
-    return v if v not in (None, "") else default
+    # Ensure we always return a str (never None) - use cast to convince mypy
+    if v is None or v == "":
+        return default
+    return cast(str, v)
 
 
 VANTAGE_IP = _env("VANTAGE_IP", "192.168.1.200")
 VANTAGE_PORT = int(_env("VANTAGE_PORT", "3040"))
 QLINK_EOL = _env("Q_LINK_EOL", "CR").upper()
 EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
-QLINK_TIMEOUT = float(_env("QLINK_TIMEOUT", "2.0"))
+QLINK_TIMEOUT = float(_env("QLINK_TIMEOUT", "3.0"))
 QLINK_FADE = _env("QLINK_FADE", "2.3")
+# Retry/backoff tuning (configurable via env or runtime /settings)
+QLINK_MAX_RETRIES = int(_env("QLINK_MAX_RETRIES", "3"))
+QLINK_RETRY_BASE_SEC = float(_env("QLINK_RETRY_BASE_SEC", "0.1"))
+
+_DEFAULT_CONFIG_DIR = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "config")
+)
+# When deployed on the Pi the working tree is typically /home/pi/qlink-bridge
+# prefer that path if present and writable so persisted settings survive
+_DEPLOYED_CONFIG_DIR = "/home/pi/qlink-bridge/config"
+
+if os.path.isdir(_DEPLOYED_CONFIG_DIR) and os.access(_DEPLOYED_CONFIG_DIR, os.W_OK):
+    CONFIG_DIR = _DEPLOYED_CONFIG_DIR
+else:
+    CONFIG_DIR = _DEFAULT_CONFIG_DIR
+
+PERSISTED_SETTINGS_FILE = os.path.join(CONFIG_DIR, "bridge_settings.json")
+
+
+def _load_persisted_settings() -> None:
+    """Load persisted bridge settings (vantage_ip, vantage_port, etc.) if present.
+
+    This overrides the environment-derived defaults so runtime POST /settings
+    changes can be made persistent by writing this file.
+    """
+    global VANTAGE_IP, VANTAGE_PORT, QLINK_TIMEOUT, QLINK_FADE, QLINK_EOL, EOL
+    global QLINK_MAX_RETRIES, QLINK_RETRY_BASE_SEC
+
+    try:
+        if os.path.exists(PERSISTED_SETTINGS_FILE):
+            with open(PERSISTED_SETTINGS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if "vantage_ip" in data:
+                VANTAGE_IP = data["vantage_ip"]
+            if "vantage_port" in data:
+                try:
+                    VANTAGE_PORT = int(data["vantage_port"])
+                except Exception:
+                    # logger may not be configured yet at import time
+                    print("Invalid persisted vantage_port, ignoring")
+            if "qlink_timeout" in data:
+                try:
+                    QLINK_TIMEOUT = float(data["qlink_timeout"])
+                except Exception:
+                    print("Invalid persisted qlink_timeout, ignoring")
+            if "qlink_max_retries" in data:
+                try:
+                    QLINK_MAX_RETRIES = int(data["qlink_max_retries"])
+                except Exception:
+                    print("Invalid persisted qlink_max_retries, ignoring")
+            if "qlink_retry_base_sec" in data:
+                try:
+                    QLINK_RETRY_BASE_SEC = float(data["qlink_retry_base_sec"])
+                except Exception:
+                    print("Invalid persisted qlink_retry_base_sec, ignoring")
+            if "qlink_fade" in data:
+                QLINK_FADE = str(data["qlink_fade"])
+            if "qlink_eol" in data:
+                new_eol = data["qlink_eol"].upper()
+                if new_eol in ("CR", "CRLF"):
+                    QLINK_EOL = new_eol
+                    EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
+            try:
+                logger.info(
+                    f"Loaded persisted bridge settings from {PERSISTED_SETTINGS_FILE}"
+                )
+            except Exception:
+                pass
+    except Exception as e:
+        try:
+            logger.warning(f"Failed to load persisted bridge settings: {e}")
+        except Exception:
+            print(f"Failed to load persisted bridge settings: {e}")
+
+
+def _persist_settings(settings: dict) -> None:
+    """Write selected settings to the persisted settings file.
+
+    Only a small set of keys are saved (vantage_ip, vantage_port, qlink_timeout,
+    qlink_fade, qlink_eol). Errors are non-fatal and logged.
+    """
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        to_save = {}
+        for k in (
+            "vantage_ip",
+            "vantage_port",
+            "qlink_timeout",
+            "qlink_fade",
+            "qlink_eol",
+            "qlink_max_retries",
+            "qlink_retry_base_sec",
+        ):
+            if k in settings:
+                to_save[k] = settings[k]
+
+        # Read existing and merge so we don't clobber other settings unexpectedly
+        if os.path.exists(PERSISTED_SETTINGS_FILE):
+            try:
+                with open(PERSISTED_SETTINGS_FILE, "r", encoding="utf-8") as f:
+                    existing = json.load(f)
+                    existing.update(to_save)
+                    to_save = existing
+            except Exception:
+                pass
+
+        with open(PERSISTED_SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(to_save, f, indent=2)
+        try:
+            logger.info(f"Persisted bridge settings to {PERSISTED_SETTINGS_FILE}")
+        except Exception:
+            pass
+    except Exception as e:
+        try:
+            logger.warning(f"Failed to persist bridge settings: {e}")
+        except Exception:
+            print(f"Failed to persist bridge settings: {e}")
+
+
+# Load persisted settings (if any) to override defaults
+_load_persisted_settings()
 
 logger = logging.getLogger("qlink")
 if not logger.handlers:
@@ -185,14 +311,16 @@ load_station_master_map()
 load_station_physical_map()
 
 
-def normalize_station_id(value: object) -> Optional[int]:
+def normalize_station_id(value: Any) -> Optional[int]:
     """Normalize station identifiers pulled from config into integers."""
     if value is None:
         return None
     if isinstance(value, int):
         return value
     if isinstance(value, str):
-        stripped = value.strip()
+        # Narrow type for mypy
+        assert isinstance(value, str)
+        stripped: str = value.strip()
         if stripped.isdigit():
             return int(stripped)
         return None
@@ -255,7 +383,12 @@ def parse_vantage_event(message: str) -> Optional[dict]:
     if not parts:
         return None
 
-    event = {"raw": message, "timestamp": datetime.now().isoformat(), "type": "unknown"}
+    # Use a flexible typing for the event dictionary since values may be int/str/None
+    event: Dict[str, Any] = {
+        "raw": message,
+        "timestamp": datetime.now().isoformat(),
+        "type": "unknown",
+    }
 
     try:
         # Button press/release: SW <master> <station> <button> <state> {<serial>}
@@ -576,8 +709,7 @@ def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
     """
     t0 = perf_counter()
     to = timeout or QLINK_TIMEOUT
-    max_retries = 3
-    retry_delay = 0.1  # 100ms between retries
+    max_retries = QLINK_MAX_RETRIES
 
     for attempt in range(max_retries):
         try:
@@ -596,9 +728,8 @@ def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
 
             dt = (perf_counter() - t0) * 1000
             logger.info("cmd=%s elapsedMs=%.1f attempt=%d", cmd, dt, attempt + 1)
-            # Small backoff to avoid rapid successive connects from many web requests
-            if attempt == 0:
-                time.sleep(0.01)
+            # Small delay before returning to avoid hammering when many requests
+            time.sleep(0.01)
             return data.decode("ascii", errors="ignore").strip()
 
         except socket.timeout as ex:
@@ -606,10 +737,20 @@ def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
                 status_code=504, detail="Timeout contacting Vantage IP-Enabler"
             ) from ex
         except OSError as ex:
-            # Retry on connection refused (errno 111), fail immediately on other errors
+            # Retry on connection refused (errno 111 / connection refused), fail immediately on other errors
             if "refused" in str(ex).lower() and attempt < max_retries - 1:
-                logger.debug(f"Connection refused, retry {attempt + 1}/{max_retries}")
-                time.sleep(retry_delay * (attempt + 1))
+                # Exponential backoff with jitter
+                base = QLINK_RETRY_BASE_SEC
+                delay = base * (2**attempt)
+                jitter = random.uniform(0, delay * 0.5)
+                sleep_for = delay + jitter
+                logger.debug(
+                    "Connection refused, retry %d/%d - sleeping %.3fs",
+                    attempt + 1,
+                    max_retries,
+                    sleep_for,
+                )
+                time.sleep(sleep_for)
                 continue
             raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
 
@@ -676,7 +817,16 @@ def get_config():
         except Exception as e:
             logger.warning(f"Could not load loads.json: {e}")
 
-    return {"ip": VANTAGE_IP, "port": VANTAGE_PORT, "fade": QLINK_FADE, "rooms": rooms}
+    # Provide a small manifest-like config for tests and tooling
+    return {
+        "name": "qlink-bridge",
+        "version": "0.1",
+        "timeout": QLINK_TIMEOUT,
+        "ip": VANTAGE_IP,
+        "port": VANTAGE_PORT,
+        "fade": QLINK_FADE,
+        "rooms": rooms,
+    }
 
 
 @app.get("/healthz")
@@ -776,7 +926,7 @@ def get_station_leds(station: int):
 
 
 @app.post("/button/{station}/{button}")
-def press_button(station: int, button: int, behavior: str = None):
+def press_button(station: int, button: int, behavior: Optional[str] = None):
     """Simulate a button press on a station using VSW command.
 
     IMPORTANT: VSW requires PHYSICAL station numbers, not virtual (V-numbers)!
@@ -894,17 +1044,134 @@ def get_settings():
         "qlink_fade": QLINK_FADE,
         "qlink_timeout": QLINK_TIMEOUT,
         "qlink_eol": QLINK_EOL,
+        "qlink_max_retries": QLINK_MAX_RETRIES,
+        "qlink_retry_base_sec": QLINK_RETRY_BASE_SEC,
     }
+
+
+@app.get("/manifest")
+def manifest():
+    """Return a small manifest describing the bridge endpoints for UI consumption/tests."""
+    endpoints = [
+        {"path": "/about", "method": "GET"},
+        {"path": "/config", "method": "GET"},
+        {"path": "/settings", "method": "GET"},
+        {"path": "/probe", "method": "GET"},
+    ]
+    return {"name": "qlink-bridge", "endpoints": endpoints}
+
+
+@app.get("/debug/ui-mapping")
+def debug_ui_mapping():
+    """Return a mapping of rooms, stations and loads to the DOM id patterns
+
+    This endpoint helps the UI developer verify which DOM ids the frontend
+    will attempt to update for a given `config/loads.json` file. It returns
+    a structure like:
+
+    {
+      "rooms": [
+        {
+          "name": "Living Room",
+          "roomId": "living-room",
+          "stations": [23],
+          "loads": [101, 102],
+          "buttonIds": ["scene-living-room-23-1", "scene-living-room-1"]
+        }
+      ]
+    }
+    """
+    # Reuse the same config loading logic as /config
+    config_paths = [
+        os.path.join(os.path.dirname(__file__), "..", "config", "loads.json"),
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "config", "loads.json"
+        ),
+        "/home/pi/qlink-bridge/config/loads.json",
+        "config/loads.json",
+    ]
+
+    rooms = []
+    config_file = None
+    for path in config_paths:
+        if os.path.exists(path):
+            config_file = path
+            break
+
+    if config_file:
+        try:
+            with open(config_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                rooms = data.get("rooms", [])
+        except Exception as e:
+            logger.warning(f"Could not load loads.json for ui-mapping: {e}")
+
+    result = {"rooms": []}
+    for room in rooms:
+        name = room.get("name") or ""
+        room_id = name.replace(" ", "-").lower()
+        stations = []
+        if "station" in room and room.get("station") is not None:
+            try:
+                stations.append(int(room.get("station")))
+            except Exception:
+                pass
+
+        if "stations" in room and isinstance(room.get("stations"), list):
+            for s in room.get("stations"):
+                try:
+                    # s may be a dict with 'station' key or a raw number
+                    if isinstance(s, dict):
+                        val = s.get("station")
+                    else:
+                        val = s
+                    # Only append if we have a non-None value that can be converted
+                    if val is None:
+                        continue
+                    stations.append(int(val))
+                except Exception:
+                    continue
+
+            loads = [
+                item.get("id")
+                for item in room.get("loads", [])
+                if isinstance(item, dict) and item.get("id") is not None
+            ]
+
+        # Build a sample of button DOM ids the UI would use
+        button_ids = []
+        # Legacy ids: scene-<roomId>-<btn>
+        # Station-specific ids: scene-<roomId>-<station>-<btn>
+        for st in stations:
+            for btn in range(1, 9):
+                button_ids.append(f"scene-{room_id}-{st}-{btn}")
+        for btn in range(1, 9):
+            button_ids.append(f"scene-{room_id}-{btn}")
+
+        result["rooms"].append(
+            {
+                "name": name,
+                "roomId": room_id,
+                "stations": stations,
+                "loads": loads,
+                "buttonIdsSample": button_ids[:20],
+            }
+        )
+
+    return result
 
 
 @app.post("/settings")
 def update_settings(settings: dict):
-    """Update bridge settings (runtime only - not persisted)
+    """Update bridge settings.
 
-    Note: Changes VANTAGE_IP or VANTAGE_PORT require bridge restart.
-    QLINK_FADE and QLINK_TIMEOUT apply immediately.
+    Selected settings (vantage_ip, vantage_port, qlink_timeout, qlink_fade,
+    qlink_eol) will be persisted to `config/bridge_settings.json` so they
+    survive restarts. Changing VANTAGE_IP or VANTAGE_PORT will still require a
+    bridge restart for network changes to fully apply.
     """
     global VANTAGE_IP, VANTAGE_PORT, QLINK_FADE, QLINK_TIMEOUT, QLINK_EOL, EOL
+    global QLINK_MAX_RETRIES, QLINK_RETRY_BASE_SEC
 
     updated = []
     restart_required = False
@@ -927,12 +1194,50 @@ def update_settings(settings: dict):
         QLINK_TIMEOUT = float(settings["qlink_timeout"])
         updated.append("qlink_timeout")
 
+    if "qlink_max_retries" in settings:
+        try:
+            QLINK_MAX_RETRIES = int(settings["qlink_max_retries"])
+            updated.append("qlink_max_retries")
+        except Exception:
+            raise HTTPException(
+                status_code=400, detail="qlink_max_retries must be integer"
+            )
+
+    if "qlink_retry_base_sec" in settings:
+        try:
+            QLINK_RETRY_BASE_SEC = float(settings["qlink_retry_base_sec"])
+            updated.append("qlink_retry_base_sec")
+        except Exception:
+            raise HTTPException(
+                status_code=400, detail="qlink_retry_base_sec must be numeric"
+            )
+
     if "qlink_eol" in settings:
         new_eol = settings["qlink_eol"].upper()
         if new_eol in ("CR", "CRLF"):
             QLINK_EOL = new_eol
             EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
             updated.append("qlink_eol")
+
+    # Persist selected settings so they survive restarts
+    try:
+        to_persist = {}
+        for k in (
+            "vantage_ip",
+            "vantage_port",
+            "qlink_timeout",
+            "qlink_fade",
+            "qlink_eol",
+            "qlink_max_retries",
+            "qlink_retry_base_sec",
+        ):
+            if k in settings:
+                to_persist[k] = settings[k]
+
+        if to_persist:
+            _persist_settings(to_persist)
+    except Exception:
+        logger.exception("Failed to persist settings")
 
     return {
         "status": "ok",
@@ -942,6 +1247,36 @@ def update_settings(settings: dict):
         if restart_required
         else "Settings updated successfully.",
     }
+
+
+@app.get("/probe")
+def probe_connection(
+    ip: Optional[str] = None,
+    port: Optional[int] = None,
+    timeout: Optional[float] = None,
+):
+    """Quick TCP connectivity probe to the Vantage IP-Enabler.
+
+    Query parameters:
+    - ip: optional IP address to probe (defaults to configured VANTAGE_IP)
+    - port: optional port to probe (defaults to configured VANTAGE_PORT)
+    - timeout: optional timeout in seconds (defaults to small value)
+
+    Returns 200 with {ok: True} on success, or 502/504 on failure.
+    """
+    tgt_ip = ip or VANTAGE_IP
+    tgt_port = int(port or VANTAGE_PORT)
+    to = float(timeout or min(QLINK_TIMEOUT, 2.0))
+
+    try:
+        with socket.create_connection((tgt_ip, tgt_port), timeout=to):
+            return {"ok": True, "ip": tgt_ip, "port": tgt_port}
+    except socket.timeout as ex:
+        raise HTTPException(
+            status_code=504, detail="Timeout connecting to target"
+        ) from ex
+    except Exception as ex:
+        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
 
 
 @app.websocket("/events")
@@ -998,8 +1333,10 @@ async def startup_event():
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
+    # Return both `error` and `detail` keys to satisfy clients/tests expecting either
     return JSONResponse(
-        status_code=exc.status_code, content={"ok": False, "detail": exc.detail}
+        status_code=exc.status_code,
+        content={"ok": False, "error": exc.detail, "detail": exc.detail},
     )
 
 

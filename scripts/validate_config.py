@@ -16,8 +16,10 @@ from pathlib import Path
 
 try:
     from jsonschema import Draft202012Validator
-except Exception as e:
-    print("jsonschema is required. Install with: pip install jsonschema", file=sys.stderr)
+except Exception:
+    print(
+        "jsonschema is required. Install with: pip install jsonschema", file=sys.stderr
+    )
     raise
 
 
@@ -55,7 +57,10 @@ def validate_file(path: Path, strict: bool = False) -> list[str]:
             errors = sorted(LOADS_ROOMS_V1.iter_errors(data), key=lambda e: e.path)
             for err in errors:
                 problems.append(f"{path}: {list(err.path)}: {err.message}")
-        elif any(re.match(r"^station_\\d+$", k) for k in (data.keys() if isinstance(data, dict) else [])):
+        elif any(
+            re.match(r"^station_\\d+$", k)
+            for k in (data.keys() if isinstance(data, dict) else [])
+        ):
             errors = sorted(LOADS_LEGACY_V1.iter_errors(data), key=lambda e: e.path)
             for err in errors:
                 problems.append(f"{path}: {list(err.path)}: {err.message}")
@@ -96,4 +101,3 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
-

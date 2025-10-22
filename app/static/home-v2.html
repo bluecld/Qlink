@@ -345,6 +345,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            /* keep buttons vertically centered even when title wraps */
             margin-bottom: 16px;
             /* 8px scale */
             padding-bottom: 16px;
@@ -352,6 +353,7 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             cursor: pointer;
             transition: all 0.3s;
+            gap: 12px;
         }
 
         .room-header:hover {
@@ -367,10 +369,13 @@
             font-size: 1.2em;
             font-weight: 500;
             color: #667eea;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            /* 8px scale */
+            display: block;
+            /* allow wrapping while preventing the header from stretching buttons */
+            flex: 1 1 auto;
+            min-width: 0;
+            /* allow truncation in flexbox */
+            word-break: break-word;
+            line-height: 1.2;
         }
 
         .room-collapse-icon {
@@ -930,7 +935,7 @@
             color: #ffffff;
             border: none;
             border-radius: 6px;
-            padding: 5px 10px;
+            padding: 6px 10px;
             font-size: 13px;
             font-weight: 600;
             display: inline-flex;
@@ -940,6 +945,10 @@
             overflow: visible;
             box-shadow: 0 6px 14px rgba(34, 197, 94, 0.06);
             transition: box-shadow 180ms ease, transform 120ms ease, background 160ms ease;
+            align-self: center;
+            /* guard against vertical stretching */
+            white-space: nowrap;
+            /* keep button compact */
         }
 
         /* gentle hover lift, no size change */
@@ -978,6 +987,19 @@
         .room-get-status:active {
             transform: translateY(0) scale(0.998);
             filter: brightness(0.98);
+        }
+
+        /* All-off button should match and not stretch */
+        .room-all-off {
+            background: linear-gradient(180deg, #b4536c 0%, #a43f57 100%);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-weight: 600;
+            align-self: center;
+            white-space: nowrap;
+            margin-right: 6px;
         }
     </style>
 </head>
@@ -1684,9 +1706,20 @@
             }
 
             // Toggle room state
-            roomStates[roomName] = !roomStates[roomName];
+            const newState = !roomStates[roomName];
+            roomStates[roomName] = newState;
             saveRoomStates();
             renderRooms();
+
+            // If we just expanded the room, trigger a getStatus to refresh visible info
+            if (!newState) {
+                // debounce to avoid multiple calls in quick succession
+                if (!toggleRoom._debounce) toggleRoom._debounce = {};
+                if (!toggleRoom._debounce[roomName]) {
+                    toggleRoom._debounce[roomName] = true;
+                    setTimeout(() => { getStatus(roomName); toggleRoom._debounce[roomName] = false; }, 250);
+                }
+            }
         }
 
         function collapseAllRooms() {
@@ -1770,31 +1803,71 @@
         }
 
         function updateStationLEDs(station, buttonStates) {
-            // Find all rooms with this station
-            const rooms = configData.rooms.filter(r => r.station === station);
+            // Support both legacy single-station rooms (room.station)
+            // and the newer rooms with a `stations` array. Also handle
+            // both scene element id formats: `scene-<roomId>-<btn>` and
+            // `scene-<roomId>-<station>-<btn>`.
+            if (!configData || !Array.isArray(configData.rooms)) return;
 
-            for (const room of rooms) {
+            // Normalize incoming buttonStates keys (could be strings or numbers)
+            const normalized = {};
+            for (const [k, v] of Object.entries(buttonStates || {})) {
+                normalized[String(k)] = v;
+            }
+
+            configData.rooms.forEach(room => {
                 const roomId = room.name.replace(/\s+/g, '-').toLowerCase();
 
-                // Update each button's LED state
-                for (let btnNum = 1; btnNum <= 8; btnNum++) {
-                    const state = buttonStates[btnNum.toString()];
-                    const btnEl = document.getElementById(`scene-${roomId}-${btnNum}`);
+                // Determine if this room contains the station being updated
+                let roomMatches = false;
+                // Legacy single station property
+                if (room.station && Number(room.station) === Number(station)) {
+                    roomMatches = true;
+                }
 
-                    if (btnEl && state) {
-                        // Remove all LED state classes
-                        btnEl.classList.remove('led-on', 'led-blink');
-
-                        // Add appropriate class based on state
-                        if (state === 'on') {
-                            btnEl.classList.add('led-on');
-                        } else if (state === 'blink') {
-                            btnEl.classList.add('led-blink');
+                // New stations array format
+                if (!roomMatches && Array.isArray(room.stations)) {
+                    for (const st of room.stations) {
+                        try {
+                            const stNum = Number(st.station || st);
+                            if (!Number.isNaN(stNum) && stNum === Number(station)) {
+                                roomMatches = true;
+                                break;
+                            }
+                        } catch (e) {
+                            // ignore malformed station entries
                         }
-                        // 'off' state = no special class
                     }
                 }
-            }
+
+                if (!roomMatches) return;
+
+                // Update each button 1-8. Look for both id formats in the DOM.
+                for (let btnNum = 1; btnNum <= 8; btnNum++) {
+                    const state = normalized[String(btnNum)] || normalized[btnNum] || 'off';
+
+                    // Prefer station-specific id (new format), fallback to legacy id
+                    const candidates = [
+                        `scene-${roomId}-${station}-${btnNum}`,
+                        `scene-${roomId}-${btnNum}`,
+                    ];
+
+                    let btnEl = null;
+                    for (const id of candidates) {
+                        const el = document.getElementById(id);
+                        if (el) {
+                            btnEl = el;
+                            break;
+                        }
+                    }
+
+                    if (!btnEl) continue;
+
+                    btnEl.classList.remove('led-on', 'led-blink');
+                    if (state === 'on') btnEl.classList.add('led-on');
+                    else if (state === 'blink') btnEl.classList.add('led-blink');
+                }
+            });
         }
 
         function parseLoadLevel(response) {
@@ -1844,8 +1917,23 @@
             }
 
             // Save state to localStorage
-            loadsVisibility[roomId] = !loadsSection?.classList.contains('collapsed');
+            const visible = !loadsSection?.classList.contains('collapsed');
+            loadsVisibility[roomId] = visible;
             saveLoadsVisibility();
+
+            // If we just expanded the loads section, trigger getStatus for the room
+            if (visible) {
+                // roomId is slugified room name; convert back to original by finding match
+                const room = configData.rooms.find(r => r.name.replace(/\s+/g, '-').toLowerCase() === roomId);
+                if (room) {
+                    // Debounce to avoid duplicate calls
+                    if (!toggleLoads._debounce) toggleLoads._debounce = {};
+                    if (!toggleLoads._debounce[roomId]) {
+                        toggleLoads._debounce[roomId] = true;
+                        setTimeout(() => { getStatus(room.name); toggleLoads._debounce[roomId] = false; }, 200);
+                    }
+                }
+            }
         }
 
         function minimizeAllLoads() {

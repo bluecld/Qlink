@@ -8,9 +8,9 @@ logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
     print("🚀 Starting Vantage QLink Bridge with Event Monitoring...")
-    print(f"📡 Web UI: http://localhost:8000/ui/")
-    print(f"📊 Monitor Status: http://localhost:8000/monitor/status")
-    print(f"🔌 WebSocket Events: ws://localhost:8000/events")
+    print("📡 Web UI: http://localhost:8000/ui/")
+    print("📊 Monitor Status: http://localhost:8000/monitor/status")
+    print("🔌 WebSocket Events: ws://localhost:8000/events")
     print("")
     print("Press CTRL+C to stop")
     print("")

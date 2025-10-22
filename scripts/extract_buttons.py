@@ -72,7 +72,6 @@ def extract_all_buttons(input_file):
     stations = []
     current_station = None
     current_button = None
-    current_event = None
 
     for i, line in enumerate(lines):
         # Check for station line
@@ -83,7 +82,6 @@ def extract_all_buttons(input_file):
             current_station = station_info
             current_station["buttons"] = []
             current_button = None
-            current_event = None
             continue
 
         # Only process button/event/load lines if we're inside a station
@@ -179,7 +177,7 @@ def print_summary(stations, loads_json):
             )
             print(f"  {len(station['buttons'])} buttons:")
             for button in station["buttons"][:3]:
-                loads_str = ", ".join(str(l) for l in button["loads"])
+                loads_str = ", ".join(str(load_item) for load_item in button["loads"])
                 print(f"    Button {button['button']}: {button['name']}")
                 print(f"      Event: {button['event_type']}, Loads: [{loads_str}]")
             if len(station["buttons"]) > 3:

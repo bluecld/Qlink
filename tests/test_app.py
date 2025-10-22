@@ -1,7 +1,6 @@
-import json
 from fastapi.testclient import TestClient
 
-from app.bridge import app, qlink_send
+from app.bridge import app
 
 
 client = TestClient(app)

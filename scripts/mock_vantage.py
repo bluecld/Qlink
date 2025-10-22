@@ -6,6 +6,7 @@ Usage: python scripts/mock_vantage.py [--host HOST] [--port PORT]
 This server accepts simple ASCII commands and returns canned responses for
 testing the bridge. It supports VLO (write) and VGL (read) style commands.
 """
+
 import argparse
 import socket
 import threading

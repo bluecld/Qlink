@@ -30,20 +30,23 @@ STATION_TO_ROOM = {
     73: "Unknown V73",
 }
 
+
 def parse_button_mappings():
     """Parse button mappings from Info/Button_Mappings_Summary.txt"""
     stations = {}
 
-    with codecs.open('Info/Button_Mappings_Summary.txt', 'r', encoding='utf-16-le') as f:
+    with codecs.open(
+        "Info/Button_Mappings_Summary.txt", "r", encoding="utf-16-le"
+    ) as f:
         lines = f.readlines()
 
     for line in lines:
         line = line.strip()
-        if not line or line.startswith('Global'):
+        if not line or line.startswith("Global"):
             continue
 
         # Match: "V## - Button #: Name"
-        match = re.match(r'V(\d+)\s*.*?Button\s*(\d+):\s*(.+)', line)
+        match = re.match(r"V(\d+)\s*.*?Button\s*(\d+):\s*(.+)", line)
         if match:
             station = int(match.group(1))
             button_num = int(match.group(2))
@@ -55,21 +58,25 @@ def parse_button_mappings():
 
     return stations
 
+
 def create_button_array(button_dict):
     """Convert button dict to array format for JSON"""
     buttons = []
     for num in sorted(button_dict.keys()):
-        buttons.append({
-            "number": num,
-            "name": button_dict[num],
-            "loads": [],  # Will be populated manually if needed
-            "event": "PRESET_TOGGLE"
-        })
+        buttons.append(
+            {
+                "number": num,
+                "name": button_dict[num],
+                "loads": [],  # Will be populated manually if needed
+                "event": "PRESET_TOGGLE",
+            }
+        )
     return buttons
+
 
 def main():
     # Load full room config
-    with open('config/loads.json', 'r', encoding='utf-8') as f:
+    with open("config/loads.json", "r", encoding="utf-8") as f:
         full_config = json.load(f)
 
     # Parse button mappings
@@ -79,23 +86,28 @@ def main():
 
     # Add station and button data to rooms
     added_count = 0
-    for room in full_config['rooms']:
+    for room in full_config["rooms"]:
         # Try to find matching station by room name
-        room_name = room['name']
+        room_name = room["name"]
 
         # Direct match by station number mapping
         for station, mapped_room in STATION_TO_ROOM.items():
-            if room_name.lower() in mapped_room.lower() or mapped_room.lower() in room_name.lower():
+            if (
+                room_name.lower() in mapped_room.lower()
+                or mapped_room.lower() in room_name.lower()
+            ):
                 if station in station_buttons:
-                    room['station'] = station
-                    room['buttons'] = create_button_array(station_buttons[station])
+                    room["station"] = station
+                    room["buttons"] = create_button_array(station_buttons[station])
                     added_count += 1
-                    print(f"✓ Added {len(station_buttons[station])} buttons to {room_name} (V{station})")
+                    print(
+                        f"✓ Added {len(station_buttons[station])} buttons to {room_name} (V{station})"
+                    )
                     break
 
     # Save complete config
-    output_file = 'config/loads-all-buttons.json'
-    with open(output_file, 'w', encoding='utf-8') as f:
+    output_file = "config/loads-all-buttons.json"
+    with open(output_file, "w", encoding="utf-8") as f:
         json.dump(full_config, f, indent=4, ensure_ascii=False)
 
     print(f"\n✅ Complete config saved to {output_file}")
@@ -104,17 +116,24 @@ def main():
 
     # List all stations that weren't matched
     matched_stations = set()
-    for room in full_config['rooms']:
-        if 'station' in room:
-            matched_stations.add(room['station'])
+    for room in full_config["rooms"]:
+        if "station" in room:
+            matched_stations.add(room["station"])
 
     unmatched = set(station_buttons.keys()) - matched_stations
     if unmatched:
-        print(f"\n⚠️  Unmatched stations (need room name mapping):")
+        print("\n⚠️  Unmatched stations (need room name mapping):")
         for station in sorted(unmatched):
             button_count = len(station_buttons[station])
-            first_button = list(station_buttons[station].values())[0] if station_buttons[station] else ""
-            print(f"   V{station:02d}: {button_count} buttons (first: '{first_button}')")
+            first_button = (
+                list(station_buttons[station].values())[0]
+                if station_buttons[station]
+                else ""
+            )
+            print(
+                f"   V{station:02d}: {button_count} buttons (first: '{first_button}')"
+            )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

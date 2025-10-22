@@ -13,6 +13,7 @@ Usage examples (PowerShell):
 
 This script sends POSTs to /device/{id}/set and GET /send/{cmd} and prints responses.
 """
+
 import argparse
 import requests
 import json
