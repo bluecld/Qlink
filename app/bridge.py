@@ -1243,9 +1243,11 @@ def update_settings(settings: dict):
         "status": "ok",
         "updated": updated,
         "restart_required": restart_required,
-        "message": "Settings updated. Restart bridge for network changes to take effect."
-        if restart_required
-        else "Settings updated successfully.",
+        "message": (
+            "Settings updated. Restart bridge for network changes to take effect."
+            if restart_required
+            else "Settings updated successfully."
+        ),
     }
 
 
