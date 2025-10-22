@@ -924,21 +924,110 @@
             }
         }
 
+        /* Get Status button - modern, minimal, interactive */
         .room-get-status {
-            background-color: #4CAF50;
-            /* Match green theme */
-            color: white;
+            --bg: #4CAF50;
+            /* base green */
+            --bg-dark: #3fa047;
+            background: linear-gradient(180deg, var(--bg) 0%, #3fb45a 100%);
+            color: #ffffff;
             border: none;
-            border-radius: 5px;
-            padding: 5px 10px;
+            border-radius: 8px;
+            padding: 6px 12px;
             font-size: 14px;
+            font-weight: 600;
+            line-height: 1;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 6px 18px rgba(34, 197, 94, 0.10), inset 0 -2px 0 rgba(0, 0, 0, 0.06);
+            transition: transform 160ms ease, box-shadow 200ms ease, background 200ms ease;
+            transform-origin: center;
         }
 
-        .room-get-status:hover {
-            background-color: #45A049;
-            /* Slightly darker green */
+        /* subtle hover highlight */
+        .room-get-status:hover:not(.loading) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(34, 197, 94, 0.12), inset 0 -2px 0 rgba(0, 0, 0, 0.06);
+            background: linear-gradient(180deg, #52d07a 0%, var(--bg-dark) 100%);
+        }
+
+        /* subtle, slow readiness pulse */
+        @keyframes subtle-pulse {
+            0% {
+                box-shadow: 0 6px 18px rgba(34, 197, 94, 0.08);
+            }
+
+            50% {
+                box-shadow: 0 10px 26px rgba(34, 197, 94, 0.10);
+            }
+
+            100% {
+                box-shadow: 0 6px 18px rgba(34, 197, 94, 0.08);
+            }
+        }
+
+        .room-get-status {
+            animation: subtle-pulse 6s ease-in-out infinite;
+        }
+
+        /* loading state: spinner + shimmer */
+        .room-get-status.loading {
+            pointer-events: none;
+            opacity: 0.98;
+            transform: none;
+            animation: none;
+            /* pause pulse */
+            padding-left: 36px;
+            /* room for spinner */
+        }
+
+        /* spinner (left side) */
+        .room-get-status.loading::after {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.16);
+            border-top-color: rgba(255, 255, 255, 0.95);
+            animation: spin 0.9s linear infinite;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+        }
+
+        @keyframes spin {
+            to {
+                transform: translateY(-50%) rotate(360deg);
+            }
+        }
+
+        /* shimmer sweep while loading */
+        .room-get-status.loading::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(120deg, rgba(255, 255, 255, 0.00) 0%, rgba(255, 255, 255, 0.06) 50%, rgba(255, 255, 255, 0.00) 100%);
+            transform: translateX(-120%);
+            animation: shimmer 1.1s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes shimmer {
+            to {
+                transform: translateX(120%);
+            }
+        }
+
+        /* pressed feedback */
+        .room-get-status:active {
+            transform: translateY(0);
+            filter: brightness(0.96);
         }
     </style>
 </head>
@@ -2023,6 +2112,11 @@
                 return;
             }
 
+            // find the button and set loading state
+            const headerBtn = Array.from(document.querySelectorAll('.room-card'))
+                .find(rc => rc.dataset.roomName === roomName)?.querySelector('.room-get-status');
+            if (headerBtn) headerBtn.classList.add('loading');
+
             try {
                 // Poll load levels
                 for (const load of room.loads) {
@@ -2048,9 +2142,11 @@
                 }
 
                 showToast(`Status updated for ${roomName}`);
+                if (headerBtn) headerBtn.classList.remove('loading');
             } catch (error) {
                 showToast(`Failed to get status for ${roomName}`, true);
                 console.error(`Error getting status for ${roomName}:`, error);
+                if (headerBtn) headerBtn.classList.remove('loading');
             }
         }
     </script>
