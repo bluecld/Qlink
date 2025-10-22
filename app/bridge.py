@@ -15,6 +15,7 @@ Endpoints:
 Serves a static UI from `app/static` at /ui when the directory exists.
 """
 
+import asyncio
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -72,6 +73,7 @@ event_socket_connected = False
 event_monitoring_enabled = False
 websocket_clients: Set[WebSocket] = set()
 event_listener_thread: Optional[threading.Thread] = None
+event_loop: Optional[asyncio.AbstractEventLoop] = None
 
 # ===== LED State Storage =====
 # Track button LED states for all stations
@@ -168,6 +170,23 @@ def get_station_master(station: int) -> int:
 # Load mappings on startup
 load_station_master_map()
 load_station_physical_map()
+
+
+def normalize_station_id(value: object) -> Optional[int]:
+    """Normalize station identifiers pulled from config into integers."""
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.isdigit():
+            return int(stripped)
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def decode_led_hex(on_hex: str, blink_hex: str) -> Dict[int, str]:
@@ -344,28 +363,40 @@ def parse_vantage_event(message: str) -> Optional[dict]:
         return None
 
 
-def broadcast_event_sync(event: dict):
-    """Broadcast event to all connected WebSocket clients (synchronous)"""
+async def _broadcast_event(event: dict):
+    """Broadcast an event to all connected WebSocket clients on the main loop."""
     if not websocket_clients:
         return
 
-    disconnected = set()
-    for client in websocket_clients:
+    disconnected: Set[WebSocket] = set()
+    for client in tuple(websocket_clients):
         try:
-            # Use blocking send since we're in a thread
-            import asyncio
-
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(client.send_json(event))
-            loop.close()
-        except Exception as e:
-            logger.warning(f"WebSocket send failed: {e}")
+            await client.send_json(event)
+        except Exception as exc:
+            logger.warning(f"WebSocket send failed: {exc}")
             disconnected.add(client)
 
-    # Remove disconnected clients
     for client in disconnected:
         websocket_clients.discard(client)
+
+
+def schedule_broadcast(event: dict):
+    """Schedule an event broadcast on the main asyncio loop."""
+    loop = event_loop
+    if not loop or not loop.is_running():
+        logger.debug("Skipping broadcast; event loop not ready")
+        return
+
+    try:
+        running_loop = asyncio.get_running_loop()
+    except RuntimeError:
+        asyncio.run_coroutine_threadsafe(_broadcast_event(event), loop)
+        return
+
+    if running_loop is loop:
+        running_loop.create_task(_broadcast_event(event))
+    else:
+        asyncio.run_coroutine_threadsafe(_broadcast_event(event), loop)
 
 
 def led_polling_loop():
@@ -385,7 +416,7 @@ def led_polling_loop():
     while True:
         try:
             # Load station list from loads.json
-            stations = []
+            stations: Set[int] = set()
             config_paths = [
                 os.path.join(os.path.dirname(__file__), "..", "config", "loads.json"),
                 "/home/pi/qlink-bridge/config/loads.json",
@@ -401,19 +432,19 @@ def led_polling_loop():
                             # Try new "rooms" array format first
                             if "rooms" in data and isinstance(data["rooms"], list):
                                 for room in data["rooms"]:
-                                    if "station" in room:
-                                        station_num = room["station"]
-                                        if station_num not in stations:
-                                            stations.append(station_num)
+                                    candidate = normalize_station_id(room.get("station"))
+                                    if candidate is not None:
+                                        stations.add(candidate)
 
                             # Fallback: try old "station_X" key format
                             else:
                                 for key, value in data.items():
                                     if key.startswith("station_") and isinstance(value, dict):
-                                        if "station" in value:
-                                            station_num = value["station"]
-                                            if station_num not in stations:
-                                                stations.append(station_num)
+                                        candidate = normalize_station_id(
+                                            value.get("station")
+                                        )
+                                        if candidate is not None:
+                                            stations.add(candidate)
                         break
                     except Exception as e:
                         logger.warning(f"Failed to load stations from {path}: {e}")
@@ -471,7 +502,7 @@ def led_polling_loop():
                         }
 
                         # Broadcast to WebSocket clients
-                        broadcast_event_sync(event)
+                        schedule_broadcast(event)
 
                         polled_count += 1
                         logger.debug(f"📊 V{station}: on={on_hex} blink={blink_hex}")
@@ -898,6 +929,8 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.on_event("startup")
 async def startup_event():
     """Start event listener on application startup"""
+    global event_loop
+    event_loop = asyncio.get_running_loop()
     logger.info("🚀 Starting Vantage QLink Bridge...")
     # TEMPORARILY DISABLED: LED polling causes port exhaustion
     # This was breaking load control (on/off buttons)
