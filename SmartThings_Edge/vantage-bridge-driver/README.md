@@ -23,6 +23,17 @@ Key modules:
 
 ## Current behaviour
 
+## REST Mapping to Bridge
+| Capability (Component) | Direction | Bridge Call | Notes |
+|------------------------|-----------|-------------|-------|
+| `switch` (load child) | ST ? Bridge | `POST /device/{id}/set {"switch":"on"}` | Sends `VLO@` 100 to the mapped load. |
+| `switchLevel` (load child) | ST ? Bridge | `POST /device/{id}/set {"level":0-100}` | Sends `VLO@` with scaled level. |
+| `refresh` (load child) | ST ? Bridge | `GET /load/{id}/status` | Parses `VGL@` response. |
+| `button` (station component) | ST ? Bridge | `/events` WebSocket | Emits `pushed/held` from SW events. |
+| `switch` (station component) | Bridge ? ST | `/api/leds` polling | Mirrors LED state (`on`/`blink` ? on). |
+| `refresh` (parent) | ST ? Bridge | `/api/leds`, `/load/{id}/status` | Triggers immediate LED/load refresh. |
+
+
 * Parent LAN device stores bridge IP/port preferences and keeps a scheduled refresh loop (120s).
 * Discovery (`discovery.lua`) calls `/config`, creates/removes child devices for:
   * Loads (`load:<id>`) using the dimmer/switch profiles.

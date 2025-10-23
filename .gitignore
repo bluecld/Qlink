@@ -56,3 +56,6 @@ temp/
 
 # Archive of old files
 archive/
+
+# Local reference repos
+SmartThings_Edge/reference/

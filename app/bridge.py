@@ -16,18 +16,20 @@ Serves a static UI from `app/static` at /ui when the directory exists.
 """
 
 import asyncio
-import json
 import logging
 import os
 import random
 import socket
 import threading
 import time
+import secrets
+from queue import Queue, Empty
+import json
 from datetime import datetime
 from time import perf_counter
 from typing import Any, Dict, Optional, Set, cast
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -80,6 +82,8 @@ QLINK_LED_POLL_INTERVAL = float(_env("QLINK_LED_POLL_INTERVAL", "7.5"))
 # Retry/backoff tuning (configurable via env or runtime /settings)
 QLINK_MAX_RETRIES = int(_env("QLINK_MAX_RETRIES", "3"))
 QLINK_RETRY_BASE_SEC = float(_env("QLINK_RETRY_BASE_SEC", "0.1"))
+QLINK_COMMAND_GAP = float(_env("QLINK_COMMAND_GAP", "0.05"))
+BRIDGE_API_SECRET = _env("BRIDGE_API_SECRET", "")
 
 _DEFAULT_CONFIG_DIR = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "config")
@@ -156,7 +160,7 @@ def _persist_settings(settings: dict) -> None:
     """Write selected settings to the persisted settings file.
 
     Only a small set of keys are saved (vantage_ip, vantage_port, qlink_timeout,
-    qlink_fade, qlink_eol). Errors are non-fatal and logged.
+    qlink_fade, qlink_eol, bridge_api_secret). Errors are non-fatal and logged.
     """
     try:
         os.makedirs(CONFIG_DIR, exist_ok=True)
@@ -169,6 +173,7 @@ def _persist_settings(settings: dict) -> None:
             "qlink_eol",
             "qlink_max_retries",
             "qlink_retry_base_sec",
+            "bridge_api_secret",
         ):
             if k in settings:
                 to_save[k] = settings[k]
@@ -214,6 +219,171 @@ EVENT_ENABLE_COMMANDS = ("VOS 1", "VOD 1", "VOL 1")
 monitor_thread: Optional[threading.Thread] = None
 # Lock to serialize access to the Vantage IP-Enabler to avoid port exhaustion
 qlink_io_lock = threading.Lock()
+
+
+class CommandRequest:
+    __slots__ = ("cmd", "timeout", "response_queue")
+
+    def __init__(self, cmd: str, timeout: float, response_queue: "Queue[Any]") -> None:
+        self.cmd = cmd
+        self.timeout = timeout
+        self.response_queue = response_queue
+command_queue: "Queue[CommandRequest]" = Queue()
+command_worker_thread: Optional[threading.Thread] = None
+command_metrics_lock = threading.Lock()
+command_metrics: Dict[str, Any] = {
+    "queue_depth": 0,
+    "queue_peak": 0,
+    "last_rtt_ms": 0.0,
+    "last_command": None,
+    "last_error": None,
+    "total_commands": 0,
+}
+
+
+def _update_metric(key: str, value: Any) -> None:
+    with command_metrics_lock:
+        command_metrics[key] = value
+
+
+def _increment_metric(key: str, amount: int = 1) -> None:
+    with command_metrics_lock:
+        command_metrics[key] = command_metrics.get(key, 0) + amount
+
+
+def _set_queue_depth(depth: int) -> None:
+    with command_metrics_lock:
+        command_metrics["queue_depth"] = depth
+        if depth > command_metrics.get("queue_peak", 0):
+            command_metrics["queue_peak"] = depth
+
+
+def _perform_qlink_send(cmd: str, timeout: float) -> str:
+    t0 = perf_counter()
+    max_retries = QLINK_MAX_RETRIES
+
+    for attempt in range(max_retries):
+        try:
+            with qlink_io_lock:
+                with socket.create_connection(
+                    (VANTAGE_IP, VANTAGE_PORT), timeout=timeout
+                ) as s:
+                    s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+                    s.settimeout(timeout)
+                    try:
+                        data = s.recv(4096)
+                    except socket.timeout:
+                        data = b""
+
+            dt = (perf_counter() - t0) * 1000
+            logger.info("cmd=%s elapsedMs=%.1f attempt=%d", cmd, dt, attempt + 1)
+            _update_metric("last_rtt_ms", dt)
+            _update_metric("last_command", datetime.now().isoformat())
+            return data.decode("ascii", errors="ignore").strip()
+
+        except socket.timeout as ex:
+            raise HTTPException(
+                status_code=504, detail="Timeout contacting Vantage IP-Enabler"
+            ) from ex
+        except OSError as ex:
+            if "refused" in str(ex).lower() and attempt < max_retries - 1:
+                base = QLINK_RETRY_BASE_SEC
+                delay = base * (2**attempt)
+                jitter = random.uniform(0, delay * 0.5)
+                sleep_for = delay + jitter
+                logger.debug(
+                    "Connection refused, retry %d/%d - sleeping %.3fs",
+                    attempt + 1,
+                    max_retries,
+                    sleep_for,
+                )
+                time.sleep(sleep_for)
+                continue
+            raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+
+    raise HTTPException(status_code=502, detail="Max retries exceeded")
+
+
+def _command_worker() -> None:
+    while True:
+        try:
+            request: CommandRequest = command_queue.get()
+            if request is None:  # pragma: no cover - allow graceful shutdown if needed
+                break
+            start_time = perf_counter()
+            try:
+                result = _perform_qlink_send(request.cmd, request.timeout)
+                request.response_queue.put(("ok", result))
+                _increment_metric("total_commands", 1)
+                _update_metric(
+                    "last_rtt_ms", (perf_counter() - start_time) * 1000
+                )
+                _update_metric("last_error", None)
+            except HTTPException as exc:
+                _update_metric("last_error", exc.detail)
+                request.response_queue.put(("error", exc))
+            except Exception as exc:  # pragma: no cover - defensive
+                _update_metric("last_error", str(exc))
+                request.response_queue.put(
+                    ("error", HTTPException(status_code=500, detail=str(exc)))
+                )
+            finally:
+                _set_queue_depth(command_queue.qsize())
+                time.sleep(max(QLINK_COMMAND_GAP, 0.0))
+        except Exception as worker_exc:  # pragma: no cover - defensive
+            logger.exception("Command worker loop exception: %s", worker_exc)
+            time.sleep(0.5)
+
+
+def _ensure_command_worker() -> None:
+    global command_worker_thread
+    if command_worker_thread and command_worker_thread.is_alive():
+        return
+    command_worker_thread = threading.Thread(
+        target=_command_worker, daemon=True, name="VantageCommandWorker"
+    )
+    command_worker_thread.start()
+
+
+def _extract_secret_value(source: Any) -> str:
+    if not source:
+        return ""
+    value = str(source).strip()
+    return value
+
+
+def _get_request_secret(request: Request) -> str:
+    token = request.headers.get("x-bridge-secret") or request.query_params.get("token")
+    if not token:
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.lower().startswith("bearer "):
+            token = auth_header[7:]
+    return _extract_secret_value(token)
+
+
+def require_api_secret(request: Request) -> None:
+    if not BRIDGE_API_SECRET:
+        return
+    provided = _get_request_secret(request)
+    if not provided or not secrets.compare_digest(provided, BRIDGE_API_SECRET):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+API_DEPENDENCIES = [Depends(require_api_secret)]
+
+
+def _authorize_websocket(websocket: WebSocket) -> bool:
+    if not BRIDGE_API_SECRET:
+        return True
+    token = websocket.headers.get("x-bridge-secret") or websocket.query_params.get(
+        "token"
+    )
+    if not token:
+        auth_header = websocket.headers.get("authorization")
+        if auth_header and auth_header.lower().startswith("bearer "):
+            token = auth_header[7:]
+    token = _extract_secret_value(token)
+    return bool(token) and secrets.compare_digest(token, BRIDGE_API_SECRET)
 event_loop: Optional[asyncio.AbstractEventLoop] = None
 
 # ===== LED State Storage =====
@@ -842,60 +1012,24 @@ def start_monitoring():
 
 
 def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
-    """Send a single ASCII command to the Vantage IP-Enabler and return response.
-
-    Raises HTTPException on connect/timeout errors so FastAPI returns proper status.
-    Retries up to 3 times on connection refused (port may be busy with polling).
-    """
-    t0 = perf_counter()
+    """Enqueue a command to the Vantage IP-Enabler and return its response."""
+    _ensure_command_worker()
     to = timeout or QLINK_TIMEOUT
-    max_retries = QLINK_MAX_RETRIES
+    response_queue: Queue[Any] = Queue(maxsize=1)
+    command_queue.put(CommandRequest(cmd=cmd, timeout=to, response_queue=response_queue))
+    _set_queue_depth(command_queue.qsize())
+    try:
+        status, payload = response_queue.get(timeout=to + QLINK_TIMEOUT + 2)
+    except Empty:
+        _update_metric("last_error", "Command queue timeout")
+        raise HTTPException(status_code=504, detail="Command queue timeout") from None
 
-    for attempt in range(max_retries):
-        try:
-            # Serialize access to the Vantage IP-Enabler socket to avoid opening many
-            # simultaneous connections which exhaust the Pi's ephemeral ports.
-            with qlink_io_lock:
-                with socket.create_connection(
-                    (VANTAGE_IP, VANTAGE_PORT), timeout=to
-                ) as s:
-                    s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
-                    s.settimeout(to)
-                    try:
-                        data = s.recv(4096)
-                    except socket.timeout:
-                        data = b""
+    if status == "error":
+        if isinstance(payload, HTTPException):
+            raise payload
+        raise HTTPException(status_code=500, detail=str(payload))
 
-            dt = (perf_counter() - t0) * 1000
-            logger.info("cmd=%s elapsedMs=%.1f attempt=%d", cmd, dt, attempt + 1)
-            # Small delay before returning to avoid hammering when many requests
-            time.sleep(0.01)
-            return data.decode("ascii", errors="ignore").strip()
-
-        except socket.timeout as ex:
-            raise HTTPException(
-                status_code=504, detail="Timeout contacting Vantage IP-Enabler"
-            ) from ex
-        except OSError as ex:
-            # Retry on connection refused (errno 111 / connection refused), fail immediately on other errors
-            if "refused" in str(ex).lower() and attempt < max_retries - 1:
-                # Exponential backoff with jitter
-                base = QLINK_RETRY_BASE_SEC
-                delay = base * (2**attempt)
-                jitter = random.uniform(0, delay * 0.5)
-                sleep_for = delay + jitter
-                logger.debug(
-                    "Connection refused, retry %d/%d - sleeping %.3fs",
-                    attempt + 1,
-                    max_retries,
-                    sleep_for,
-                )
-                time.sleep(sleep_for)
-                continue
-            raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
-
-    # Should never reach here
-    raise HTTPException(status_code=502, detail="Max retries exceeded")
+    return cast(str, payload)
 
 
 class LevelCmd(BaseModel):
@@ -903,12 +1037,12 @@ class LevelCmd(BaseModel):
     switch: Optional[str] = None
 
 
-@app.get("/about")
+@app.get("/about", dependencies=API_DEPENDENCIES)
 def about():
     return {"name": "qlink-bridge"}
 
 
-@app.get("/config")
+@app.get("/config", dependencies=API_DEPENDENCIES)
 def get_config():
     """Return configuration including room/load definitions."""
     import json
@@ -969,7 +1103,7 @@ def get_config():
     }
 
 
-@app.get("/healthz")
+@app.get("/healthz", dependencies=API_DEPENDENCIES)
 def health():
     return {"ok": True}
 
@@ -982,12 +1116,12 @@ def root():
     return RedirectResponse(url="/ui/")
 
 
-@app.get("/send/{cmd}")
+@app.get("/send/{cmd}", dependencies=API_DEPENDENCIES)
 def send_raw(cmd: str):
     return {"command": cmd, "response": qlink_send(cmd)}
 
 
-@app.post("/device/{id}/set")
+@app.post("/device/{id}/set", dependencies=API_DEPENDENCIES)
 def set_device(id: int, body: LevelCmd):
     # Use VLO@ command format (not VLO with fade)
     # Format: VLO@ {load_id} {level}
@@ -1023,13 +1157,13 @@ def set_device(id: int, body: LevelCmd):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/load/{id}/status")
+@app.get("/load/{id}/status", dependencies=API_DEPENDENCIES)
 def get_load_status(id: int):
     """Get current level of a load (0-100) using VGL@ command"""
     return {"resp": qlink_send(f"VGL@ {id}")}
 
 
-@app.get("/api/leds/{station}")
+@app.get("/api/leds/{station}", dependencies=API_DEPENDENCIES)
 def get_station_leds(station: int):
     """Get LED states for all 8 buttons on a station using VLT@ command.
 
@@ -1091,7 +1225,9 @@ def get_station_leds(station: int):
     }
 
 
-@app.post("/button/{station}/{button}")
+@app.post(
+    "/button/{station}/{button}", dependencies=API_DEPENDENCIES
+)
 def press_button(station: int, button: int, behavior: Optional[str] = None):
     """Simulate a button press on a station using VSW command.
 
@@ -1127,7 +1263,9 @@ def press_button(station: int, button: int, behavior: Optional[str] = None):
     return {"resp": qlink_send(f"VSW {master} {station_physical} {button} {state}")}
 
 
-@app.get("/button/{station}/{button}/status")
+@app.get(
+    "/button/{station}/{button}/status", dependencies=API_DEPENDENCIES
+)
 def get_button_status(station: int, button: int):
     """Get LED status of a button - NOT YET IMPLEMENTED.
 
@@ -1144,7 +1282,7 @@ def get_button_status(station: int, button: int):
     )
 
 
-@app.get("/monitor/status")
+@app.get("/monitor/status", dependencies=API_DEPENDENCIES)
 def monitor_status():
     """Get LED polling status"""
     mode = active_monitor_mode
@@ -1165,10 +1303,20 @@ def monitor_status():
         "vantage_port": VANTAGE_PORT,
         "stations_tracked": len(button_led_states),
         "note": note,
+        "command_queue_depth": command_metrics.get("queue_depth", 0),
+        "command_queue_peak": command_metrics.get("queue_peak", 0),
+        "last_command_rtt_ms": command_metrics.get("last_rtt_ms"),
+        "last_command_at": command_metrics.get("last_command"),
+        "last_command_error": command_metrics.get("last_error"),
+        "total_commands_sent": command_metrics.get("total_commands", 0),
+        "command_worker_alive": command_worker_thread.is_alive()
+        if command_worker_thread
+        else False,
+        "command_gap_seconds": QLINK_COMMAND_GAP,
     }
 
 
-@app.get("/api/leds")
+@app.get("/api/leds", dependencies=API_DEPENDENCIES)
 def get_all_led_states():
     """Get current LED states for all stations.
 
@@ -1210,7 +1358,7 @@ def get_all_led_states():
 #     return {"station": station, "station_id": station_id, "buttons": buttons.copy()}
 
 
-@app.get("/settings")
+@app.get("/settings", dependencies=API_DEPENDENCIES)
 def get_settings():
     """Get current bridge settings"""
     return {
@@ -1221,10 +1369,11 @@ def get_settings():
         "qlink_eol": QLINK_EOL,
         "qlink_max_retries": QLINK_MAX_RETRIES,
         "qlink_retry_base_sec": QLINK_RETRY_BASE_SEC,
+        "api_secret_set": bool(BRIDGE_API_SECRET),
     }
 
 
-@app.get("/manifest")
+@app.get("/manifest", dependencies=API_DEPENDENCIES)
 def manifest():
     """Return a small manifest describing the bridge endpoints for UI consumption/tests."""
     endpoints = [
@@ -1236,7 +1385,7 @@ def manifest():
     return {"name": "qlink-bridge", "endpoints": endpoints}
 
 
-@app.get("/debug/ui-mapping")
+@app.get("/debug/ui-mapping", dependencies=API_DEPENDENCIES)
 def debug_ui_mapping():
     """Return a mapping of rooms, stations and loads to the DOM id patterns
 
@@ -1336,19 +1485,15 @@ def debug_ui_mapping():
     return result
 
 
-@app.post("/settings")
+@app.post("/settings", dependencies=API_DEPENDENCIES)
 def update_settings(settings: dict):
-    """Update bridge settings.
+    """Update bridge settings."""
 
-    Selected settings (vantage_ip, vantage_port, qlink_timeout, qlink_fade,
-    qlink_eol) will be persisted to `config/bridge_settings.json` so they
-    survive restarts. Changing VANTAGE_IP or VANTAGE_PORT will still require a
-    bridge restart for network changes to fully apply.
-    """
+    global BRIDGE_API_SECRET
     global VANTAGE_IP, VANTAGE_PORT, QLINK_FADE, QLINK_TIMEOUT, QLINK_EOL, EOL
     global QLINK_MAX_RETRIES, QLINK_RETRY_BASE_SEC
 
-    updated = []
+    updated: list[str] = []
     restart_required = False
 
     if "vantage_ip" in settings:
@@ -1374,18 +1519,14 @@ def update_settings(settings: dict):
             QLINK_MAX_RETRIES = int(settings["qlink_max_retries"])
             updated.append("qlink_max_retries")
         except Exception:
-            raise HTTPException(
-                status_code=400, detail="qlink_max_retries must be integer"
-            )
+            raise HTTPException(status_code=400, detail="qlink_max_retries must be integer")
 
     if "qlink_retry_base_sec" in settings:
         try:
             QLINK_RETRY_BASE_SEC = float(settings["qlink_retry_base_sec"])
             updated.append("qlink_retry_base_sec")
         except Exception:
-            raise HTTPException(
-                status_code=400, detail="qlink_retry_base_sec must be numeric"
-            )
+            raise HTTPException(status_code=400, detail="qlink_retry_base_sec must be numeric")
 
     if "qlink_eol" in settings:
         new_eol = settings["qlink_eol"].upper()
@@ -1394,10 +1535,13 @@ def update_settings(settings: dict):
             EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
             updated.append("qlink_eol")
 
-    # Persist selected settings so they survive restarts
+    if "bridge_api_secret" in settings:
+        BRIDGE_API_SECRET = str(settings["bridge_api_secret"] or "")
+        updated.append("bridge_api_secret")
+
     try:
-        to_persist = {}
-        for k in (
+        to_persist: Dict[str, Any] = {}
+        for key in (
             "vantage_ip",
             "vantage_port",
             "qlink_timeout",
@@ -1405,9 +1549,10 @@ def update_settings(settings: dict):
             "qlink_eol",
             "qlink_max_retries",
             "qlink_retry_base_sec",
+            "bridge_api_secret",
         ):
-            if k in settings:
-                to_persist[k] = settings[k]
+            if key in settings:
+                to_persist[key] = settings[key]
 
         if to_persist:
             _persist_settings(to_persist)
@@ -1418,6 +1563,7 @@ def update_settings(settings: dict):
         "status": "ok",
         "updated": updated,
         "restart_required": restart_required,
+        "api_secret_set": bool(BRIDGE_API_SECRET),
         "message": (
             "Settings updated. Restart bridge for network changes to take effect."
             if restart_required
@@ -1426,7 +1572,7 @@ def update_settings(settings: dict):
     }
 
 
-@app.get("/probe")
+@app.get("/probe", dependencies=API_DEPENDENCIES)
 def probe_connection(
     ip: Optional[str] = None,
     port: Optional[int] = None,
@@ -1465,6 +1611,9 @@ async def websocket_endpoint(websocket: WebSocket):
     - Load changes (LO, LS, LV events)
     - LED state changes (LE, LC events)
     """
+    if not _authorize_websocket(websocket):
+        await websocket.close(code=4401, reason="Unauthorized")
+        return
     await websocket.accept()
     websocket_clients.add(websocket)
     logger.info(f"✅ WebSocket client connected (total: {len(websocket_clients)})")

@@ -37,8 +37,8 @@ TODO (placeholder): After cleaning up README encoding artifacts, add a dedicated
 
 ```powershell
 # Clone the repository
-git clone https://github.com/yourusername/vantage-qlink-bridge.git
-cd vantage-qlink-bridge
+git clone https://github.com/bluecld/Qlink.git
+cd Qlink
 
 # Install dependencies
 pip install -r app/requirements.txt
@@ -81,10 +81,16 @@ start http://qlinkpi.local:8000/ui/
 - SSH enabled
 - Network access to Vantage IP-Enabler
 
+### Security & Network Placement
+- The bridge is designed for **LAN-only** use. Do not expose it directly to the internet.
+- Set the optional `BRIDGE_API_SECRET` environment variable to require the `X-Bridge-Secret` header on every API/WebSocket request.
+- Restrict access further with firewall rules or a reverse proxy when integrating with cloud services.
+
+- The bundled UI will prompt for the secret and store it in `localStorage` when required.
 ### Vantage System
 - Vantage InFusion controller with Q-Link protocol
 - IP-Enabler or network-connected controller
-- Port 3041 accessible (or 3040 for read-only)
+- Port 3041 accessible (read/write: tested with `VLO@`, `VSW`, `VLT@`, `VGL@`); optional port 3040 for read-only polling (`VLT@` only)
 
 ## 🔧 Installation
 
@@ -131,8 +137,8 @@ This will:
 ssh pi@qlinkpi.local
 
 # Clone repository
-git clone https://github.com/yourusername/vantage-qlink-bridge.git
-cd vantage-qlink-bridge
+git clone https://github.com/bluecld/Qlink.git
+cd Qlink
 
 # Create virtual environment
 python3 -m venv venv
@@ -162,6 +168,7 @@ Configure the bridge using environment variables or the web settings interface:
 | `QLINK_FADE` | `2.3` | Default fade time in seconds |
 | `QLINK_TIMEOUT` | `2.0` | Command timeout in seconds |
 | `QLINK_EOL` | `CR` | Line terminator (CR or CRLF) |
+| `BRIDGE_API_SECRET` | *(empty)* | Optional shared secret required via the `X-Bridge-Secret` header and `?token=` WebSocket parameter. |
 
 ### Load Configuration
 
@@ -249,13 +256,30 @@ Response: {"status": "ok"}
 GET /monitor/status
 
 Response: {
-  "event_listener_connected": true,
-  "event_monitoring_enabled": true,
+  "mode": "poll",
+  "configured_mode": "poll",
+  "command_queue_depth": 0,
+  "command_queue_peak": 3,
+  "last_command_rtt_ms": 12.4,
+  "last_command_at": "2025-10-16T10:35:01",
+  "last_command_error": null,
+  "command_worker_alive": true,
+  "total_commands_sent": 542,
+  "event_socket_connected": true,
+  "monitoring_enabled": true,
   "websocket_clients": 2,
   "vantage_ip": "192.168.1.200",
-  "vantage_port": 3041
+  "vantage_port": 3041,
+  "stations_tracked": 42,
+  "note": "Polling LED states every 7.5s via VLT@"
 }
 ```
+
+
+### Command Throttling & Metrics
+- A single worker thread serializes all Q-Link traffic to avoid port exhaustion.
+- `QLINK_COMMAND_GAP` (default 50ms) enforces a small delay between commands.
+- `/monitor/status` exposes queue depth, peak usage, and last round-trip time to help tune automations.
 
 ## 🖥️ Web Interface
 
@@ -287,6 +311,7 @@ Connect to real-time events at `ws://yourpi:8000/events`
 **Example (JavaScript):**
 ```javascript
 const ws = new WebSocket('ws://qlinkpi.local:8000/events');
+// Append ?token=YOUR_SECRET if BRIDGE_API_SECRET is set
 
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
@@ -298,6 +323,7 @@ ws.onmessage = (event) => {
 };
 ```
 
+If `BRIDGE_API_SECRET` is set, include the `X-Bridge-Secret` header on REST calls and append `?token=YOUR_SECRET` to WebSocket URLs.
 **Event Types:**
 - `button` - Button press/release (SW events)
 - `load` - Load level change (LO/LS/LV events)
@@ -326,6 +352,21 @@ ws.onmessage = (event) => {
   "load_id": 101,
   "level": 75,
   "timestamp": "2025-10-16T10:30:46"
+}
+```
+
+**LED Update:**
+```json
+{
+  "type": "led",
+  "station": 32,
+  "station_id": "V32",
+  "button_states": {
+    "5": "on",
+    "6": "blink",
+    "8": "off"
+  },
+  "timestamp": "2025-10-16T10:30:47"
 }
 ```
 
@@ -450,8 +491,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔗 Links
 
 - [Vantage Controls](https://www.vantagecontrols.com/)
-- [Issue Tracker](https://github.com/yourusername/vantage-qlink-bridge/issues)
-- [Discussions](https://github.com/yourusername/vantage-qlink-bridge/discussions)
+- [Issue Tracker](https://github.com/bluecld/Qlink/issues)
+- [Discussions](https://github.com/bluecld/Qlink/discussions)
 
 ## ⚠️ Disclaimer
 
