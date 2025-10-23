@@ -10,12 +10,12 @@ testing the bridge. It supports VLO (write) and VGL (read) style commands.
 import argparse
 import socket
 import threading
-
+from typing import Dict
 
 RESP_OK = "OK"
 
 
-def handle_client(conn, addr, devices):
+def handle_client(conn, addr, devices: Dict[int, int]):
     with conn:
         data = b""
         try:
@@ -57,7 +57,7 @@ def handle_client(conn, addr, devices):
 
 
 def run_server(host: str, port: int):
-    devices = {}
+    devices: Dict[int, int] = {}
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((host, port))
