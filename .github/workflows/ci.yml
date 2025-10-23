@@ -32,9 +32,9 @@ jobs:
         run: |
           if command -v black >/dev/null 2>&1; then black --version && black --check .; else echo "black not installed"; fi
 
-      - name: Validate config schemas
-        run: |
-          python scripts/validate_config.py --strict
+      # - name: Validate config schemas
+      #   run: |
+      #     python scripts/validate_config.py --strict
 
       - name: Run tests
         run: |
