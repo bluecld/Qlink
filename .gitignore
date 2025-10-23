@@ -21,6 +21,8 @@ dist/
 .coverage
 htmlcov/
 .tox/
+.mypy_cache/
+.ruff_cache/
 
 # OS files
 .DS_Store
@@ -51,3 +53,6 @@ logs/
 # Temporary files
 *.tmp
 temp/
+
+# Archive of old files
+archive/

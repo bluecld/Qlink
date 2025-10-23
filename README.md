@@ -381,31 +381,50 @@ sudo systemctl enable qlink-bridge
 ## 🏗️ Project Structure
 
 ```
-vantage-qlink-bridge/
-├── app/
-│   ├── bridge.py           # Main FastAPI application
+Qlink/
+├── app/                    # Main application code
+│   ├── bridge.py           # FastAPI application with REST API & WebSocket
 │   ├── requirements.txt    # Python dependencies
-│   └── loads.json          # Light/scene configuration
-├── config/
-│   ├── targets.json        # Deployment config (ignored)
-│   └── targets.example.json
-├── docs/
-│   ├── OPENAPI.yaml        # API specification
-│   ├── VANTAGE_COMMANDS.md # Q-Link command reference
+│   ├── static/             # Web UI files (home-v2.html, etc.)
+│   └── __init__.py         # Package marker
+├── config/                 # Configuration files
+│   ├── loads.json          # Active room/load/button configuration
+│   ├── loads.example.json  # Example configuration template
+│   ├── station_master_map.json      # Station-to-master assignments
+│   ├── station_physical_map.json    # Virtual-to-physical station mapping
+│   ├── targets.json        # Deployment settings (gitignored)
+│   ├── targets.example.json
+│   └── schemas/            # JSON schemas for validation
+│       ├── loads.rooms.v1.schema.json
+│       └── targets.v1.schema.json
+├── scripts/                # Deployment and utility scripts
+│   ├── deploy.ps1          # Deploy to Raspberry Pi
+│   ├── update.ps1          # Quick update deployment
+│   ├── logs.ps1            # View remote logs
+│   ├── remote-setup.sh     # Pi setup script
+│   ├── validate_config.py  # Config validation
+│   └── extract_*.py        # Config parsing utilities
+├── tests/                  # Unit tests
+│   ├── test_app.py         # API endpoint tests
+│   └── test_bridge_parsing.py  # Parsing/decoding tests
+├── Info/                   # Vantage system reference materials
+│   ├── QLINK1.rtf          # QLink protocol v1 spec
+│   ├── QLINK2.rtf          # QLink protocol v2 spec
+│   ├── Home Prado Ver.txt  # System export (all stations/loads)
+│   ├── VANTAGE_COMMANDS.md
 │   └── VANTAGE_EVENT_MONITORING.md
-├── scripts/
-│   ├── deploy.ps1          # Windows deployment
-│   ├── update.ps1          # Quick update
-│   ├── logs.ps1            # View logs
-│   ├── remote-setup.sh     # Pi bootstrap
-│   └── remote-update.sh    # Pi update script
-├── tests/
-│   └── test_app.py         # Unit tests
+├── docs/                   # Current project documentation
+│   ├── OPENAPI.yaml        # API specification
+│   ├── SCHEMAS.md          # Config schema guide
+│   └── WEB_UI_V2.md        # UI documentation
+├── .github/
+│   └── workflows/
+│       └── ci.yml          # CI: lint, type-check, tests
 ├── .gitignore
 ├── LICENSE
 ├── README.md
-├── CONTRIBUTING.md
-└── CHANGELOG.md
+├── TESTING.md              # Test running instructions
+└── dev-requirements.txt    # Development tools (ruff, mypy, pytest)
 ```
 
 ## 🤝 Contributing
