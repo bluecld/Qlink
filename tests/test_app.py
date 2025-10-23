@@ -53,3 +53,31 @@ def test_manifest_endpoint():
     data = r.json()
     assert data["name"] == "qlink-bridge"
     assert "endpoints" in data and isinstance(data["endpoints"], list)
+
+
+def test_get_station_leds_regular(monkeypatch):
+    monkeypatch.setattr("app.bridge.get_station_master", lambda station: 1)
+    monkeypatch.setattr("app.bridge.qlink_send", lambda cmd: "4C 20")
+
+    r = client.get("/api/leds/23")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["station"] == 23
+    assert data["station_id"] == "V23"
+    # On bits: buttons 3,4,7 -> 255; blink bit -> button 6 -> 128
+    assert data["leds"][2] == 255
+    assert data["leds"][3] == 255
+    assert data["leds"][5] == 128
+    assert data["button_states"]["3"] == "on"
+    assert data["button_states"]["6"] == "blink"
+
+
+def test_get_station_leds_detailed(monkeypatch):
+    monkeypatch.setattr("app.bridge.get_station_master", lambda station: 1)
+    monkeypatch.setattr("app.bridge.qlink_send", lambda cmd: "RLT 1 23 4C 20")
+
+    r = client.get("/api/leds/23")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["on_leds"] == "4C"
+    assert data["blink_leds"] == "20"

@@ -735,6 +735,18 @@
             transform: translateY(-2px);
         }
 
+        .btn-selected {
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35), 0 8px 20px rgba(15, 23, 42, 0.35);
+            transform: none;
+        }
+
+        .btn[disabled] {
+            opacity: 0.85;
+            cursor: default;
+            pointer-events: none;
+            box-shadow: none;
+        }
+
         .slider {
             flex: 1;
             height: 6px;
@@ -1582,7 +1594,7 @@
                     //         const ledResponse = await fetch(`/api/leds/${station}`);
                     //         if (ledResponse.ok) {
                     //             const data = await ledResponse.json();
-                    //             updateStationLEDs(station, data.leds);
+                    //             updateStationLEDs(station, data.button_states, data.leds);
                     //         }
                     //     } catch (e) {
                     //         console.error('LED poll after button press failed:', e);
@@ -1794,7 +1806,7 @@
                     // data.stations contains { "V23": { "1": "on", "2": "off", ... }, ... }
                     for (const [stationId, buttons] of Object.entries(data.stations)) {
                         const stationNum = parseInt(stationId.substring(1)); // "V23" -> 23
-                        updateStationLEDs(stationNum, buttons);
+                        updateStationLEDs(stationNum, buttons, null);
                     }
                 }
             } catch (error) {
@@ -1802,30 +1814,63 @@
             }
         }
 
-        function updateStationLEDs(station, buttonStates) {
-            // Support both legacy single-station rooms (room.station)
-            // and the newer rooms with a `stations` array. Also handle
-            // both scene element id formats: `scene-<roomId>-<btn>` and
-            // `scene-<roomId>-<station>-<btn>`.
+        function updateStationLEDs(station, buttonStates, ledStates) {
             if (!configData || !Array.isArray(configData.rooms)) return;
 
-            // Normalize incoming buttonStates keys (could be strings or numbers)
-            const normalized = {};
-            for (const [k, v] of Object.entries(buttonStates || {})) {
-                normalized[String(k)] = v;
+            const normalized = new Array(8).fill('off');
+
+            if (buttonStates && typeof buttonStates === 'object') {
+                for (const [key, value] of Object.entries(buttonStates)) {
+                    const index = Number(key);
+                    if (!Number.isInteger(index) || index < 1 || index > 8) continue;
+
+                    let state;
+                    if (typeof value === 'string') {
+                        state = value.toLowerCase();
+                    } else if (value === 1 || value === true) {
+                        state = 'on';
+                    } else if (value === 2) {
+                        state = 'blink';
+                    } else {
+                        state = 'off';
+                    }
+
+                    if (state === 'on' || state === 'blink' || state === 'off') {
+                        normalized[index - 1] = state;
+                    }
+                }
+            } else if (Array.isArray(ledStates) && ledStates.length >= 8) {
+                ledStates.forEach((value, idx) => {
+                    const numeric = Number(value);
+                    if (Number.isNaN(numeric)) return;
+                    if (numeric >= 200) normalized[idx] = 'on';
+                    else if (numeric >= 100) normalized[idx] = 'blink';
+                    else if (numeric > 0) normalized[idx] = 'on';
+                    else normalized[idx] = 'off';
+                });
+            } else {
+                return;
             }
+
+            const applyLedStateToButton = (button, state) => {
+                if (!button) return;
+                button.classList.remove('led-on', 'led-blink', 'active');
+                button.dataset.ledState = state;
+                if (state === 'on') {
+                    button.classList.add('led-on', 'active');
+                } else if (state === 'blink') {
+                    button.classList.add('led-blink', 'active');
+                }
+            };
 
             configData.rooms.forEach(room => {
                 const roomId = room.name.replace(/\s+/g, '-').toLowerCase();
 
-                // Determine if this room contains the station being updated
                 let roomMatches = false;
-                // Legacy single station property
                 if (room.station && Number(room.station) === Number(station)) {
                     roomMatches = true;
                 }
 
-                // New stations array format
                 if (!roomMatches && Array.isArray(room.stations)) {
                     for (const st of room.stations) {
                         try {
@@ -1842,30 +1887,18 @@
 
                 if (!roomMatches) return;
 
-                // Update each button 1-8. Look for both id formats in the DOM.
                 for (let btnNum = 1; btnNum <= 8; btnNum++) {
-                    const state = normalized[String(btnNum)] || normalized[btnNum] || 'off';
-
-                    // Prefer station-specific id (new format), fallback to legacy id
-                    const candidates = [
-                        `scene-${roomId}-${station}-${btnNum}`,
-                        `scene-${roomId}-${btnNum}`,
+                    const state = normalized[btnNum - 1] || 'off';
+                    const selectors = [
+                        `#scene-${roomId}-${station}-${btnNum}`,
+                        `#scene-${roomId}-${btnNum}`,
                     ];
 
-                    let btnEl = null;
-                    for (const id of candidates) {
-                        const el = document.getElementById(id);
-                        if (el) {
-                            btnEl = el;
-                            break;
-                        }
-                    }
-
-                    if (!btnEl) continue;
-
-                    btnEl.classList.remove('led-on', 'led-blink');
-                    if (state === 'on') btnEl.classList.add('led-on');
-                    else if (state === 'blink') btnEl.classList.add('led-blink');
+                    selectors.forEach(selector => {
+                        document.querySelectorAll(selector).forEach(button => {
+                            applyLedStateToButton(button, state);
+                        });
+                    });
                 }
             });
         }
@@ -1960,6 +1993,31 @@
             if (sliderEl) {
                 sliderEl.value = level;
             }
+
+            const loadEl = document.getElementById(`load-${loadId}`);
+            if (loadEl) {
+                const onBtn = loadEl.querySelector('.btn-on');
+                const offBtn = loadEl.querySelector('.btn-off');
+                if (onBtn && offBtn) {
+                    const numericLevel = Number(level);
+                    const hasLevel = !Number.isNaN(numericLevel);
+                    const isOn = hasLevel && numericLevel > 0;
+                    const isOff = hasLevel && numericLevel <= 0;
+
+                    onBtn.disabled = hasLevel && isOn;
+                    offBtn.disabled = hasLevel && isOff;
+
+                    onBtn.classList.toggle('btn-selected', isOn);
+                    offBtn.classList.toggle('btn-selected', isOff);
+
+                    if (!hasLevel) {
+                        onBtn.disabled = false;
+                        offBtn.disabled = false;
+                        onBtn.classList.remove('btn-selected');
+                        offBtn.classList.remove('btn-selected');
+                    }
+                }
+            }
         }
 
         function startPolling() {
@@ -1970,57 +2028,37 @@
             // Do ONE initial poll on page load to show current status
             pollLoadStatus();
 
-            // DISABLED: LED polling causes port exhaustion (538+ TIME_WAIT connections)
-            // Issue: 20-30 visible stations × 30 polls/min = 600-900 new sockets/min
-            // Each socket stays in TIME_WAIT for 60-120 seconds → port exhaustion
-            // TODO: Implement connection pooling in bridge.py for proper LED polling
-            // startLEDPolling();
+            // Previously disabled due to TIME_WAIT build-up on the controller.
+            // The bridge now serializes LED polling requests, keeping connection counts low.
+            startLEDPolling();
         }
 
         // LED Polling - Poll only visible stations
         let ledPollInterval = null;
 
         function getVisibleStations() {
-            // Get all currently visible station buttons
             const visibleStations = new Set();
+            const buttons = document.querySelectorAll('.scene-btn');
 
-            // Find all visible scene buttons and extract their station numbers
-            const visibleButtons = document.querySelectorAll('.scene-btn:not([style*="display: none"])');
-            visibleButtons.forEach(btn => {
-                // Button IDs are like: scene-foyer-19-1 (roomId-station-button)
-                const id = btn.id;
-                const match = id.match(/scene-[^-]+-(\d+)-\d+/);
+            buttons.forEach(btn => {
+                const isVisible = btn.offsetParent !== null;
+                if (!isVisible) return;
+
+                const match = btn.id.match(/scene-[^-]+-(\d+)-\d+/);
                 if (match) {
-                    visibleStations.add(parseInt(match[1]));
+                    visibleStations.add(parseInt(match[1], 10));
+                    return;
                 }
-            });
 
-            // Also check for single-station format: scene-roomId-buttonNum
-            const singleStationButtons = document.querySelectorAll('.scene-btn[id^="scene-"]');
-            singleStationButtons.forEach(btn => {
-                const stationDiv = btn.closest('.scene-section');
-                if (stationDiv && !stationDiv.style.display || stationDiv.style.display !== 'none') {
-                    const label = stationDiv.querySelector('.scene-label');
-                    if (label) {
-                        const match = label.textContent.match(/V(\d+)/);
-                        if (match) {
-                            visibleStations.add(parseInt(match[1]));
-                        }
-                    }
+                // Legacy format scene-roomId-buttonNum
+                const stationSection = btn.closest('.scene-section');
+                if (!stationSection) return;
+                const label = stationSection.querySelector('.scene-label');
+                if (!label) return;
+                const labelMatch = label.textContent.match(/V(\d+)/);
+                if (labelMatch) {
+                    visibleStations.add(parseInt(labelMatch[1], 10));
                 }
-            });
-
-            // Alternative: Get stations from active station-content divs
-            const activeStations = document.querySelectorAll('.station-content.active');
-            activeStations.forEach(content => {
-                const buttons = content.querySelectorAll('.scene-btn');
-                buttons.forEach(btn => {
-                    const id = btn.id;
-                    const match = id.match(/scene-[^-]+-(\d+)-\d+/);
-                    if (match) {
-                        visibleStations.add(parseInt(match[1]));
-                    }
-                });
             });
 
             return Array.from(visibleStations);
@@ -2037,7 +2075,7 @@
                     const response = await fetch(`/api/leds/${station}`);
                     if (response.ok) {
                         const data = await response.json();
-                        updateStationLEDs(station, data.leds);
+                        updateStationLEDs(station, data.button_states, data.leds);
                     }
                 } catch (error) {
                     console.error(`Failed to poll LED state for station ${station}:`, error);
@@ -2045,51 +2083,8 @@
             }
         }
 
-        function updateStationLEDs(station, ledStates) {
-            if (!ledStates || ledStates.length !== 8) return;
-
-            // Update LED state for each button
-            ledStates.forEach((state, index) => {
-                const btnNum = index + 1;
-                // Try multi-station format first
-                const buttons = document.querySelectorAll(`[id*="-${station}-${btnNum}"]`);
-
-                buttons.forEach(btn => {
-                    if (state === 255 || state === 0xFF || state > 127) {
-                        btn.classList.add('active');
-                    } else {
-                        btn.classList.remove('active');
-                    }
-                });
-
-                // Also try single-station format (backwards compatibility)
-                if (buttons.length === 0) {
-                    const roomId = findRoomIdForStation(station);
-                    if (roomId) {
-                        const btn = document.getElementById(`scene-${roomId}-${btnNum}`);
-                        if (btn) {
-                            if (state === 255 || state === 0xFF || state > 127) {
-                                btn.classList.add('active');
-                            } else {
-                                btn.classList.remove('active');
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function findRoomIdForStation(station) {
-            if (!configData) return null;
-            for (const room of configData.rooms) {
-                if (room.station === station) {
-                    return room.name.replace(/\s+/g, '-').toLowerCase();
-                }
-            }
-            return null;
-        }
-
         function startLEDPolling() {
+            if (ledPollInterval) return;
             // Poll every 2 seconds
             ledPollInterval = setInterval(pollVisibleLEDs, 2000);
 
@@ -2188,7 +2183,7 @@
                     const response = await fetch(`/api/leds/${station.station}`);
                     if (response.ok) {
                         const data = await response.json();
-                        updateStationLEDs(station.station, data.leds);
+                        updateStationLEDs(Number(station.station), data.button_states, data.leds);
                     } else {
                         console.error(`Failed to get LED status for station ${station.station}`);
                     }

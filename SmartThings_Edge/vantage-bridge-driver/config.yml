@@ -1,0 +1,4 @@
+name: "Vantage QLink Bridge"
+packageKey: "VantageQLinkBridge"
+permissions:
+  lan: {}

@@ -67,6 +67,16 @@ QLINK_EOL = _env("Q_LINK_EOL", "CR").upper()
 EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
 QLINK_TIMEOUT = float(_env("QLINK_TIMEOUT", "3.0"))
 QLINK_FADE = _env("QLINK_FADE", "2.3")
+QLINK_MONITOR_MODE = _env("QLINK_MONITOR_MODE", "poll").strip().lower()
+if QLINK_MONITOR_MODE not in {"poll", "events", "off"}:
+    QLINK_MONITOR_MODE = "poll"
+QLINK_DISABLE_EVENTS = _env("QLINK_DISABLE_EVENTS", "0").lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+QLINK_LED_POLL_INTERVAL = float(_env("QLINK_LED_POLL_INTERVAL", "7.5"))
 # Retry/backoff tuning (configurable via env or runtime /settings)
 QLINK_MAX_RETRIES = int(_env("QLINK_MAX_RETRIES", "3"))
 QLINK_RETRY_BASE_SEC = float(_env("QLINK_RETRY_BASE_SEC", "0.1"))
@@ -197,8 +207,11 @@ if not logger.handlers:
 event_socket: Optional[socket.socket] = None
 event_socket_connected = False
 event_monitoring_enabled = False
+active_monitor_mode = "off"
 websocket_clients: Set[WebSocket] = set()
-event_listener_thread: Optional[threading.Thread] = None
+
+EVENT_ENABLE_COMMANDS = ("VOS 1", "VOD 1", "VOL 1")
+monitor_thread: Optional[threading.Thread] = None
 # Lock to serialize access to the Vantage IP-Enabler to avoid port exhaustion
 qlink_io_lock = threading.Lock()
 event_loop: Optional[asyncio.AbstractEventLoop] = None
@@ -382,6 +395,8 @@ def parse_vantage_event(message: str) -> Optional[dict]:
     parts = message.strip().split()
     if not parts:
         return None
+    if len(parts) == 1 and parts[0] in {"0", "1"}:
+        return None
 
     # Use a flexible typing for the event dictionary since values may be int/str/None
     event: Dict[str, Any] = {
@@ -545,23 +560,139 @@ def schedule_broadcast(event: dict):
         asyncio.run_coroutine_threadsafe(_broadcast_event(event), loop)
 
 
-def led_polling_loop():
-    """Background thread that polls LED states using VLT command (port 3040 mode).
+def _line_delimiter() -> bytes:
+    """Return the expected line delimiter for Vantage responses."""
+    return b"\r\n" if EOL == "\r\n" else b"\r"
 
-    Since port 3040 doesn't support persistent event monitoring (VOD@/VOS@/VOL@),
-    we poll all stations every 5-10 seconds using the VLT@ command.
-    """
-    global event_socket_connected, event_monitoring_enabled
+
+def _consume_buffer_lines(buffer: bytearray, delimiter: bytes):
+    """Yield complete lines decoded from the shared buffer."""
+    while True:
+        idx = buffer.find(delimiter)
+        if idx == -1:
+            break
+
+        line_bytes = bytes(buffer[:idx])
+        del buffer[: idx + len(delimiter)]
+
+        # Responses may include CRLF even when delimiter is CR; trim stray LF.
+        if delimiter == b"\r" and buffer.startswith(b"\n"):
+            del buffer[0]
+
+        line = line_bytes.decode("ascii", errors="ignore").strip()
+        if line:
+            yield line
+
+
+def _readline_from_socket(
+    sock: socket.socket, buffer: bytearray, delimiter: bytes
+) -> Optional[str]:
+    """Read a single line from the socket using an existing buffer."""
+    while True:
+        for line in _consume_buffer_lines(buffer, delimiter):
+            return line
+
+        try:
+            chunk = sock.recv(4096)
+        except socket.timeout:
+            return None
+
+        if not chunk:
+            return None
+
+        buffer.extend(chunk)
+
+
+def _handle_event_line(line: str) -> None:
+    """Parse a single raw line and broadcast any resulting event."""
+    event = parse_vantage_event(line)
+    if event:
+        schedule_broadcast(event)
+
+
+def event_listener_loop():
+    """Long-lived event monitoring loop using VOS/VOD/VOL stream."""
+    global event_socket, event_socket_connected, event_monitoring_enabled, active_monitor_mode
+
+    delimiter = _line_delimiter()
+    backoff = 1.0
+
+    while True:
+        if QLINK_DISABLE_EVENTS:
+            logger.info("Event listener disabled via QLINK_DISABLE_EVENTS")
+            active_monitor_mode = "off"
+            return
+
+        try:
+            logger.info(
+                "Connecting to Vantage event stream at %s:%s", VANTAGE_IP, VANTAGE_PORT
+            )
+            sock = socket.create_connection(
+                (VANTAGE_IP, VANTAGE_PORT), timeout=QLINK_TIMEOUT
+            )
+            event_socket = sock
+            event_socket_connected = True
+
+            buffer = bytearray()
+            sock.settimeout(QLINK_TIMEOUT)
+
+            for cmd in EVENT_ENABLE_COMMANDS:
+                payload = (cmd + EOL).encode("ascii", errors="ignore")
+                sock.sendall(payload)
+                ack = _readline_from_socket(sock, buffer, delimiter)
+                if ack is None:
+                    raise RuntimeError(f"No acknowledgement enabling {cmd}")
+
+            event_monitoring_enabled = True
+            active_monitor_mode = "events"
+            logger.info("Event monitoring enabled via VOS/VOD/VOL")
+
+            sock.settimeout(None)
+            backoff = 1.0
+
+            # Drain any buffered lines from the handshake before blocking reads.
+            for line in _consume_buffer_lines(buffer, delimiter):
+                _handle_event_line(line)
+
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    raise ConnectionError("Event socket closed by remote host")
+
+                buffer.extend(chunk)
+                for line in _consume_buffer_lines(buffer, delimiter):
+                    _handle_event_line(line)
+
+        except Exception as exc:
+            logger.warning(f"Event listener error: {exc}")
+        finally:
+            if event_socket:
+                try:
+                    event_socket.close()
+                except Exception:
+                    pass
+            event_socket = None
+            event_socket_connected = False
+            event_monitoring_enabled = False
+            active_monitor_mode = "off"
+
+        sleep_for = min(backoff, 30.0)
+        jitter = random.uniform(0.0, sleep_for * 0.25)
+        time.sleep(sleep_for + jitter)
+        backoff = min(backoff * 2, 30.0)
+
+
+def led_polling_loop():
+    """Background thread that polls LED states using VLT command in a throttled manner."""
+    global event_monitoring_enabled, event_socket_connected, active_monitor_mode
     import json
 
-    logger.info("🔄 LED polling thread started (port 3040 mode)")
-
-    poll_interval = 5.0  # seconds between full polling cycles
-    master = 1  # Assume single master system
+    logger.info("🔄 LED polling thread started (safe mode)")
+    poll_interval = max(1.0, QLINK_LED_POLL_INTERVAL)
 
     while True:
         try:
-            # Load station list from loads.json
+            # Load station list from config (rooms-based or legacy format)
             stations: Set[int] = set()
             config_paths = [
                 os.path.join(os.path.dirname(__file__), "..", "config", "loads.json"),
@@ -572,31 +703,23 @@ def led_polling_loop():
             for path in config_paths:
                 if os.path.exists(path):
                     try:
-                        with open(path, "r") as f:
+                        with open(path, "r", encoding="utf-8") as f:
                             data = json.load(f)
-
-                            # Try new "rooms" array format first
-                            if "rooms" in data and isinstance(data["rooms"], list):
-                                for room in data["rooms"]:
+                        if "rooms" in data and isinstance(data["rooms"], list):
+                            for room in data["rooms"]:
+                                candidate = normalize_station_id(room.get("station"))
+                                if candidate is not None:
+                                    stations.add(candidate)
+                        else:
+                            for key, value in data.items():
+                                if key.startswith("station_") and isinstance(value, dict):
                                     candidate = normalize_station_id(
-                                        room.get("station")
+                                        value.get("station")
                                     )
                                     if candidate is not None:
                                         stations.add(candidate)
-
-                            # Fallback: try old "station_X" key format
-                            else:
-                                for key, value in data.items():
-                                    if key.startswith("station_") and isinstance(
-                                        value, dict
-                                    ):
-                                        candidate = normalize_station_id(
-                                            value.get("station")
-                                        )
-                                        if candidate is not None:
-                                            stations.add(candidate)
                         break
-                    except Exception as e:
+                    except Exception as e:  # pragma: no cover - best effort
                         logger.warning(f"Failed to load stations from {path}: {e}")
                         continue
 
@@ -604,101 +727,118 @@ def led_polling_loop():
                 logger.warning(
                     "⚠️  No stations configured in loads.json, will retry in 10s"
                 )
-                event_socket_connected = False
+                active_monitor_mode = "off"
                 event_monitoring_enabled = False
-                time.sleep(10)
+                event_socket_connected = False
+                time.sleep(10.0)
                 continue
 
-            logger.info(f"📡 Polling {len(stations)} stations: {sorted(stations)}")
-            event_socket_connected = True
+            active_monitor_mode = "poll"
             event_monitoring_enabled = True
+            event_socket_connected = False
 
-            # Poll all stations
+            logger.debug(f"Polling stations (interval {poll_interval}s): {sorted(stations)}")
+
             polled_count = 0
             error_count = 0
 
             for station in sorted(stations):
+                master = get_station_master(station)
                 try:
-                    # Query all LEDs for this station using VLT@
-                    # Format: VLT@ <master> <station>
-                    # Response: <onleds_hex> <blinkleds_hex>
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.settimeout(2.0)
-                    sock.connect((VANTAGE_IP, VANTAGE_PORT))
-                    sock.sendall(f"VLT@ {master} {station}\r".encode("ascii"))
-                    response = sock.recv(1024).decode("ascii", errors="ignore").strip()
-                    sock.close()
-
-                    # Parse response: "81 0" or "4C 20"
-                    parts = response.split()
-                    if len(parts) >= 2:
-                        on_hex = parts[0]
-                        blink_hex = parts[1]
-
-                        # Decode using existing function
-                        button_states = decode_led_hex(on_hex, blink_hex)
-
-                        # Update global state
-                        update_station_leds(station, button_states)
-
-                        # Create event for WebSocket broadcast
-                        event = {
-                            "type": "led_poll",
-                            "master": master,
-                            "station": station,
-                            "station_id": f"V{station}",
-                            "on_leds": on_hex,
-                            "blink_leds": blink_hex,
-                            "button_states": button_states,
-                            "timestamp": datetime.now().isoformat(),
-                        }
-
-                        # Broadcast to WebSocket clients
-                        schedule_broadcast(event)
-
-                        polled_count += 1
-                        logger.debug(f"📊 V{station}: on={on_hex} blink={blink_hex}")
-                    else:
-                        logger.warning(
-                            f"⚠️  V{station}: unexpected response '{response}'"
-                        )
-                        error_count += 1
-
-                    # Small delay between stations to avoid overwhelming the system
-                    time.sleep(0.05)
-
-                except Exception as e:
-                    logger.debug(f"Failed to poll V{station}: {e}")
+                    response = qlink_send(f"VLT@ {master} {station}")
+                except HTTPException as exc:  # pragma: no cover - depends on hardware
+                    logger.debug(f"V{station}: VLT@ failed ({exc.detail})")
+                    error_count += 1
+                    continue
+                except Exception as exc:  # pragma: no cover - depends on hardware
+                    logger.debug(f"V{station}: VLT@ error {exc}")
                     error_count += 1
                     continue
 
-            logger.info(
-                f"✅ Poll cycle complete: {polled_count} stations, {error_count} errors"
-            )
+                parts = response.split()
+                on_hex: Optional[str] = None
+                blink_hex: Optional[str] = None
+                if parts:
+                    head = parts[0].upper()
+                    if head == "RLT" and len(parts) >= 5:
+                        on_hex = parts[-2]
+                        blink_hex = parts[-1]
+                    elif len(parts) >= 2:
+                        on_hex = parts[0]
+                        blink_hex = parts[1]
 
-            # Wait before next poll cycle
+                if on_hex is None or blink_hex is None:
+                    logger.debug(f"V{station}: unexpected response '{response}'")
+                    error_count += 1
+                    time.sleep(0.05)
+                    continue
+
+                button_states = decode_led_hex(on_hex, blink_hex)
+                update_station_leds(station, button_states)
+
+                event = {
+                    "type": "led_poll",
+                    "master": master,
+                    "station": station,
+                    "station_id": f"V{station}",
+                    "on_leds": on_hex,
+                    "blink_leds": blink_hex,
+                    "button_states": button_states,
+                    "timestamp": datetime.now().isoformat(),
+                }
+                schedule_broadcast(event)
+
+                polled_count += 1
+                time.sleep(0.05)
+
+            logger.debug(
+                "Poll cycle complete: %s stations, %s errors", polled_count, error_count
+            )
             time.sleep(poll_interval)
 
-        except Exception as e:
-            logger.error(f"❌ LED polling error: {e}")
-            event_socket_connected = False
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.error(f"❌ LED polling error: {exc}")
+            active_monitor_mode = "off"
             event_monitoring_enabled = False
-            time.sleep(5)
+            event_socket_connected = False
+            time.sleep(5.0)
 
 
-def start_event_listener():
-    """Start the LED polling background thread (renamed for backwards compatibility)"""
-    global event_listener_thread
+def start_monitoring():
+    """Start the monitoring thread based on configured mode."""
+    global monitor_thread, active_monitor_mode
 
-    if event_listener_thread and event_listener_thread.is_alive():
-        logger.info("LED polling thread already running")
+    if QLINK_MONITOR_MODE == "off":
+        logger.info("Monitoring disabled via QLINK_MONITOR_MODE=off")
+        active_monitor_mode = "off"
         return
 
-    event_listener_thread = threading.Thread(
-        target=led_polling_loop, daemon=True, name="VantageLEDPoller"
-    )
-    event_listener_thread.start()
-    logger.info("🚀 LED polling thread started")
+    if monitor_thread and monitor_thread.is_alive():
+        logger.info("Monitoring thread already running")
+        return
+
+    if QLINK_MONITOR_MODE == "events":
+        if QLINK_DISABLE_EVENTS:
+            logger.info(
+                "Event monitoring disabled via QLINK_DISABLE_EVENTS; not starting thread"
+            )
+            active_monitor_mode = "off"
+            return
+        target = event_listener_loop
+        name = "VantageEventListener"
+        logger.info("🚀 Starting event listener thread (mode=events)")
+        active_monitor_mode = "events"
+    else:
+        target = led_polling_loop
+        name = "VantageLEDPoller"
+        logger.info(
+            "🚀 Starting LED polling thread (mode=poll, interval %.1fs)",
+            QLINK_LED_POLL_INTERVAL,
+        )
+        active_monitor_mode = "poll"
+
+    monitor_thread = threading.Thread(target=target, daemon=True, name=name)
+    monitor_thread.start()
 
 
 def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
@@ -902,23 +1042,49 @@ def get_station_leds(station: int):
 
     response = qlink_send(f"VLT@ {master} {station}")
 
-    # Parse response: "R:V 01 02 03 04 05 06 07 08"
-    if response.startswith("R:V"):
-        parts = response.split()
-        if len(parts) >= 9:  # R:V + 8 LED values
-            led_values = parts[1:9]  # Skip "R:V", take next 8
-            # Convert hex strings to integers (00 -> 0, FF -> 255)
-            leds = []
-            for val in led_values:
-                try:
-                    leds.append(int(val, 16))
-                except ValueError:
-                    leds.append(0)
-            return {"station": station, "leds": leds, "raw": response}
+    parts = response.split()
+    on_hex: Optional[str] = None
+    blink_hex: Optional[str] = None
+
+    if parts:
+        head = parts[0].upper()
+        if head == "RLT" and len(parts) >= 5:
+            # Detailed response: RLT <master> <station> <onleds> <blinkleds>
+            on_hex = parts[-2]
+            blink_hex = parts[-1]
+        elif len(parts) >= 2:
+            # Regular response: <onleds> <blinkleds>
+            on_hex = parts[0]
+            blink_hex = parts[1]
+
+    if on_hex is not None and blink_hex is not None:
+        button_states = decode_led_hex(on_hex, blink_hex)
+        update_station_leds(station, button_states)
+
+        leds = []
+        for btn in range(1, 9):
+            state = button_states.get(btn, "off")
+            if state == "on":
+                leds.append(255)
+            elif state == "blink":
+                leds.append(128)
+            else:
+                leds.append(0)
+
+        return {
+            "station": station,
+            "station_id": f"V{station}",
+            "leds": leds,
+            "button_states": button_states,
+            "on_leds": on_hex,
+            "blink_leds": blink_hex,
+            "raw": response,
+        }
 
     # Fallback if parsing fails
     return {
         "station": station,
+        "station_id": f"V{station}",
         "leds": [0] * 8,
         "raw": response,
         "error": "Parse failed",
@@ -981,15 +1147,24 @@ def get_button_status(station: int, button: int):
 @app.get("/monitor/status")
 def monitor_status():
     """Get LED polling status"""
+    mode = active_monitor_mode
+    if mode == "events":
+        note = "Using VOS/VOD/VOL event stream for live updates"
+    elif mode == "poll":
+        note = f"Polling LED states every {QLINK_LED_POLL_INTERVAL:.1f}s via VLT@"
+    else:
+        note = "Monitoring disabled"
     return {
-        "mode": "polling",  # Port 3040 uses polling instead of event monitoring
-        "polling_active": event_socket_connected,
+        "mode": mode,
+        "configured_mode": QLINK_MONITOR_MODE,
+        "polling_active": mode == "poll" and event_monitoring_enabled,
+        "event_socket_connected": event_socket_connected,
         "monitoring_enabled": event_monitoring_enabled,
         "websocket_clients": len(websocket_clients),
         "vantage_ip": VANTAGE_IP,
         "vantage_port": VANTAGE_PORT,
         "stations_tracked": len(button_led_states),
-        "note": "Using VLT polling (port 3040 mode) - LED states update every 5 seconds",
+        "note": note,
     }
 
 
@@ -1327,10 +1502,18 @@ async def startup_event():
     global event_loop
     event_loop = asyncio.get_running_loop()
     logger.info("🚀 Starting Vantage QLink Bridge...")
-    # TEMPORARILY DISABLED: LED polling causes port exhaustion
-    # This was breaking load control (on/off buttons)
-    # start_event_listener()
-    logger.info("✅ Bridge ready (LED polling disabled to prevent port exhaustion)")
+    start_monitoring()
+    if QLINK_MONITOR_MODE == "events":
+        if QLINK_DISABLE_EVENTS:
+            logger.info("✅ Bridge ready (event monitoring disabled by configuration)")
+        else:
+            logger.info("✅ Bridge ready (event listener thread started)")
+    elif QLINK_MONITOR_MODE == "poll":
+        logger.info(
+            "✅ Bridge ready (LED polling mode, interval %.1fs)", QLINK_LED_POLL_INTERVAL
+        )
+    else:
+        logger.info("✅ Bridge ready (monitoring disabled)")
 
 
 @app.exception_handler(HTTPException)
