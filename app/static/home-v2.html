@@ -2181,13 +2181,19 @@
 
                 // Poll LED states for the room's stations
                 for (const station of room.stations || []) {
-                    const response = await fetch(`/api/leds/${station.station}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        updateStationLEDs(Number(station.station), data.button_states, data.leds);
-                    } else {
-                        console.error(`Failed to get LED status for station ${station.station}`);
+                    try {
+                        const response = await fetch(`/api/leds/${station.station}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            updateStationLEDs(Number(station.station), data.button_states, data.leds);
+                        } else {
+                            console.error(`Failed to get LED status for station ${station.station}: ${response.status}`);
+                        }
+                    } catch (e) {
+                        console.error('getStatus: error fetching LED status for station', station.station, e);
                     }
+                    // small pause between requests
+                    await new Promise(r => setTimeout(r, 60));
                 }
                 showToast(`Status updated for ${roomName}`);
                 console.debug('getStatus: completed for', roomName);

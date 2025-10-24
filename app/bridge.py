@@ -86,7 +86,7 @@ QLINK_COMMAND_GAP = float(_env("QLINK_COMMAND_GAP", "0.05"))
 BRIDGE_API_SECRET = _env("BRIDGE_API_SECRET", "")
 
 _DEFAULT_CONFIG_DIR = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), "..", "config")
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config")
 )
 # When deployed on the Pi the working tree is typically /home/pi/qlink-bridge
 # prefer that path if present and writable so persisted settings survive
@@ -107,7 +107,7 @@ def _load_persisted_settings() -> None:
     changes can be made persistent by writing this file.
     """
     global VANTAGE_IP, VANTAGE_PORT, QLINK_TIMEOUT, QLINK_FADE, QLINK_EOL, EOL
-    global QLINK_MAX_RETRIES, QLINK_RETRY_BASE_SEC
+    global QLINK_MAX_RETRIES, QLINK_RETRY_BASE_SEC, BRIDGE_API_SECRET
 
     try:
         if os.path.exists(PERSISTED_SETTINGS_FILE):
@@ -143,6 +143,8 @@ def _load_persisted_settings() -> None:
                 if new_eol in ("CR", "CRLF"):
                     QLINK_EOL = new_eol
                     EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
+            if "bridge_api_secret" in data:
+                BRIDGE_API_SECRET = str(data["bridge_api_secret"])
             try:
                 logger.info(
                     f"Loaded persisted bridge settings from {PERSISTED_SETTINGS_FILE}"
@@ -365,8 +367,12 @@ def require_api_secret(request: Request) -> None:
     if not BRIDGE_API_SECRET:
         return
     provided = _get_request_secret(request)
-    if not provided or not secrets.compare_digest(provided, BRIDGE_API_SECRET):
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    # Ensure both strings are non-empty before comparison
+    if not provided:
+        raise HTTPException(status_code=401, detail="Unauthorized: Missing API secret")
+    # Use constant-time comparison to prevent timing attacks
+    if not secrets.compare_digest(provided, BRIDGE_API_SECRET):
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid API secret")
 
 
 API_DEPENDENCIES = [Depends(require_api_secret)]
@@ -1160,7 +1166,15 @@ def set_device(id: int, body: LevelCmd):
 @app.get("/load/{id}/status", dependencies=API_DEPENDENCIES)
 def get_load_status(id: int):
     """Get current level of a load (0-100) using VGL@ command"""
-    return {"resp": qlink_send(f"VGL@ {id}")}
+    try:
+        response = qlink_send(f"VGL@ {id}")
+        return {"resp": response}
+    except HTTPException:
+        # Re-raise HTTPExceptions from qlink_send to preserve proper status codes
+        raise
+    except Exception as e:
+        logger.exception(f"get_load_status failed for load {id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get load status: {str(e)}")
 
 
 @app.get("/api/leds/{station}", dependencies=API_DEPENDENCIES)
@@ -1171,10 +1185,17 @@ def get_station_leds(station: int):
     Command format: VLT@ <master> <station>
     Response format: R:V 01 02 03 04 05 06 07 08 (hex values, 00=off, FF=on)
     """
-    # Get actual master from Vantage config mapping
-    master = get_station_master(station)
+    try:
+        # Get actual master from Vantage config mapping
+        master = get_station_master(station)
 
-    response = qlink_send(f"VLT@ {master} {station}")
+        response = qlink_send(f"VLT@ {master} {station}")
+    except HTTPException:
+        # Re-raise HTTPExceptions from qlink_send
+        raise
+    except Exception as e:
+        logger.exception(f"get_station_leds failed for station {station}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get LED status: {str(e)}")
 
     parts = response.split()
     on_hex: Optional[str] = None

@@ -174,7 +174,6 @@ local function discover_station_buttons(driver, parent_device, cfg, parsed_confi
         local component = child.profile.components[component_id]
         if component then
           child:emit_component_event(component, capabilities.button.supportedButtonValues({ "pushed", "held" }, { visibility = { displayed = false } }))
-          end
           child:emit_component_event(component, capabilities.switch.switch.off())
         end
       end
