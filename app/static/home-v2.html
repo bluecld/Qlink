@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <script src="auth.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vantage Control - Dark Theme</title>
@@ -345,6 +346,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            /* keep buttons vertically centered even when title wraps */
             margin-bottom: 16px;
             /* 8px scale */
             padding-bottom: 16px;
@@ -352,6 +354,7 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             cursor: pointer;
             transition: all 0.3s;
+            gap: 12px;
         }
 
         .room-header:hover {
@@ -367,10 +370,13 @@
             font-size: 1.2em;
             font-weight: 500;
             color: #667eea;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            /* 8px scale */
+            display: block;
+            /* allow wrapping while preventing the header from stretching buttons */
+            flex: 1 1 auto;
+            min-width: 0;
+            /* allow truncation in flexbox */
+            word-break: break-word;
+            line-height: 1.2;
         }
 
         .room-collapse-icon {
@@ -730,6 +736,18 @@
             transform: translateY(-2px);
         }
 
+        .btn-selected {
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35), 0 8px 20px rgba(15, 23, 42, 0.35);
+            transform: none;
+        }
+
+        .btn[disabled] {
+            opacity: 0.85;
+            cursor: default;
+            pointer-events: none;
+            box-shadow: none;
+        }
+
         .slider {
             flex: 1;
             height: 6px;
@@ -922,6 +940,79 @@
             .rooms-container {
                 grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
             }
+        }
+
+        /* Get Status button - consistent sizing and subtle interaction */
+        .room-get-status {
+            background: linear-gradient(180deg, #4CAF50 0%, #3fb45a 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+            overflow: visible;
+            box-shadow: 0 6px 14px rgba(34, 197, 94, 0.06);
+            transition: box-shadow 180ms ease, transform 120ms ease, background 160ms ease;
+            align-self: center;
+            /* guard against vertical stretching */
+            white-space: nowrap;
+            /* keep button compact */
+        }
+
+        /* gentle hover lift, no size change */
+        .room-get-status:hover:not(.loading) {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(34, 197, 94, 0.07);
+            background: linear-gradient(180deg, #52d07a 0%, #3fa047 100%);
+        }
+
+        /* loading: overlay a small spinner, do not change padding/size */
+        .room-get-status.loading {
+            pointer-events: none;
+            opacity: 0.98;
+        }
+
+        .room-get-status.loading::after {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            border-top-color: rgba(255, 255, 255, 0.9);
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: translateY(-50%) rotate(360deg);
+            }
+        }
+
+        .room-get-status:active {
+            transform: translateY(0) scale(0.998);
+            filter: brightness(0.98);
+        }
+
+        /* All-off button should match and not stretch */
+        .room-all-off {
+            background: linear-gradient(180deg, #b4536c 0%, #a43f57 100%);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-weight: 600;
+            align-self: center;
+            white-space: nowrap;
+            margin-right: 6px;
         }
     </style>
 </head>
@@ -1438,11 +1529,16 @@
             buttonDebounce[debounceKey] = now;
 
             try {
+                const payload = { level: parseInt(level) };
+                console.debug('setLevel: sending', id, payload);
                 const response = await fetch(`/device/${id}/set`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ level: parseInt(level) })
+                    body: JSON.stringify(payload)
                 });
+
+                const text = await response.text();
+                console.debug('setLevel: response', response.status, text);
 
                 if (response.ok) {
                     showToast(`${loadName}: ${level}%`);
@@ -1499,7 +1595,7 @@
                     //         const ledResponse = await fetch(`/api/leds/${station}`);
                     //         if (ledResponse.ok) {
                     //             const data = await ledResponse.json();
-                    //             updateStationLEDs(station, data.leds);
+                    //             updateStationLEDs(station, data.button_states, data.leds);
                     //         }
                     //     } catch (e) {
                     //         console.error('LED poll after button press failed:', e);
@@ -1623,9 +1719,20 @@
             }
 
             // Toggle room state
-            roomStates[roomName] = !roomStates[roomName];
+            const newState = !roomStates[roomName];
+            roomStates[roomName] = newState;
             saveRoomStates();
             renderRooms();
+
+            // If we just expanded the room, trigger a getStatus to refresh visible info
+            if (!newState) {
+                // debounce to avoid multiple calls in quick succession
+                if (!toggleRoom._debounce) toggleRoom._debounce = {};
+                if (!toggleRoom._debounce[roomName]) {
+                    toggleRoom._debounce[roomName] = true;
+                    setTimeout(() => { getStatus(roomName); toggleRoom._debounce[roomName] = false; }, 250);
+                }
+            }
         }
 
         function collapseAllRooms() {
@@ -1700,7 +1807,7 @@
                     // data.stations contains { "V23": { "1": "on", "2": "off", ... }, ... }
                     for (const [stationId, buttons] of Object.entries(data.stations)) {
                         const stationNum = parseInt(stationId.substring(1)); // "V23" -> 23
-                        updateStationLEDs(stationNum, buttons);
+                        updateStationLEDs(stationNum, buttons, null);
                     }
                 }
             } catch (error) {
@@ -1708,32 +1815,93 @@
             }
         }
 
-        function updateStationLEDs(station, buttonStates) {
-            // Find all rooms with this station
-            const rooms = configData.rooms.filter(r => r.station === station);
+        function updateStationLEDs(station, buttonStates, ledStates) {
+            if (!configData || !Array.isArray(configData.rooms)) return;
 
-            for (const room of rooms) {
-                const roomId = room.name.replace(/\s+/g, '-').toLowerCase();
+            const normalized = new Array(8).fill('off');
 
-                // Update each button's LED state
-                for (let btnNum = 1; btnNum <= 8; btnNum++) {
-                    const state = buttonStates[btnNum.toString()];
-                    const btnEl = document.getElementById(`scene-${roomId}-${btnNum}`);
+            if (buttonStates && typeof buttonStates === 'object') {
+                for (const [key, value] of Object.entries(buttonStates)) {
+                    const index = Number(key);
+                    if (!Number.isInteger(index) || index < 1 || index > 8) continue;
 
-                    if (btnEl && state) {
-                        // Remove all LED state classes
-                        btnEl.classList.remove('led-on', 'led-blink');
+                    let state;
+                    if (typeof value === 'string') {
+                        state = value.toLowerCase();
+                    } else if (value === 1 || value === true) {
+                        state = 'on';
+                    } else if (value === 2) {
+                        state = 'blink';
+                    } else {
+                        state = 'off';
+                    }
 
-                        // Add appropriate class based on state
-                        if (state === 'on') {
-                            btnEl.classList.add('led-on');
-                        } else if (state === 'blink') {
-                            btnEl.classList.add('led-blink');
-                        }
-                        // 'off' state = no special class
+                    if (state === 'on' || state === 'blink' || state === 'off') {
+                        normalized[index - 1] = state;
                     }
                 }
+            } else if (Array.isArray(ledStates) && ledStates.length >= 8) {
+                ledStates.forEach((value, idx) => {
+                    const numeric = Number(value);
+                    if (Number.isNaN(numeric)) return;
+                    if (numeric >= 200) normalized[idx] = 'on';
+                    else if (numeric >= 100) normalized[idx] = 'blink';
+                    else if (numeric > 0) normalized[idx] = 'on';
+                    else normalized[idx] = 'off';
+                });
+            } else {
+                return;
             }
+
+            const applyLedStateToButton = (button, state) => {
+                if (!button) return;
+                button.classList.remove('led-on', 'led-blink', 'active');
+                button.dataset.ledState = state;
+                if (state === 'on') {
+                    button.classList.add('led-on', 'active');
+                } else if (state === 'blink') {
+                    button.classList.add('led-blink', 'active');
+                }
+            };
+
+            configData.rooms.forEach(room => {
+                const roomId = room.name.replace(/\s+/g, '-').toLowerCase();
+
+                let roomMatches = false;
+                if (room.station && Number(room.station) === Number(station)) {
+                    roomMatches = true;
+                }
+
+                if (!roomMatches && Array.isArray(room.stations)) {
+                    for (const st of room.stations) {
+                        try {
+                            const stNum = Number(st.station || st);
+                            if (!Number.isNaN(stNum) && stNum === Number(station)) {
+                                roomMatches = true;
+                                break;
+                            }
+                        } catch (e) {
+                            // ignore malformed station entries
+                        }
+                    }
+                }
+
+                if (!roomMatches) return;
+
+                for (let btnNum = 1; btnNum <= 8; btnNum++) {
+                    const state = normalized[btnNum - 1] || 'off';
+                    const selectors = [
+                        `#scene-${roomId}-${station}-${btnNum}`,
+                        `#scene-${roomId}-${btnNum}`,
+                    ];
+
+                    selectors.forEach(selector => {
+                        document.querySelectorAll(selector).forEach(button => {
+                            applyLedStateToButton(button, state);
+                        });
+                    });
+                }
+            });
         }
 
         function parseLoadLevel(response) {
@@ -1783,8 +1951,23 @@
             }
 
             // Save state to localStorage
-            loadsVisibility[roomId] = !loadsSection?.classList.contains('collapsed');
+            const visible = !loadsSection?.classList.contains('collapsed');
+            loadsVisibility[roomId] = visible;
             saveLoadsVisibility();
+
+            // If we just expanded the loads section, trigger getStatus for the room
+            if (visible) {
+                // roomId is slugified room name; convert back to original by finding match
+                const room = configData.rooms.find(r => r.name.replace(/\s+/g, '-').toLowerCase() === roomId);
+                if (room) {
+                    // Debounce to avoid duplicate calls
+                    if (!toggleLoads._debounce) toggleLoads._debounce = {};
+                    if (!toggleLoads._debounce[roomId]) {
+                        toggleLoads._debounce[roomId] = true;
+                        setTimeout(() => { getStatus(room.name); toggleLoads._debounce[roomId] = false; }, 200);
+                    }
+                }
+            }
         }
 
         function minimizeAllLoads() {
@@ -1811,6 +1994,31 @@
             if (sliderEl) {
                 sliderEl.value = level;
             }
+
+            const loadEl = document.getElementById(`load-${loadId}`);
+            if (loadEl) {
+                const onBtn = loadEl.querySelector('.btn-on');
+                const offBtn = loadEl.querySelector('.btn-off');
+                if (onBtn && offBtn) {
+                    const numericLevel = Number(level);
+                    const hasLevel = !Number.isNaN(numericLevel);
+                    const isOn = hasLevel && numericLevel > 0;
+                    const isOff = hasLevel && numericLevel <= 0;
+
+                    onBtn.disabled = hasLevel && isOn;
+                    offBtn.disabled = hasLevel && isOff;
+
+                    onBtn.classList.toggle('btn-selected', isOn);
+                    offBtn.classList.toggle('btn-selected', isOff);
+
+                    if (!hasLevel) {
+                        onBtn.disabled = false;
+                        offBtn.disabled = false;
+                        onBtn.classList.remove('btn-selected');
+                        offBtn.classList.remove('btn-selected');
+                    }
+                }
+            }
         }
 
         function startPolling() {
@@ -1821,57 +2029,37 @@
             // Do ONE initial poll on page load to show current status
             pollLoadStatus();
 
-            // DISABLED: LED polling causes port exhaustion (538+ TIME_WAIT connections)
-            // Issue: 20-30 visible stations × 30 polls/min = 600-900 new sockets/min
-            // Each socket stays in TIME_WAIT for 60-120 seconds → port exhaustion
-            // TODO: Implement connection pooling in bridge.py for proper LED polling
-            // startLEDPolling();
+            // Previously disabled due to TIME_WAIT build-up on the controller.
+            // The bridge now serializes LED polling requests, keeping connection counts low.
+            startLEDPolling();
         }
 
         // LED Polling - Poll only visible stations
         let ledPollInterval = null;
 
         function getVisibleStations() {
-            // Get all currently visible station buttons
             const visibleStations = new Set();
+            const buttons = document.querySelectorAll('.scene-btn');
 
-            // Find all visible scene buttons and extract their station numbers
-            const visibleButtons = document.querySelectorAll('.scene-btn:not([style*="display: none"])');
-            visibleButtons.forEach(btn => {
-                // Button IDs are like: scene-foyer-19-1 (roomId-station-button)
-                const id = btn.id;
-                const match = id.match(/scene-[^-]+-(\d+)-\d+/);
+            buttons.forEach(btn => {
+                const isVisible = btn.offsetParent !== null;
+                if (!isVisible) return;
+
+                const match = btn.id.match(/scene-[^-]+-(\d+)-\d+/);
                 if (match) {
-                    visibleStations.add(parseInt(match[1]));
+                    visibleStations.add(parseInt(match[1], 10));
+                    return;
                 }
-            });
 
-            // Also check for single-station format: scene-roomId-buttonNum
-            const singleStationButtons = document.querySelectorAll('.scene-btn[id^="scene-"]');
-            singleStationButtons.forEach(btn => {
-                const stationDiv = btn.closest('.scene-section');
-                if (stationDiv && !stationDiv.style.display || stationDiv.style.display !== 'none') {
-                    const label = stationDiv.querySelector('.scene-label');
-                    if (label) {
-                        const match = label.textContent.match(/V(\d+)/);
-                        if (match) {
-                            visibleStations.add(parseInt(match[1]));
-                        }
-                    }
+                // Legacy format scene-roomId-buttonNum
+                const stationSection = btn.closest('.scene-section');
+                if (!stationSection) return;
+                const label = stationSection.querySelector('.scene-label');
+                if (!label) return;
+                const labelMatch = label.textContent.match(/V(\d+)/);
+                if (labelMatch) {
+                    visibleStations.add(parseInt(labelMatch[1], 10));
                 }
-            });
-
-            // Alternative: Get stations from active station-content divs
-            const activeStations = document.querySelectorAll('.station-content.active');
-            activeStations.forEach(content => {
-                const buttons = content.querySelectorAll('.scene-btn');
-                buttons.forEach(btn => {
-                    const id = btn.id;
-                    const match = id.match(/scene-[^-]+-(\d+)-\d+/);
-                    if (match) {
-                        visibleStations.add(parseInt(match[1]));
-                    }
-                });
             });
 
             return Array.from(visibleStations);
@@ -1888,7 +2076,7 @@
                     const response = await fetch(`/api/leds/${station}`);
                     if (response.ok) {
                         const data = await response.json();
-                        updateStationLEDs(station, data.leds);
+                        updateStationLEDs(station, data.button_states, data.leds);
                     }
                 } catch (error) {
                     console.error(`Failed to poll LED state for station ${station}:`, error);
@@ -1896,51 +2084,8 @@
             }
         }
 
-        function updateStationLEDs(station, ledStates) {
-            if (!ledStates || ledStates.length !== 8) return;
-
-            // Update LED state for each button
-            ledStates.forEach((state, index) => {
-                const btnNum = index + 1;
-                // Try multi-station format first
-                const buttons = document.querySelectorAll(`[id*="-${station}-${btnNum}"]`);
-
-                buttons.forEach(btn => {
-                    if (state === 255 || state === 0xFF || state > 127) {
-                        btn.classList.add('active');
-                    } else {
-                        btn.classList.remove('active');
-                    }
-                });
-
-                // Also try single-station format (backwards compatibility)
-                if (buttons.length === 0) {
-                    const roomId = findRoomIdForStation(station);
-                    if (roomId) {
-                        const btn = document.getElementById(`scene-${roomId}-${btnNum}`);
-                        if (btn) {
-                            if (state === 255 || state === 0xFF || state > 127) {
-                                btn.classList.add('active');
-                            } else {
-                                btn.classList.remove('active');
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function findRoomIdForStation(station) {
-            if (!configData) return null;
-            for (const room of configData.rooms) {
-                if (room.station === station) {
-                    return room.name.replace(/\s+/g, '-').toLowerCase();
-                }
-            }
-            return null;
-        }
-
         function startLEDPolling() {
+            if (ledPollInterval) return;
             // Poll every 2 seconds
             ledPollInterval = setInterval(pollVisibleLEDs, 2000);
 
@@ -2006,34 +2151,57 @@
                 return;
             }
 
+            // find the button and set loading state (use getAttribute for exact match)
+            const headerCard = Array.from(document.querySelectorAll('.room-card'))
+                .find(rc => rc.getAttribute('data-room-name') === roomName);
+            const headerBtn = headerCard ? headerCard.querySelector('.room-get-status') : null;
+            console.debug('getStatus: roomName=', roomName, 'headerCard=', headerCard, 'headerBtn=', headerBtn);
+            if (headerBtn) headerBtn.classList.add('loading');
+
             try {
-                // Poll load levels
+                // Poll load levels sequentially with a small delay to avoid flooding the bridge
                 for (const load of room.loads) {
-                    const response = await fetch(`/load/${load.id}/status`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        const level = parseLoadLevel(data.resp);
-                        updateLoadStatus(load.id, level);
-                    } else {
-                        console.error(`Failed to get status for load ${load.id}`);
+                    try {
+                        const response = await fetch(`/load/${load.id}/status`);
+                        const raw = await response.text();
+                        console.debug('getStatus: load', load.id, 'rawResponse=', raw);
+                        if (response.ok) {
+                            const data = JSON.parse(raw);
+                            const level = parseLoadLevel(data.resp);
+                            updateLoadStatus(load.id, level);
+                        } else {
+                            console.error(`Failed to get status for load ${load.id}: ${response.status}`);
+                        }
+                    } catch (e) {
+                        console.error('getStatus: error fetching load', load.id, e);
                     }
+                    // small pause between requests
+                    await new Promise(r => setTimeout(r, 60));
                 }
 
                 // Poll LED states for the room's stations
                 for (const station of room.stations || []) {
-                    const response = await fetch(`/api/leds/${station.station}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        updateStationLEDs(station.station, data.leds);
-                    } else {
-                        console.error(`Failed to get LED status for station ${station.station}`);
+                    try {
+                        const response = await fetch(`/api/leds/${station.station}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            updateStationLEDs(Number(station.station), data.button_states, data.leds);
+                        } else {
+                            console.error(`Failed to get LED status for station ${station.station}: ${response.status}`);
+                        }
+                    } catch (e) {
+                        console.error('getStatus: error fetching LED status for station', station.station, e);
                     }
+                    // small pause between requests
+                    await new Promise(r => setTimeout(r, 60));
                 }
-
                 showToast(`Status updated for ${roomName}`);
+                console.debug('getStatus: completed for', roomName);
+                if (headerBtn) headerBtn.classList.remove('loading');
             } catch (error) {
                 showToast(`Failed to get status for ${roomName}`, true);
                 console.error(`Error getting status for ${roomName}:`, error);
+                if (headerBtn) headerBtn.classList.remove('loading');
             }
         }
     </script>

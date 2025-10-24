@@ -15,7 +15,7 @@ for i, page in enumerate(reader.pages):
         text = page.extract_text()
     except Exception as e:
         text = f"<<error extracting page {i}: {e}>>"
-    out.append(f"--- page {i+1} ---")
+    out.append(f"--- page {i + 1} ---")
     out.append(text or "")
 
 print("\n".join(out))

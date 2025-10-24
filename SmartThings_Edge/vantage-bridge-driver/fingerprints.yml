@@ -1,0 +1,14 @@
+zigbeeManufacturer: []
+zigbeeModel: []
+zwaveManufacturer: []
+zwaveProductType: []
+zwaveProductId: []
+lanManufacturer:
+  - id: "VANTAGE.QBRIDGE.PARENT"
+    deviceIntegrationType: LAN
+    clientDevicesEnabled: true
+    deviceProfileName: vantageBridge.parent
+    vendorLabel: "Vantage QLink Bridge"
+    manufacturer: "Vantage"
+    model: "QLinkBridge"
+    deviceJoinName: "Vantage QLink Bridge"

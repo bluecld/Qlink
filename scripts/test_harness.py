@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Test harness for the QLink bridge.
+r"""Test harness for the QLink bridge.
 
 Usage examples (PowerShell):
   # start mock server (in one terminal)
@@ -13,9 +13,11 @@ Usage examples (PowerShell):
 
 This script sends POSTs to /device/{id}/set and GET /send/{cmd} and prints responses.
 """
+
 import argparse
-import requests
 import json
+
+import requests
 
 
 def post_set(bridge_url, device, level=None, switch=None):

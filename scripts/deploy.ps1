@@ -15,22 +15,34 @@ $Key = $cfg.key
 $RemoteDir = $cfg.remote_dir
 $EnvMap = $cfg.env
 
+## Expand and validate key path early so ssh/scp won't warn about missing file
+if ($Key -like '~*') {
+  $Key = $Key -replace '^~', $env:USERPROFILE
+}
+if (-not (Test-Path $Key)) {
+  Write-Host "ERROR: SSH key path '$Key' does not exist. Please update $cfgPath with a valid key path." -ForegroundColor Red
+  exit 1
+}
+
 ## Create remote dir
 ssh -i $Key "${User}@${HostName}" "mkdir -p '${RemoteDir}' '${RemoteDir}/app' '${RemoteDir}/scripts'"
 
-## Package the app folder into a zip using Compress-Archive (Windows native)
 $localZip = Join-Path $PWD 'app.zip'
 if (Test-Path $localZip) { Remove-Item $localZip -Force }
-## Package the 'app' directory using a small Python helper so zip entries use '/'
+## Package the 'app' directory and config schemas using a small Python helper so zip entries use '/'
 $packScript = @'
 import zipfile, os
 out = r"{0}"
+roots = ['app', 'config/schemas']
 with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
-  for root, dirs, files in os.walk('app'):
-    for fn in files:
-      path = os.path.join(root, fn)
-      arc = os.path.relpath(path, '.') .replace('\\\\', '/')
-      z.write(path, arc)
+  for root_dir in roots:
+    if not os.path.exists(root_dir):
+      continue
+    for root, dirs, files in os.walk(root_dir):
+      for fn in files:
+        path = os.path.join(root, fn)
+        arc = os.path.relpath(path, '.') .replace('\\', '/')
+        z.write(path, arc)
 print('packed')
 '@ -f $localZip
 $scriptPath = Join-Path $PWD 'pack_app.py'

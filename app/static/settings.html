@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <script src="auth.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - Vantage Q-Link Bridge</title>
@@ -306,12 +307,15 @@
                 overflow-x: auto;
                 overflow-y: hidden;
                 -webkit-overflow-scrolling: touch;
-                scrollbar-width: none; /* Firefox */
-                -ms-overflow-style: none; /* IE/Edge */
+                scrollbar-width: none;
+                /* Firefox */
+                -ms-overflow-style: none;
+                /* IE/Edge */
             }
 
             .nav-tabs::-webkit-scrollbar {
-                display: none; /* Chrome/Safari */
+                display: none;
+                /* Chrome/Safari */
             }
 
             .status-bar {
@@ -419,14 +423,17 @@
 
                 <div class="button-group">
                     <button type="button" class="btn-secondary" onclick="loadSettings()">↻ Reload</button>
+                    <button type="button" id="probeBtn" class="btn-secondary">🔎 Test connection</button>
                     <button type="submit" class="btn-primary">💾 Save Settings</button>
                 </div>
+                <div id="probeResult" style="margin-top:12px;color:#9fb1d6"></div>
             </form>
 
             <hr style="margin: 40px 0; border: none; border-top: 1px solid #dee2e6;">
 
             <h3 style="margin-bottom: var(--spacing-md);">Current Status</h3>
-            <div id="statusInfo" style="background: var(--bg-card); padding: var(--spacing-md); border-radius: 8px; border: 1px solid var(--border-color);">
+            <div id="statusInfo"
+                style="background: var(--bg-card); padding: var(--spacing-md); border-radius: 8px; border: 1px solid var(--border-color);">
                 <p><strong>Loading status...</strong></p>
             </div>
         </main>
@@ -549,6 +556,36 @@
         }
 
         startAutoRefresh();
+
+        // Probe connection to Vantage IP/Port
+        async function probe() {
+            const ip = document.getElementById('vantage_ip').value;
+            const port = document.getElementById('vantage_port').value;
+            const out = document.getElementById('probeResult');
+            out.textContent = 'Probing...';
+            try {
+                const params = new URLSearchParams();
+                if (ip) params.set('ip', ip);
+                if (port) params.set('port', port);
+                const start = performance.now();
+                const res = await fetch('/probe?' + params.toString());
+                const elapsed = Math.round(performance.now() - start);
+                if (res.ok) {
+                    const data = await res.json();
+                    out.textContent = `OK ${data.ip}:${data.port} (${elapsed} ms)`;
+                    out.style.color = '#8be78b';
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    out.textContent = `Failed: ${err.detail || err.error || res.statusText}`;
+                    out.style.color = '#f97373';
+                }
+            } catch (e) {
+                out.textContent = `Error: ${e.message}`;
+                out.style.color = '#f97373';
+            }
+        }
+
+        document.getElementById('probeBtn').addEventListener('click', probe);
     </script>
 </body>
 
