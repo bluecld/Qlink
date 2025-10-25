@@ -39,12 +39,17 @@ Thumbs.db
 
 # Local config and secrets
 config/targets.json
+config/bridge_settings.json
 .env
 *.local
+
+# IDE and editor configs
+.claude/
 
 # Deployment artifacts
 app.zip
 pack_app.py
+vantage-bridge.zip
 
 # Logs
 *.log
