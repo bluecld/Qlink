@@ -1,4 +1,4 @@
-﻿local capabilities = require "st.capabilities"
+local capabilities = require "st.capabilities"
 local log = require "log"
 
 local load_child = require "devices.load_child"

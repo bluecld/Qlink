@@ -1,4 +1,4 @@
-﻿local capabilities = require "st.capabilities"
+local capabilities = require "st.capabilities"
 local log = require "log"
 
 local http_client = require "http_client"

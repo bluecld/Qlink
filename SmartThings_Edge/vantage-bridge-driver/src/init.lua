@@ -1,4 +1,4 @@
-﻿local capabilities = require "st.capabilities"
+local capabilities = require "st.capabilities"
 local Driver = require "st.driver"
 local log = require "log"
 
