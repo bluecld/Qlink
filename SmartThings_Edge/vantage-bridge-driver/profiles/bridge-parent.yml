@@ -9,15 +9,17 @@ components:
     categories:
       - name: Hub
 preferences:
-  - preferenceId: bridgeIp
+  - name: bridgeIp
     title: "Bridge IP address"
     description: "IPv4 address of the Vantage bridge REST service."
     required: true
     preferenceType: string
     definition:
-      stringType: ipv4
+      stringType: text
+      minLength: 1
+      maxLength: 255
       default: "192.168.1.200"
-  - preferenceId: bridgePort
+  - name: bridgePort
     title: "Bridge port"
     description: "Port for the REST API (default 8000)."
     required: true
@@ -26,7 +28,7 @@ preferences:
       minimum: 1
       maximum: 65535
       default: 8000
-  - preferenceId: bridgeUseHttps
+  - name: bridgeUseHttps
     title: "Use HTTPS"
     description: "Enable if the bridge is exposed via HTTPS."
     required: false

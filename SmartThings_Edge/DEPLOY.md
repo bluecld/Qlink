@@ -2,7 +2,7 @@
 
 ## Quick Start (When API is working)
 
-The driver is already packaged and ready to deploy: `vantage-bridge.zip`
+The driver is already packaged and ready to deploy: `vantage-driver.zip` (in the repository root).
 
 ### Prerequisites
 - SmartThings CLI installed: `npm install -g @smartthings/cli`
@@ -28,7 +28,7 @@ export SMARTTHINGS_TOKEN="YOUR_TOKEN_HERE"
 
 # Upload the pre-built driver and install
 cd c:\Qlink
-smartthings edge:drivers:package --upload vantage-bridge.zip --install
+smartthings edge:drivers:package --upload vantage-driver.zip --install
 ```
 
 The CLI will:
@@ -47,10 +47,10 @@ export SMARTTHINGS_TOKEN="YOUR_TOKEN_HERE"
 cd c:\Qlink
 
 # Build locally first (validates package)
-smartthings edge:drivers:package --build-only vantage-bridge.zip SmartThings_Edge/vantage-bridge-driver
+smartthings edge:drivers:package --build-only vantage-driver.zip SmartThings_Edge/vantage-bridge-driver
 
 # Upload and install
-smartthings edge:drivers:package --upload vantage-bridge.zip --install
+smartthings edge:drivers:package --upload vantage-driver.zip --install
 ```
 
 #### Option 3: Manual Channel Management
@@ -59,7 +59,7 @@ smartthings edge:drivers:package --upload vantage-bridge.zip --install
 export SMARTTHINGS_TOKEN="YOUR_TOKEN_HERE"
 
 # 1. Upload driver (get driverId from output)
-smartthings edge:drivers:package --upload vantage-bridge.zip
+smartthings edge:drivers:package --upload vantage-driver.zip
 
 # 2. List or create channel
 smartthings edge:channels
@@ -121,10 +121,10 @@ When making driver changes:
 export SMARTTHINGS_TOKEN="YOUR_NEW_TOKEN"
 
 # Rebuild package
-smartthings edge:drivers:package --build-only vantage-bridge.zip SmartThings_Edge/vantage-bridge-driver
+smartthings edge:drivers:package --build-only vantage-driver.zip SmartThings_Edge/vantage-bridge-driver
 
 # Upload new version (overwrites existing)
-smartthings edge:drivers:package --upload vantage-bridge.zip --channel <channelId>
+smartthings edge:drivers:package --upload vantage-driver.zip --channel <channelId>
 ```
 
 SmartThings will automatically update installed drivers within ~24 hours, or you can force update:
@@ -170,7 +170,7 @@ The driver creates these device types:
 ## Current Status
 
 ✅ Driver fully implemented and tested
-✅ Package built successfully (`vantage-bridge.zip`)
+✅ Package built successfully (`vantage-driver.zip`)
 ⏳ Awaiting SmartThings API availability or fresh token for upload
 
 **Next Step**: Generate fresh token and run deployment command above.

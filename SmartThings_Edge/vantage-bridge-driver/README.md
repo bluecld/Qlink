@@ -40,7 +40,7 @@ Key modules:
   * Stations (`station:<id>`) with components `button1`…`button8`.
 * Load children issue `POST /device/{id}/set` for on/off/level and refresh from `/load/{id}/status`.
 * Station children map SmartThings button/switch commands to `POST /button/{station}/{button}` and mirror LED status via component `switch` values using `/api/leds`.
-* HTTP helper is cosock-friendly and shared by all modules.
+* HTTP helper is cosock-friendly, supports HTTPS (self-signed certificates allowed), and is shared by all modules.
 
 ## Next steps
 

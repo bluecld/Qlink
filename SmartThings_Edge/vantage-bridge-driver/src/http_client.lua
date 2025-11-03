@@ -1,5 +1,4 @@
 local cosock = require "cosock"
-local http = cosock.asyncify "socket.http"
 local ltn12 = require "ltn12"
 local log = require "log"
 local json = require "st.json"
@@ -8,19 +7,54 @@ local M = {}
 
 local DEFAULT_TIMEOUT = 5
 
+local http = cosock.asyncify "socket.http"
+local https_client
+local https_available, https_err = pcall(function()
+  https_client = cosock.asyncify "ssl.https"
+end)
+
+if not https_available then
+  log.warn(string.format("HTTPS support unavailable: %s", https_err or "ssl.https module missing"))
+  https_client = nil
+end
+
+local function choose_client(url)
+  if url and url:lower():match("^https://") then
+    if not https_client then
+      return nil, true
+    end
+    return https_client, true
+  end
+  return http, false
+end
+
 local function request(method, url, body, headers)
   local response_chunks = {}
   local req_headers = headers or {}
   req_headers["Content-Type"] = req_headers["Content-Type"] or "application/json"
 
-  local result, status_code, response_headers, status_line = http.request({
+  local client, is_https = choose_client(url)
+  if not client then
+    return nil, "HTTPS requested but ssl.https module is not available"
+  end
+
+  local request_args = {
     method = method,
     url = url,
     source = body and ltn12.source.string(body) or nil,
     sink = ltn12.sink.table(response_chunks),
     headers = req_headers,
     timeout = DEFAULT_TIMEOUT,
-  })
+  }
+
+  if is_https then
+    request_args.mode = "client"
+    request_args.protocol = "tlsv1_2"
+    request_args.options = "all"
+    request_args.verify = "none"
+  end
+
+  local result, status_code, response_headers, status_line = client.request(request_args)
 
   if not result then
     return nil, string.format("HTTP request failed (%s)", status_line or "unknown error")

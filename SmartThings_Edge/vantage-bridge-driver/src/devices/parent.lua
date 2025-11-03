@@ -26,11 +26,19 @@ local function ensure_parent_mark(device)
 end
 
 local function get_bridge_config(device)
-  return device:get_field(BRIDGE_CONFIG_FIELD) or {
-    host = device.preferences and device.preferences.bridgeIp or "",
-    port = device.preferences and device.preferences.bridgePort or "8000",
-    use_https = device.preferences and device.preferences.bridgeUseHttps,
+  local stored = device:get_field(BRIDGE_CONFIG_FIELD)
+  if stored then
+    return stored
+  end
+
+  local prefs = device.preferences or {}
+  local cfg = {
+    host = prefs.bridgeIp or "",
+    port = prefs.bridgePort or "8000",
+    use_https = prefs.bridgeUseHttps,
   }
+  device:set_field(BRIDGE_CONFIG_FIELD, cfg, { persist = true })
+  return cfg
 end
 
 local function set_bridge_config(device, cfg)
@@ -84,6 +92,7 @@ function parent.device_added(driver, device)
   end
 
   ensure_parent_mark(device)
+  get_bridge_config(device)
   device:online()
   log.info(string.format("Parent bridge device added (%s)", device.label))
   run_discovery(driver, device, true)
@@ -96,6 +105,7 @@ function parent.device_init(driver, device)
   end
 
   ensure_parent_mark(device)
+  get_bridge_config(device)
   device:online()
   schedule_refresh(driver, device)
 end

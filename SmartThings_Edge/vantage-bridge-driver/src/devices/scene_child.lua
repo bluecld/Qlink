@@ -30,13 +30,21 @@ local function component_to_button(device, component, fallback_button)
   return 1
 end
 
-local function build_endpoint(cfg, station, button)
+local function build_base_endpoint(cfg, path)
   if not cfg or not cfg.host or cfg.host == "" then
     return nil
   end
   local scheme = cfg.use_https and "https" or "http"
   local port = cfg.port and cfg.port ~= "" and (":" .. cfg.port) or ""
-  return string.format("%s://%s%s/button/%s/%s", scheme, cfg.host, port, station, button)
+  return string.format("%s://%s%s%s", scheme, cfg.host, port, path)
+end
+
+local function build_button_endpoint(cfg, station, button)
+  return build_base_endpoint(cfg, string.format("/button/%s/%s", station, button))
+end
+
+local function build_led_endpoint(cfg)
+  return build_base_endpoint(cfg, "/api/leds")
 end
 
 local function set_switch_state(device, button, state)
@@ -76,7 +84,7 @@ local function trigger_button(device, event_name, button_number)
   if button < 1 then button = 1 end
   if button > 8 then button = 8 end
 
-  local endpoint = build_endpoint(cfg, station, button)
+  local endpoint = build_button_endpoint(cfg, station, button)
   if not endpoint then
     log.warn("Bridge endpoint missing; cannot trigger station button")
     return
@@ -138,7 +146,7 @@ local function refresh_related_loads(driver, parent_device, cfg, loads)
 end
 
 function scene_child.refresh_all(driver, parent_device, cfg)
-  local leds_endpoint = build_endpoint(cfg, "/api/leds")
+  local leds_endpoint = build_led_endpoint(cfg)
   if not leds_endpoint then return end
   local body, err = http_client.get(leds_endpoint)
   if err then
