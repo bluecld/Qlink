@@ -26,6 +26,7 @@ A modern REST API bridge for legacy Vantage lighting control systems. Run on a R
 - [Event Monitoring](#event-monitoring)
 - [Deployment](#deployment)
 - [Contributing](#contributing)
+- [Troubleshooting](#troubleshooting)
 - [License](#license)
 
 ## 🚀 Quick Start
@@ -414,6 +415,35 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 - Submit Pull Requests for bug fixes or enhancements
 - Improve documentation
 - Share your integration examples
+
+## 🆘 Troubleshooting
+
+### CI Checks Failed (Red X)?
+
+If you see a red X next to your commits or pull requests, this means the automated CI checks failed. See our comprehensive guide:
+
+👉 **[Understanding GitHub Features](docs/GITHUB_FEATURES.md)** - Complete guide to fixing CI issues, understanding status checks, and using GitHub features.
+
+**Quick fixes:**
+- Check the error by clicking on the red X
+- Common issue: Update `dev-requirements.txt` package versions
+- Run tests locally before pushing: `pytest && ruff . && black --check .`
+
+### What Does "Compare & pull request" Button Do?
+
+The green "Compare & pull request" button appears after you push changes. It allows you to:
+- Create a Pull Request to merge your changes
+- Request code reviews
+- Run CI checks on your changes
+
+See the [GitHub Features Guide](docs/GITHUB_FEATURES.md) for detailed explanations.
+
+### Other Issues
+
+For setup, deployment, and other issues:
+- [GitHub Setup Guide](docs/GITHUB_SETUP.md) - Repository creation and configuration
+- [Configuration UI Guide](docs/CONFIGURATION_UI.md) - Web interface setup
+- [Pi Setup Guide](docs/PI_SETUP_COMPLETE.md) - Raspberry Pi deployment
 
 ## 📝 License
 
