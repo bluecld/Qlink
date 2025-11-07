@@ -207,7 +207,6 @@ class SSDPAdvertiser:
         ]
 
         for nt in notification_types:
-            location = f"http://{self.local_ip}:{self.local_port}/about"
             usn = f"uuid:{self.uuid}::{nt}"
 
             message = (

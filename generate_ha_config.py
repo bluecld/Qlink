@@ -42,42 +42,42 @@ print('      Content-Type: "application/json"')
 print('    payload: \'{"switch": "off"}\'')
 print('\nsensor:')
 
-for l in loads:
-    print(f'  - platform: rest')
-    print(f'    name: "Vantage Load {l["id"]} Status"')
-    print(f'    unique_id: vantage_load_{l["id"]}_status')
-    print(f'    resource: "http://localhost:8000/load/{l["id"]}/status"')
-    print(f'    value_template: "{{{{ value_json.resp | int }}}}"')
-    print(f'    scan_interval: 30\n')
+for load in loads:
+    print('  - platform: rest')
+    print(f'    name: "Vantage Load {load["id"]} Status"')
+    print(f'    unique_id: vantage_load_{load["id"]}_status')
+    print(f'    resource: "http://localhost:8000/load/{load["id"]}/status"')
+    print('    value_template: "{{ value_json.resp | int }}"')
+    print('    scan_interval: 30\n')
 
 print('light:')
 print('  - platform: template')
 print('    lights:')
 
 cf, cr = None, None
-for l in loads:
-    if l['floor'] != cf:
-        print(f'      # {l["floor"]}')
-        cf, cr = l['floor'], None
-    if l['room'] != cr:
-        print(f'      # {l["room"]}')
-        cr = l['room']
-    eid = sanitize(f'{l["room"]}_{l["name"]}')
-    fn = escape_yaml_string(f'{l["room"]} - {l["name"]}')
-    lid = l['id']
+for load in loads:
+    if load['floor'] != cf:
+        print(f'      # {load["floor"]}')
+        cf, cr = load['floor'], None
+    if load['room'] != cr:
+        print(f'      # {load["room"]}')
+        cr = load['room']
+    eid = sanitize(f'{load["room"]}_{load["name"]}')
+    fn = escape_yaml_string(f'{load["room"]} - {load["name"]}')
+    lid = load['id']
     print(f'      {eid}:')
     print(f'        friendly_name: "{fn}"')
     print(f'        unique_id: vantage_load_{lid}')
     print(f'        value_template: "{{{{ (states(\'sensor.vantage_load_{lid}_status\') | int(0)) > 0 }}}}"')
     print(f'        level_template: "{{{{ ((states(\'sensor.vantage_load_{lid}_status\') | int(0)) * 2.55) | round(0) }}}}"')
-    print(f'        turn_on:')
-    print(f'          service: rest_command.vantage_light_on')
-    print(f'          data:')
+    print('        turn_on:')
+    print('          service: rest_command.vantage_light_on')
+    print('          data:')
     print(f'            load_id: {lid}')
-    print(f'            brightness: "{{{{ brightness | default(255) }}}}"')
-    print(f'        turn_off:')
-    print(f'          service: rest_command.vantage_light_off')
-    print(f'          data:')
+    print('            brightness: "{{ brightness | default(255) }}"')
+    print('        turn_off:')
+    print('          service: rest_command.vantage_light_off')
+    print('          data:')
     print(f'            load_id: {lid}\n')
 
 print('homekit:')
@@ -87,15 +87,15 @@ print('      - light')
 print('  entity_config:')
 
 cf, cr = None, None
-for l in loads:
-    if l['floor'] != cf:
-        print(f'    # {l["floor"]}')
-        cf, cr = l['floor'], None
-    if l['room'] != cr:
-        print(f'    # {l["room"]}')
-        cr = l['room']
-    eid = sanitize(f'{l["room"]}_{l["name"]}')
-    fn = escape_yaml_string(f'{l["room"]} - {l["name"]}')
+for load in loads:
+    if load['floor'] != cf:
+        print(f'    # {load["floor"]}')
+        cf, cr = load['floor'], None
+    if load['room'] != cr:
+        print(f'    # {load["room"]}')
+        cr = load['room']
+    eid = sanitize(f'{load["room"]}_{load["name"]}')
+    fn = escape_yaml_string(f'{load["room"]} - {load["name"]}')
     print(f'    light.{eid}:')
     print(f'      name: "{fn}"')
 

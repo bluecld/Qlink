@@ -3,7 +3,6 @@
 Generate Home Assistant configuration for Vantage lights
 """
 
-import json
 import sys
 import requests
 
@@ -101,7 +100,7 @@ def main():
         loads = room.get('loads', [])
 
         # Filter to dimmers/switches only
-        lights = [l for l in loads if l.get('type') in ['dimmer', 'switch', 'relay']]
+        lights = [load for load in loads if load.get('type') in ['dimmer', 'switch', 'relay']]
 
         include_room = False
 
@@ -117,7 +116,7 @@ def main():
         elif choice == '6':
             # Only current 6 lights
             current_ids = [254, 241, 240, 141, 144, 122]
-            lights = [l for l in lights if l.get('id') in current_ids]
+            lights = [load for load in lights if load.get('id') in current_ids]
             include_room = len(lights) > 0
         elif choice == '5':
             # Interactive room selection
