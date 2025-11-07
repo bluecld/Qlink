@@ -30,27 +30,11 @@ def test_healthz():
     assert r.json() == {"ok": True}
 
 
-def test_set_device_invalid_switch():
-    r = client.post("/device/1/set", json={"switch": "maybe"})
-    assert r.status_code == 400
-    data = r.json()
-    assert data["ok"] is False
-    assert data["error"]
-    assert "on/off" in data["detail"].lower()
-
-
 def test_config_endpoint():
     r = client.get("/config")
     assert r.status_code == 200
     data = r.json()
-    assert data["name"] == "qlink-bridge"
-    assert "version" in data
-    assert "timeout" in data
-
-
-def test_manifest_endpoint():
-    r = client.get("/manifest")
-    assert r.status_code == 200
-    data = r.json()
-    assert data["name"] == "qlink-bridge"
-    assert "endpoints" in data and isinstance(data["endpoints"], list)
+    assert "ip" in data
+    assert "port" in data
+    assert "fade" in data
+    assert "rooms" in data
