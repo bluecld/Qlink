@@ -29,7 +29,14 @@ from datetime import datetime
 from time import perf_counter
 from typing import Any, Dict, Optional, Set, cast
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+    Depends,
+)
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -211,14 +218,17 @@ logger = logging.getLogger("qlink")
 # SSDP Advertiser for SmartThings LAN discovery
 try:
     from app.ssdp_advertiser import SSDPAdvertiser, get_local_ip
+
     SSDP_ENABLED = True
 except ImportError:
     try:
         # Try alternative import path (when running from app directory)
         import sys
         import os
+
         sys.path.insert(0, os.path.dirname(__file__))
         from ssdp_advertiser import SSDPAdvertiser, get_local_ip  # type: ignore
+
         SSDP_ENABLED = True
     except ImportError:
         logger.warning("ssdp_advertiser.py not found - SSDP discovery disabled")
@@ -250,6 +260,8 @@ class CommandRequest:
         self.cmd = cmd
         self.timeout = timeout
         self.response_queue = response_queue
+
+
 command_queue: "Queue[CommandRequest]" = Queue()
 command_worker_thread: Optional[threading.Thread] = None
 command_metrics_lock = threading.Lock()
@@ -337,9 +349,7 @@ def _command_worker() -> None:
                 result = _perform_qlink_send(request.cmd, request.timeout)
                 request.response_queue.put(("ok", result))
                 _increment_metric("total_commands", 1)
-                _update_metric(
-                    "last_rtt_ms", (perf_counter() - start_time) * 1000
-                )
+                _update_metric("last_rtt_ms", (perf_counter() - start_time) * 1000)
                 _update_metric("last_error", None)
             except HTTPException as exc:
                 _update_metric("last_error", exc.detail)
@@ -410,6 +420,8 @@ def _authorize_websocket(websocket: WebSocket) -> bool:
             token = auth_header[7:]
     token = _extract_secret_value(token)
     return bool(token) and secrets.compare_digest(token, BRIDGE_API_SECRET)
+
+
 event_loop: Optional[asyncio.AbstractEventLoop] = None
 
 # ===== LED State Storage =====
@@ -908,7 +920,9 @@ def led_polling_loop():
                                     stations.add(candidate)
                         else:
                             for key, value in data.items():
-                                if key.startswith("station_") and isinstance(value, dict):
+                                if key.startswith("station_") and isinstance(
+                                    value, dict
+                                ):
                                     candidate = normalize_station_id(
                                         value.get("station")
                                     )
@@ -933,7 +947,9 @@ def led_polling_loop():
             event_monitoring_enabled = True
             event_socket_connected = False
 
-            logger.debug(f"Polling stations (interval {poll_interval}s): {sorted(stations)}")
+            logger.debug(
+                f"Polling stations (interval {poll_interval}s): {sorted(stations)}"
+            )
 
             polled_count = 0
             error_count = 0
@@ -1042,7 +1058,9 @@ def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
     _ensure_command_worker()
     to = timeout or QLINK_TIMEOUT
     response_queue: Queue[Any] = Queue(maxsize=1)
-    command_queue.put(CommandRequest(cmd=cmd, timeout=to, response_queue=response_queue))
+    command_queue.put(
+        CommandRequest(cmd=cmd, timeout=to, response_queue=response_queue)
+    )
     _set_queue_depth(command_queue.qsize())
     try:
         status, payload = response_queue.get(timeout=to + QLINK_TIMEOUT + 2)
@@ -1072,7 +1090,7 @@ def about():
         "manufacturer": "Vantage",
         "model": "QLinkBridge",
         "device_type": "urn:schemas-upnp-org:device:Basic:1",
-        "friendly_name": "Vantage QLink Bridge"
+        "friendly_name": "Vantage QLink Bridge",
     }
 
 
@@ -1202,7 +1220,9 @@ def get_load_status(id: int):
         raise
     except Exception as e:
         logger.exception(f"get_load_status failed for load {id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get load status: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get load status: {str(e)}"
+        )
 
 
 @app.get("/api/leds/{station}", dependencies=API_DEPENDENCIES)
@@ -1223,7 +1243,9 @@ def get_station_leds(station: int):
         raise
     except Exception as e:
         logger.exception(f"get_station_leds failed for station {station}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get LED status: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get LED status: {str(e)}"
+        )
 
     parts = response.split()
     on_hex: Optional[str] = None
@@ -1274,9 +1296,7 @@ def get_station_leds(station: int):
     }
 
 
-@app.post(
-    "/button/{station}/{button}", dependencies=API_DEPENDENCIES
-)
+@app.post("/button/{station}/{button}", dependencies=API_DEPENDENCIES)
 def press_button(station: int, button: int, behavior: Optional[str] = None):
     """Simulate a button press on a station using VSW command.
 
@@ -1312,9 +1332,7 @@ def press_button(station: int, button: int, behavior: Optional[str] = None):
     return {"resp": qlink_send(f"VSW {master} {station_physical} {button} {state}")}
 
 
-@app.get(
-    "/button/{station}/{button}/status", dependencies=API_DEPENDENCIES
-)
+@app.get("/button/{station}/{button}/status", dependencies=API_DEPENDENCIES)
 def get_button_status(station: int, button: int):
     """Get LED status of a button - NOT YET IMPLEMENTED.
 
@@ -1358,9 +1376,9 @@ def monitor_status():
         "last_command_at": command_metrics.get("last_command"),
         "last_command_error": command_metrics.get("last_error"),
         "total_commands_sent": command_metrics.get("total_commands", 0),
-        "command_worker_alive": command_worker_thread.is_alive()
-        if command_worker_thread
-        else False,
+        "command_worker_alive": (
+            command_worker_thread.is_alive() if command_worker_thread else False
+        ),
         "command_gap_seconds": QLINK_COMMAND_GAP,
     }
 
@@ -1568,14 +1586,18 @@ def update_settings(settings: dict):
             QLINK_MAX_RETRIES = int(settings["qlink_max_retries"])
             updated.append("qlink_max_retries")
         except Exception:
-            raise HTTPException(status_code=400, detail="qlink_max_retries must be integer")
+            raise HTTPException(
+                status_code=400, detail="qlink_max_retries must be integer"
+            )
 
     if "qlink_retry_base_sec" in settings:
         try:
             QLINK_RETRY_BASE_SEC = float(settings["qlink_retry_base_sec"])
             updated.append("qlink_retry_base_sec")
         except Exception:
-            raise HTTPException(status_code=400, detail="qlink_retry_base_sec must be numeric")
+            raise HTTPException(
+                status_code=400, detail="qlink_retry_base_sec must be numeric"
+            )
 
     if "qlink_eol" in settings:
         new_eol = settings["qlink_eol"].upper()
@@ -1718,7 +1740,7 @@ async def startup_event():
                     local_ip=local_ip,
                     local_port=bridge_port,
                     uuid=f"vantage-qlink-bridge-{local_ip.replace('.', '-')}",
-                    interval=30
+                    interval=30,
                 )
                 ssdp_advertiser.start()
                 msg = f"📡 SSDP advertiser started on {local_ip}:{bridge_port}"
@@ -1733,6 +1755,7 @@ async def startup_event():
             print(f"ERROR: {msg}")
             logger.error(msg)
             import traceback
+
             traceback.print_exc()
     else:
         print("SSDP is disabled")
@@ -1744,7 +1767,8 @@ async def startup_event():
             logger.info("✅ Bridge ready (event listener thread started)")
     elif QLINK_MONITOR_MODE == "poll":
         logger.info(
-            "✅ Bridge ready (LED polling mode, interval %.1fs)", QLINK_LED_POLL_INTERVAL
+            "✅ Bridge ready (LED polling mode, interval %.1fs)",
+            QLINK_LED_POLL_INTERVAL,
         )
     else:
         logger.info("✅ Bridge ready (monitoring disabled)")

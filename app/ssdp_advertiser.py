@@ -107,7 +107,9 @@ class SSDPAdvertiser:
     def _listen_for_search(self):
         """Listen for SSDP M-SEARCH requests and respond."""
         # Create separate socket for receiving M-SEARCH requests
-        listen_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        listen_sock = socket.socket(
+            socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP
+        )
         listen_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         try:
@@ -120,7 +122,9 @@ class SSDPAdvertiser:
 
             listen_sock.settimeout(1.0)
 
-            logger.info(f"Listening for SSDP M-SEARCH requests on {SSDP_ADDR}:{SSDP_PORT}")
+            logger.info(
+                f"Listening for SSDP M-SEARCH requests on {SSDP_ADDR}:{SSDP_PORT}"
+            )
 
             while self.running:
                 try:
@@ -137,7 +141,9 @@ class SSDPAdvertiser:
                                 break
 
                         if search_target and self._should_respond(search_target):
-                            logger.info(f"Received M-SEARCH from {addr[0]} for {search_target}")
+                            logger.info(
+                                f"Received M-SEARCH from {addr[0]} for {search_target}"
+                            )
                             # Wait a bit to avoid flooding
                             time.sleep(0.5)
                             response = self._build_response_message(search_target)

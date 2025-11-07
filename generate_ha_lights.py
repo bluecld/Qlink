@@ -6,21 +6,23 @@ Generate Home Assistant configuration for Vantage lights
 import sys
 import requests
 
+
 def sanitize_name(name):
     """Convert room/light name to valid HA entity_id"""
     # Remove special characters and convert to lowercase with underscores
     sanitized = name.lower()
-    sanitized = sanitized.replace(' - ', '_')
-    sanitized = sanitized.replace('-', '_')
-    sanitized = sanitized.replace(' ', '_')
-    sanitized = sanitized.replace('/', '_')
-    sanitized = sanitized.replace('&', 'and')
+    sanitized = sanitized.replace(" - ", "_")
+    sanitized = sanitized.replace("-", "_")
+    sanitized = sanitized.replace(" ", "_")
+    sanitized = sanitized.replace("/", "_")
+    sanitized = sanitized.replace("&", "and")
     # Remove any remaining special chars
-    sanitized = ''.join(c for c in sanitized if c.isalnum() or c == '_')
+    sanitized = "".join(c for c in sanitized if c.isalnum() or c == "_")
     # Remove consecutive underscores
-    while '__' in sanitized:
-        sanitized = sanitized.replace('__', '_')
-    return sanitized.strip('_')
+    while "__" in sanitized:
+        sanitized = sanitized.replace("__", "_")
+    return sanitized.strip("_")
+
 
 def generate_sensor(load_id):
     """Generate REST sensor YAML for a load"""
@@ -31,6 +33,7 @@ def generate_sensor(load_id):
     value_template: "{{{{ value_json.resp | int }}}}"
     scan_interval: 30
 """
+
 
 def generate_light(load_id, room_name, light_name):
     """Generate template light YAML for a load"""
@@ -57,6 +60,7 @@ def generate_light(load_id, room_name, light_name):
             load_id: {load_id}
 """
 
+
 def generate_homekit_entity(load_id, room_name, light_name):
     """Generate HomeKit entity config"""
     entity_id = sanitize_name(f"{room_name}_{light_name}")
@@ -69,10 +73,11 @@ def generate_homekit_entity(load_id, room_name, light_name):
       name: "{friendly_name}"
 """
 
+
 def main():
     # Fetch config from bridge
     try:
-        response = requests.get('http://192.168.1.213:8000/config')
+        response = requests.get("http://192.168.1.213:8000/config")
         config = response.json()
     except Exception as e:
         print(f"Error fetching config from bridge: {e}")
@@ -94,44 +99,48 @@ def main():
     # Collect loads to include
     selected_loads = []
 
-    for room in config.get('rooms', []):
-        floor = room.get('floor', '')
-        room_name = room.get('name', '')
-        loads = room.get('loads', [])
+    for room in config.get("rooms", []):
+        floor = room.get("floor", "")
+        room_name = room.get("name", "")
+        loads = room.get("loads", [])
 
         # Filter to dimmers/switches only
-        lights = [load for load in loads if load.get('type') in ['dimmer', 'switch', 'relay']]
+        lights = [
+            load for load in loads if load.get("type") in ["dimmer", "switch", "relay"]
+        ]
 
         include_room = False
 
-        if choice == '1':
+        if choice == "1":
             # All lights
             include_room = True
-        elif choice == '2' and floor == '1st Floor':
+        elif choice == "2" and floor == "1st Floor":
             include_room = True
-        elif choice == '3' and floor == '2nd Floor':
+        elif choice == "3" and floor == "2nd Floor":
             include_room = True
-        elif choice == '4' and floor == 'Exterior':
+        elif choice == "4" and floor == "Exterior":
             include_room = True
-        elif choice == '6':
+        elif choice == "6":
             # Only current 6 lights
             current_ids = [254, 241, 240, 141, 144, 122]
-            lights = [load for load in lights if load.get('id') in current_ids]
+            lights = [load for load in lights if load.get("id") in current_ids]
             include_room = len(lights) > 0
-        elif choice == '5':
+        elif choice == "5":
             # Interactive room selection
             print(f"\nInclude {floor} - {room_name}? ({len(lights)} lights)")
             answer = input("  (y/n): ").strip().lower()
-            include_room = answer == 'y'
+            include_room = answer == "y"
 
         if include_room:
             for light in lights:
-                selected_loads.append({
-                    'id': light.get('id'),
-                    'room': room_name,
-                    'name': light.get('name'),
-                    'type': light.get('type')
-                })
+                selected_loads.append(
+                    {
+                        "id": light.get("id"),
+                        "room": room_name,
+                        "name": light.get("name"),
+                        "type": light.get("type"),
+                    }
+                )
 
     print(f"\n{len(selected_loads)} lights selected")
 
@@ -141,7 +150,8 @@ def main():
     print("=" * 60)
 
     # REST commands (only once)
-    print("""
+    print(
+        """
 # Vantage Q-Link Bridge Integration via RESTful Platform
 
 # REST Commands to control Vantage lights via bridge
@@ -161,46 +171,54 @@ rest_command:
     payload: '{"switch": "off"}'
 
 # Sensors to poll light status
-sensor:""")
+sensor:"""
+    )
 
     # Generate sensors
     for load in selected_loads:
-        print(generate_sensor(load['id']))
+        print(generate_sensor(load["id"]))
 
     # Generate template lights
-    print("""
+    print(
+        """
 # Template lights using the bridge API
 light:
   - platform: template
-    lights:""")
+    lights:"""
+    )
 
     for load in selected_loads:
-        print(generate_light(load['id'], load['room'], load['name']))
+        print(generate_light(load["id"], load["room"], load["name"]))
 
     # Generate HomeKit config
-    print("""
+    print(
+        """
 # HomeKit Bridge Configuration
 homekit:
   filter:
     include_domains:
       - light
-  entity_config:""")
+  entity_config:"""
+    )
 
     for load in selected_loads:
-        print(generate_homekit_entity(load['id'], load['room'], load['name']))
+        print(generate_homekit_entity(load["id"], load["room"], load["name"]))
 
     # Database configuration
-    print("""
+    print(
+        """
 # Database configuration - keep history lean for SD card
 recorder:
   purge_keep_days: 3
   commit_interval: 30
   db_max_retries: 5
-""")
+"""
+    )
 
     print("\n" + "=" * 60)
     print(f"Configuration generated for {len(selected_loads)} lights")
     print("=" * 60)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
