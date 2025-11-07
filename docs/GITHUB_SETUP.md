@@ -1,5 +1,9 @@
 # GitHub Repository Creation Guide
 
+> **🔴 Having issues with CI checks (Red X)?** See [Understanding GitHub Features](GITHUB_FEATURES.md) for troubleshooting help!
+
+> **🟢 Wondering what "Compare & pull request" does?** See [Understanding GitHub Features](GITHUB_FEATURES.md) for a complete guide!
+
 ## 🚀 Step-by-Step GitHub Setup
 
 ### Prerequisites (You Have These!)
@@ -220,6 +224,18 @@ Before making repository public:
    - Keep documentation current
 
 ## 🆘 Troubleshooting
+
+### Red X on Initial Commit (CI Failed)
+→ See detailed guide: [Understanding GitHub Features](GITHUB_FEATURES.md)
+→ Click on the red X to see error details
+→ Common fix: Update package versions in `dev-requirements.txt`
+→ Run tests locally: `pytest` and `ruff .` before pushing
+
+### Green "Compare & pull request" Button
+→ See detailed guide: [Understanding GitHub Features](GITHUB_FEATURES.md)
+→ Click this when ready to merge your changes
+→ Creates a Pull Request for code review
+→ Waits for CI checks to pass before merging
 
 ### "Permission denied" when pushing
 → Set up authentication (see above)
