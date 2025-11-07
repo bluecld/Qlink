@@ -13,10 +13,11 @@ TODO (placeholder): After cleaning up README encoding artifacts, add a dedicated
 - **REST API** - Control lights and scenes via simple HTTP endpoints
 - **Real-time Event Monitoring** - WebSocket streaming of button presses, load changes, and LED updates
 - **Web UI** - Browser-based control panel with configurable settings
+- **Home Assistant Integration** - Full support for Home Assistant with HomeKit/Siri voice control
 - **Easy Deployment** - One-command deploy to Raspberry Pi with systemd service
-- **SmartThings Ready** - Designed for integration with SmartThings Edge drivers
 - **Low Latency** - Persistent TCP connection to Vantage for instant updates
 - **Auto-reconnect** - Resilient connection handling with automatic retry
+- **Extensible** - Simple REST API for integration with any home automation platform
 
 ## 📋 Table of Contents
 
@@ -25,9 +26,11 @@ TODO (placeholder): After cleaning up README encoding artifacts, add a dedicated
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [API Documentation](#api-documentation)
+- [Home Assistant Integration](#home-assistant-integration)
 - [Web Interface](#web-interface)
 - [Event Monitoring](#event-monitoring)
 - [Deployment](#deployment)
+- [Examples](#examples)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -281,6 +284,55 @@ Response: {
 - `QLINK_COMMAND_GAP` (default 50ms) enforces a small delay between commands.
 - `/monitor/status` exposes queue depth, peak usage, and last round-trip time to help tune automations.
 
+## 🏠 Home Assistant Integration
+
+The bridge integrates seamlessly with Home Assistant for advanced automation and voice control via Apple HomeKit/Siri.
+
+### Quick Setup
+
+1. **Install Home Assistant** (Docker recommended):
+```bash
+docker run -d \
+  --name homeassistant \
+  --restart=unless-stopped \
+  -e TZ=America/New_York \
+  -v /home/pi/homeassistant:/config \
+  --network=host \
+  ghcr.io/home-assistant/home-assistant:stable
+```
+
+2. **Generate Configuration**:
+```bash
+python3 generate_ha_config.py
+```
+
+3. **Deploy**:
+```bash
+sudo cp /tmp/ha_config_all.yaml /home/pi/homeassistant/configuration.yaml
+sudo docker restart homeassistant
+```
+
+4. **Enable HomeKit** - Pair with your iPhone via Home app for Siri voice control
+
+For detailed instructions, see [docs/HOME_ASSISTANT.md](docs/HOME_ASSISTANT.md).
+
+### Features
+
+- **Template Lights** - Control Vantage lights as native HA entities
+- **HomeKit Bridge** - Expose lights to Apple Home for Siri control
+- **Real-time Status** - Automatic polling of light states
+- **Scenes & Automations** - Create time-based or sensor-triggered lighting
+- **Voice Control** - "Hey Siri, turn on Kitchen Lights"
+
+### Example Voice Commands
+
+```
+"Hey Siri, turn on Master Bedroom Lights"
+"Hey Siri, set Living Room to 50%"
+"Hey Siri, dim Kitchen Lights"
+"Hey Siri, turn off all lights"
+```
+
 ## 🖥️ Web Interface
 
 Access the web UI at `http://yourpi:8000/ui/`
@@ -468,6 +520,16 @@ Qlink/
 └── dev-requirements.txt    # Development tools (ruff, mypy, pytest)
 ```
 
+## 📚 Examples
+
+For comprehensive configuration examples and usage patterns, see [EXAMPLES.md](EXAMPLES.md):
+
+- **Home Assistant Configurations** - Complete setup examples
+- **API Usage** - Python, Node.js, and curl examples
+- **Automation Examples** - Time-based and motion-activated lighting
+- **Deployment Configurations** - Docker, systemd, and development setups
+- **Monitoring & Logging** - Health checks and log rotation
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
@@ -476,7 +538,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 - Report bugs and request features via Issues
 - Submit Pull Requests for bug fixes or enhancements
 - Improve documentation
-- Share your integration examples
+- Share your integration examples in [Discussions](https://github.com/bluecld/Qlink/discussions)
 
 ## 📝 License
 

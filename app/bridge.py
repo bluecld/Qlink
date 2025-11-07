@@ -207,6 +207,26 @@ def _persist_settings(settings: dict) -> None:
 _load_persisted_settings()
 
 logger = logging.getLogger("qlink")
+
+# SSDP Advertiser for SmartThings LAN discovery
+try:
+    from app.ssdp_advertiser import SSDPAdvertiser, get_local_ip
+    SSDP_ENABLED = True
+except ImportError:
+    try:
+        # Try alternative import path (when running from app directory)
+        import sys
+        import os
+        sys.path.insert(0, os.path.dirname(__file__))
+        from ssdp_advertiser import SSDPAdvertiser, get_local_ip  # type: ignore
+        SSDP_ENABLED = True
+    except ImportError:
+        logger.warning("ssdp_advertiser.py not found - SSDP discovery disabled")
+        SSDP_ENABLED = False
+        SSDPAdvertiser = None  # type: ignore
+        get_local_ip = None  # type: ignore
+
+ssdp_advertiser: Optional[Any] = None
 if not logger.handlers:
     logger.addHandler(logging.StreamHandler())
 
@@ -1045,7 +1065,15 @@ class LevelCmd(BaseModel):
 
 @app.get("/about", dependencies=API_DEPENDENCIES)
 def about():
-    return {"name": "qlink-bridge"}
+    """Return bridge information for SSDP/SmartThings discovery."""
+    return {
+        "name": "qlink-bridge",
+        "version": "1.0",
+        "manufacturer": "Vantage",
+        "model": "QLinkBridge",
+        "device_type": "urn:schemas-upnp-org:device:Basic:1",
+        "friendly_name": "Vantage QLink Bridge"
+    }
 
 
 @app.get("/config", dependencies=API_DEPENDENCIES)
@@ -1668,11 +1696,47 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.on_event("startup")
 async def startup_event():
-    """Start event listener on application startup"""
-    global event_loop
+    """Start event listener and SSDP advertiser on application startup"""
+    global event_loop, ssdp_advertiser
     event_loop = asyncio.get_running_loop()
+    print("🚀 Starting Vantage QLink Bridge...")
     logger.info("🚀 Starting Vantage QLink Bridge...")
     start_monitoring()
+
+    # Start SSDP advertiser for SmartThings LAN discovery
+    print(f"SSDP_ENABLED = {SSDP_ENABLED}")
+    if SSDP_ENABLED:
+        try:
+            print("Getting local IP for SSDP...")
+            local_ip = get_local_ip()
+            print(f"Local IP: {local_ip}")
+            if local_ip:
+                # Get bridge port from environment or default
+                bridge_port = int(os.getenv("BRIDGE_PORT", "8000"))
+                print(f"Creating SSDP advertiser on {local_ip}:{bridge_port}")
+                ssdp_advertiser = SSDPAdvertiser(
+                    local_ip=local_ip,
+                    local_port=bridge_port,
+                    uuid=f"vantage-qlink-bridge-{local_ip.replace('.', '-')}",
+                    interval=30
+                )
+                ssdp_advertiser.start()
+                msg = f"📡 SSDP advertiser started on {local_ip}:{bridge_port}"
+                print(msg)
+                logger.info(msg)
+            else:
+                msg = "Could not determine local IP for SSDP advertising"
+                print(f"WARNING: {msg}")
+                logger.warning(msg)
+        except Exception as e:
+            msg = f"Failed to start SSDP advertiser: {e}"
+            print(f"ERROR: {msg}")
+            logger.error(msg)
+            import traceback
+            traceback.print_exc()
+    else:
+        print("SSDP is disabled")
+
     if QLINK_MONITOR_MODE == "events":
         if QLINK_DISABLE_EVENTS:
             logger.info("✅ Bridge ready (event monitoring disabled by configuration)")
@@ -1684,6 +1748,18 @@ async def startup_event():
         )
     else:
         logger.info("✅ Bridge ready (monitoring disabled)")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Stop SSDP advertiser on application shutdown"""
+    global ssdp_advertiser
+    if ssdp_advertiser:
+        try:
+            logger.info("Stopping SSDP advertiser...")
+            ssdp_advertiser.stop()
+        except Exception as e:
+            logger.error(f"Error stopping SSDP advertiser: {e}")
 
 
 @app.exception_handler(HTTPException)

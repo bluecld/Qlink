@@ -64,3 +64,19 @@ archive/
 
 # Local reference repos
 SmartThings_Edge/reference/
+
+# Personal documentation (use .example versions)
+PROJECT_URLS.md
+*_PERSONAL.md
+NAS_BACKUP_README.md
+
+# Build artifacts
+*.zip
+*.tar.gz
+
+# Windows artifacts
+NUL
+:USERPROFILE/
+
+# Home Assistant generated configs (use generator script)
+ha_config_*.yaml
