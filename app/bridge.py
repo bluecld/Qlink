@@ -16,26 +16,26 @@ Serves a static UI from `app/static` at /ui when the directory exists.
 """
 
 import asyncio
+import json
 import logging
 import os
 import random
+import secrets
 import socket
 import threading
 import time
-import secrets
-from queue import Queue, Empty
-import json
 from datetime import datetime
+from queue import Empty, Queue
 from time import perf_counter
 from typing import Any, Dict, Optional, Set, cast
 
 from fastapi import (
+    Depends,
     FastAPI,
     HTTPException,
     Request,
     WebSocket,
     WebSocketDisconnect,
-    Depends,
 )
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -72,12 +72,12 @@ def _env(name: str, default: str) -> str:
 
 VANTAGE_IP = _env("VANTAGE_IP", "192.168.1.200")
 VANTAGE_PORT = int(_env("VANTAGE_PORT", "3040"))
-QLINK_EOL = _env("Q_LINK_EOL", "CR").upper()
+QLINK_EOL = _env("QLINK_EOL", _env("Q_LINK_EOL", "CR")).upper()
 EOL = "\r\n" if QLINK_EOL == "CRLF" else "\r"
 QLINK_TIMEOUT = float(_env("QLINK_TIMEOUT", "3.0"))
 QLINK_FADE = _env("QLINK_FADE", "2.3")
 QLINK_MONITOR_MODE = _env("QLINK_MONITOR_MODE", "poll").strip().lower()
-if QLINK_MONITOR_MODE not in {"poll", "events", "off"}:
+if QLINK_MONITOR_MODE not in {"poll", "events", "off", "auto"}:
     QLINK_MONITOR_MODE = "poll"
 QLINK_DISABLE_EVENTS = _env("QLINK_DISABLE_EVENTS", "0").lower() in (
     "1",
@@ -86,6 +86,8 @@ QLINK_DISABLE_EVENTS = _env("QLINK_DISABLE_EVENTS", "0").lower() in (
     "on",
 )
 QLINK_LED_POLL_INTERVAL = float(_env("QLINK_LED_POLL_INTERVAL", "7.5"))
+# TTL (seconds) for on-demand LED cache when in 'auto' mode (default 5s)
+QLINK_LED_CACHE_TTL = float(_env("QLINK_LED_CACHE_TTL", "5.0"))
 # Retry/backoff tuning (configurable via env or runtime /settings)
 QLINK_MAX_RETRIES = int(_env("QLINK_MAX_RETRIES", "3"))
 QLINK_RETRY_BASE_SEC = float(_env("QLINK_RETRY_BASE_SEC", "0.1"))
@@ -223,8 +225,8 @@ try:
 except ImportError:
     try:
         # Try alternative import path (when running from app directory)
-        import sys
         import os
+        import sys
 
         sys.path.insert(0, os.path.dirname(__file__))
         from ssdp_advertiser import SSDPAdvertiser, get_local_ip  # type: ignore
@@ -430,6 +432,31 @@ event_loop: Optional[asyncio.AbstractEventLoop] = None
 button_led_states: Dict[str, Dict[int, str]] = {}
 button_led_lock = threading.Lock()  # Thread-safe access
 
+# ===== Loads Cache (for aggregated REST endpoint) =====
+loads_cache: Dict[int, int] = {}
+loads_cache_ts: Optional[float] = None
+loads_cache_lock = threading.Lock()
+LOADS_CACHE_TTL = float(_env("LOADS_CACHE_TTL", "30.0"))  # seconds (default 30s)
+
+# ===== Loads Subset Caches (for distributed REST endpoints) =====
+# Split 136 loads into 4 smaller sets to avoid timeouts
+# Set 1: loads 0-33, Set 2: loads 34-67, Set 3: loads 68-101, Set 4: loads 102-135
+loads_subset_caches: Dict[int, Dict[int, int]] = {1: {}, 2: {}, 3: {}, 4: {}}
+loads_subset_ts: Dict[int, Optional[float]] = {1: None, 2: None, 3: None, 4: None}
+loads_subset_locks: Dict[int, threading.Lock] = {
+    1: threading.Lock(),
+    2: threading.Lock(),
+    3: threading.Lock(),
+    4: threading.Lock(),
+}
+LOADS_SUBSET_TTL = float(_env("LOADS_SUBSET_TTL", "60.0"))  # seconds (default 60s)
+
+# ===== LED cache (for on-demand /api/leds refresh in 'auto' mode) =====
+leds_cache_ts: Optional[float] = None
+leds_refresh_lock = threading.Lock()
+# Event used to gracefully stop monitoring thread when requested (auto mode stop)
+monitor_thread_stop_event = threading.Event()
+
 # ===== Station to Master Mapping =====
 # Load actual station-to-master assignments from Vantage config
 # DO NOT GUESS based on station number - read from config file!
@@ -440,20 +467,38 @@ STATION_PHYSICAL_MAP: Dict[int, int] = {}
 def load_station_master_map():
     """Load station-to-master mapping from config file."""
     global STATION_MASTER_MAP
-    config_dir = os.path.join(os.path.dirname(__file__), "..", "config")
-    map_file = os.path.join(config_dir, "station_master_map.json")
+    candidate_paths = [
+        os.path.join(
+            os.path.dirname(__file__), "..", "config", "station_master_map.json"
+        ),
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "config",
+            "station_master_map.json",
+        ),
+        "/home/pi/qlink-bridge/config/station_master_map.json",
+        "config/station_master_map.json",
+    ]
 
-    try:
-        with open(map_file, "r") as f:
-            data = json.load(f)
-            # Convert string keys to integers
-            STATION_MASTER_MAP = {int(k): v for k, v in data.items()}
-        logger.info(f"✅ Loaded {len(STATION_MASTER_MAP)} station-to-master mappings")
-    except FileNotFoundError:
-        logger.warning(f"❌ Station master map not found: {map_file}")
+    loaded = False
+    for map_file in candidate_paths:
+        try:
+            if os.path.exists(map_file):
+                with open(map_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    STATION_MASTER_MAP = {int(k): int(v) for k, v in data.items()}
+                logger.info(
+                    f"✅ Loaded {len(STATION_MASTER_MAP)} station-to-master mappings from {map_file}"
+                )
+                loaded = True
+                break
+        except Exception as e:
+            logger.warning(f"Failed to load station master map from {map_file}: {e}")
+            continue
+    if not loaded:
+        logger.warning("❌ Station master map not found in any known path")
         logger.warning("⚠️  Will fall back to guessing (station >= 51 → master 2)")
-    except Exception as e:
-        logger.error(f"❌ Failed to load station master map: {e}")
 
 
 def load_station_physical_map():
@@ -467,24 +512,40 @@ def load_station_physical_map():
     Station: V{virtual},{?},{master},{physical},...
     """
     global STATION_PHYSICAL_MAP
-    config_dir = os.path.join(os.path.dirname(__file__), "..", "config")
-    map_file = os.path.join(config_dir, "station_physical_map.json")
+    candidate_paths = [
+        os.path.join(
+            os.path.dirname(__file__), "..", "config", "station_physical_map.json"
+        ),
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "config",
+            "station_physical_map.json",
+        ),
+        "/home/pi/qlink-bridge/config/station_physical_map.json",
+        "config/station_physical_map.json",
+    ]
 
-    try:
-        with open(map_file, "r") as f:
-            data = json.load(f)
-            # Convert string keys to integers
-            STATION_PHYSICAL_MAP = {int(k): v for k, v in data.items()}
-        logger.info(
-            f"✅ Loaded {len(STATION_PHYSICAL_MAP)} virtual-to-physical station mappings"
-        )
-    except FileNotFoundError:
-        logger.warning(f"❌ Station physical map not found: {map_file}")
+    loaded = False
+    for map_file in candidate_paths:
+        try:
+            if os.path.exists(map_file):
+                with open(map_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    STATION_PHYSICAL_MAP = {int(k): int(v) for k, v in data.items()}
+                logger.info(
+                    f"✅ Loaded {len(STATION_PHYSICAL_MAP)} virtual-to-physical station mappings from {map_file}"
+                )
+                loaded = True
+                break
+        except Exception as e:
+            logger.warning(f"Failed to load station physical map from {map_file}: {e}")
+            continue
+    if not loaded:
+        logger.warning("❌ Station physical map not found in any known path")
         logger.warning(
             "⚠️  VSW commands may not work - will use virtual station numbers as fallback"
         )
-    except Exception as e:
-        logger.error(f"❌ Failed to load station physical map: {e}")
 
 
 def get_station_physical(station_virtual: int) -> int:
@@ -530,6 +591,63 @@ def get_station_master(station: int) -> int:
 # Load mappings on startup
 load_station_master_map()
 load_station_physical_map()
+
+
+def reconcile_station_maps() -> None:
+    """Ensure station maps cover all stations referenced in loads.json.
+
+    Fills in missing entries to prevent noisy fallback warnings during runtime.
+    - Master map: chooses 1/2 using existing heuristic (>=51 → 2) when absent.
+    - Physical map: defaults to virtual==physical when absent.
+    """
+    try:
+        stations: Set[int] = set()
+        config_paths = [
+            os.path.join(os.path.dirname(__file__), "..", "config", "loads.json"),
+            "/home/pi/qlink-bridge/config/loads.json",
+            "config/loads.json",
+        ]
+
+        for path in config_paths:
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if "rooms" in data and isinstance(data["rooms"], list):
+                    for room in data["rooms"]:
+                        candidate = normalize_station_id(room.get("station"))
+                        if candidate is not None:
+                            stations.add(candidate)
+                else:
+                    for key, value in data.items():
+                        if key.startswith("station_") and isinstance(value, dict):
+                            candidate = normalize_station_id(value.get("station"))
+                            if candidate is not None:
+                                stations.add(candidate)
+                break
+
+        if not stations:
+            return
+
+        added_master = 0
+        added_physical = 0
+        for st in stations:
+            if st not in STATION_MASTER_MAP:
+                STATION_MASTER_MAP[st] = 2 if st >= 51 else 1
+                added_master += 1
+            if st not in STATION_PHYSICAL_MAP:
+                STATION_PHYSICAL_MAP[st] = st
+                added_physical += 1
+
+        if added_master or added_physical:
+            logger.info(
+                f"🔧 Reconciled station maps: +{added_master} master, +{added_physical} physical"
+            )
+    except Exception as e:
+        logger.debug(f"reconcile_station_maps skipped: {e}")
+
+
+# Reconcile maps so runtime avoids guessy warnings for known stations
+reconcile_station_maps()
 
 
 def normalize_station_id(value: Any) -> Optional[int]:
@@ -820,7 +938,11 @@ def _handle_event_line(line: str) -> None:
 
 def event_listener_loop():
     """Long-lived event monitoring loop using VOS/VOD/VOL stream."""
-    global event_socket, event_socket_connected, event_monitoring_enabled, active_monitor_mode
+    global \
+        event_socket, \
+        event_socket_connected, \
+        event_monitoring_enabled, \
+        active_monitor_mode
 
     delimiter = _line_delimiter()
     backoff = 1.0
@@ -892,13 +1014,16 @@ def event_listener_loop():
 
 def led_polling_loop():
     """Background thread that polls LED states using VLT command in a throttled manner."""
-    global event_monitoring_enabled, event_socket_connected, active_monitor_mode
+    global event_monitoring_enabled, event_socket_connected, active_monitor_mode, leds_cache_ts
     import json
 
     logger.info("🔄 LED polling thread started (safe mode)")
     poll_interval = max(1.0, QLINK_LED_POLL_INTERVAL)
 
-    while True:
+    # Clear stop event at start
+    monitor_thread_stop_event.clear()
+
+    while not monitor_thread_stop_event.is_set():
         try:
             # Load station list from config (rooms-based or legacy format)
             stations: Set[int] = set()
@@ -955,6 +1080,8 @@ def led_polling_loop():
             error_count = 0
 
             for station in sorted(stations):
+                if monitor_thread_stop_event.is_set():
+                    break
                 master = get_station_master(station)
                 try:
                     response = qlink_send(f"VLT@ {master} {station}")
@@ -1006,7 +1133,15 @@ def led_polling_loop():
             logger.debug(
                 "Poll cycle complete: %s stations, %s errors", polled_count, error_count
             )
-            time.sleep(poll_interval)
+
+            # Update LED cache timestamp to indicate fresh data
+            leds_cache_ts = perf_counter()
+
+            # Wait for next cycle or until stopped
+            for _ in range(int(max(1, poll_interval))):
+                if monitor_thread_stop_event.is_set():
+                    break
+                time.sleep(1.0)
 
         except Exception as exc:  # pragma: no cover - defensive
             logger.error(f"❌ LED polling error: {exc}")
@@ -1014,6 +1149,42 @@ def led_polling_loop():
             event_monitoring_enabled = False
             event_socket_connected = False
             time.sleep(5.0)
+
+    logger.info("🛑 LED polling thread stopped")
+
+
+def start_polling_thread():
+    """Start the LED polling thread if not already running."""
+    global monitor_thread, active_monitor_mode, event_monitoring_enabled
+    if monitor_thread and monitor_thread.is_alive():
+        return
+    # Clear any previous stop signal
+    monitor_thread_stop_event.clear()
+    target = led_polling_loop
+    name = "VantageLEDPoller"
+    logger.info(
+        "🚀 Starting LED polling thread (mode=poll, interval %.1fs)",
+        QLINK_LED_POLL_INTERVAL,
+    )
+    monitor_thread = threading.Thread(target=target, daemon=True, name=name)
+    monitor_thread.start()
+    active_monitor_mode = "poll"
+    event_monitoring_enabled = True
+
+
+def stop_polling_thread():
+    """Stop the LED polling thread if running (used by auto mode)."""
+    global monitor_thread, active_monitor_mode, event_monitoring_enabled, event_socket_connected
+    try:
+        monitor_thread_stop_event.set()
+        if monitor_thread and monitor_thread.is_alive():
+            monitor_thread.join(timeout=3.0)
+    except Exception:
+        pass
+    monitor_thread = None
+    active_monitor_mode = "off"
+    event_monitoring_enabled = False
+    event_socket_connected = False
 
 
 def start_monitoring():
@@ -1040,17 +1211,18 @@ def start_monitoring():
         name = "VantageEventListener"
         logger.info("🚀 Starting event listener thread (mode=events)")
         active_monitor_mode = "events"
+        monitor_thread = threading.Thread(target=target, daemon=True, name=name)
+        monitor_thread.start()
+    elif QLINK_MONITOR_MODE == "auto":
+        # Auto mode: do not start polling at startup; polling will begin when
+        # a WebSocket client connects or when an on-demand request forces it.
+        logger.info("Auto monitoring enabled; polling will start on client connect or on-demand")
+        active_monitor_mode = "off"
+        return
     else:
-        target = led_polling_loop
-        name = "VantageLEDPoller"
-        logger.info(
-            "🚀 Starting LED polling thread (mode=poll, interval %.1fs)",
-            QLINK_LED_POLL_INTERVAL,
-        )
+        # Legacy 'poll' mode - start polling immediately
+        start_polling_thread()
         active_monitor_mode = "poll"
-
-    monitor_thread = threading.Thread(target=target, daemon=True, name=name)
-    monitor_thread.start()
 
 
 def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
@@ -1160,6 +1332,43 @@ def health():
     return {"ok": True}
 
 
+def _get_load_list() -> list:
+    """Return a list of load dicts from loads.json similar to /config's rooms parse.
+
+    This mirrors the parsing in `get_config` but returns the flat list of loads with ids.
+    """
+    config_paths = [
+        os.path.join(os.path.dirname(__file__), "..", "config", "loads.json"),
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "..", "config", "loads.json"
+        ),
+        "/home/pi/qlink-bridge/config/loads.json",
+        "config/loads.json",
+    ]
+
+    for path in config_paths:
+        try:
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if "rooms" in data and isinstance(data["rooms"], list):
+                    loads = []
+                    for room in data["rooms"]:
+                        for ld in room.get("loads", []):
+                            loads.append(ld)
+                    return loads
+                else:
+                    # legacy loads/ station based structure
+                    loads = []
+                    for key, val in data.items():
+                        if key.startswith("load_") and isinstance(val, dict):
+                            loads.append(val)
+                    return loads
+        except Exception:
+            continue
+    return []
+
+
 @app.get("/")
 def root():
     """Redirect to home page."""
@@ -1223,6 +1432,43 @@ def get_load_status(id: int):
         raise HTTPException(
             status_code=500, detail=f"Failed to get load status: {str(e)}"
         )
+
+
+def _update_loads_cache() -> None:
+    """Query configured loads and cache the current levels (0-100) with TTL.
+
+    This function attempts to update the in-memory map loads_cache in a thread-safe way.
+    It catches exceptions to avoid crashing the service if the Vantage controller is slow.
+    """
+    global loads_cache, loads_cache_ts
+    try:
+        loads = _get_load_list()
+        newmap: Dict[int, int] = {}
+        for ld in loads:
+            lid = ld.get("id")
+            if lid is None:
+                continue
+            try:
+                resp = qlink_send(f"VGL@ {int(lid)}")
+                # Try parse final integer or fallback to 0
+                val = 0
+                try:
+                    val = int(str(resp).strip().split()[-1])
+                except Exception:
+                    try:
+                        val = int(str(resp).strip())
+                    except Exception:
+                        val = 0
+                newmap[int(lid)] = max(0, min(100, val))
+            except Exception:
+                # Don't fail the entire update for a single load read error
+                newmap[int(lid)] = loads_cache.get(int(lid), 0)
+
+        with loads_cache_lock:
+            loads_cache = newmap
+            loads_cache_ts = perf_counter()
+    except Exception as e:
+        logger.exception(f"Failed to update loads cache: {e}")
 
 
 @app.get("/api/leds/{station}", dependencies=API_DEPENDENCIES)
@@ -1383,22 +1629,267 @@ def monitor_status():
     }
 
 
+def _refresh_led_cache_once() -> None:
+    """Perform a single (synchronous) LED polling pass for all configured stations.
+
+    This is used by the on-demand `/api/leds` endpoint when `force=true` or the
+    cache has expired. It is throttled and uses the same VLT@ logic but only runs
+    one cycle to avoid long-running background polling.
+    """
+    global leds_cache_ts
+
+    # Prevent concurrent refreshes
+    if not leds_refresh_lock.acquire(blocking=False):
+        # Another refresh is in progress
+        return
+    try:
+        # Load stations (reuse logic from led_polling_loop)
+        stations: Set[int] = set()
+        candidate_paths = [
+            os.path.join(os.path.dirname(__file__), "..", "config", "loads.json"),
+            "/home/pi/qlink-bridge/config/loads.json",
+            "config/loads.json",
+        ]
+        for path in candidate_paths:
+            if os.path.exists(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    if "rooms" in data and isinstance(data["rooms"], list):
+                        for room in data["rooms"]:
+                            candidate = normalize_station_id(room.get("station"))
+                            if candidate is not None:
+                                stations.add(candidate)
+                    else:
+                        for key, value in data.items():
+                            if key.startswith("station_") and isinstance(value, dict):
+                                candidate = normalize_station_id(value.get("station"))
+                                if candidate is not None:
+                                    stations.add(candidate)
+                    break
+                except Exception:
+                    continue
+        if not stations:
+            return
+
+        for station in sorted(stations):
+            try:
+                master = get_station_master(station)
+                response = qlink_send(f"VLT@ {master} {station}")
+            except Exception:
+                time.sleep(0.05)
+                continue
+
+            parts = response.split()
+            on_hex: Optional[str] = None
+            blink_hex: Optional[str] = None
+            if parts:
+                head = parts[0].upper()
+                if head == "RLT" and len(parts) >= 5:
+                    on_hex = parts[-2]
+                    blink_hex = parts[-1]
+                elif len(parts) >= 2:
+                    on_hex = parts[0]
+                    blink_hex = parts[1]
+
+            if on_hex is None or blink_hex is None:
+                time.sleep(0.05)
+                continue
+
+            button_states = decode_led_hex(on_hex, blink_hex)
+            update_station_leds(station, button_states)
+            # Throttle slightly to avoid overwhelming the controller
+            time.sleep(max(QLINK_COMMAND_GAP, 0.03))
+
+        leds_cache_ts = perf_counter()
+    finally:
+        try:
+            leds_refresh_lock.release()
+        except Exception:
+            pass
+
+
 @app.get("/api/leds", dependencies=API_DEPENDENCIES)
-def get_all_led_states():
+def get_all_led_states(force: bool = False):
     """Get current LED states for all stations.
 
-    Returns:
-        {
-            "stations": {
-                "V23": {1: "on", 2: "off", 3: "blink", ...},
-                "V20": {...},
-                ...
-            },
-            "count": 2
-        }
+    If `force=true` is provided, the bridge will perform a synchronous refresh
+    pass to fetch fresh LED states (useful for Home Assistant on-demand scans).
     """
+    global leds_cache_ts
+
+    now = perf_counter()
+    cache_expired = leds_cache_ts is None or (now - (leds_cache_ts or 0.0)) > QLINK_LED_CACHE_TTL
+    if force or cache_expired:
+        try:
+            _refresh_led_cache_once()
+        except Exception as e:
+            logger.warning(f"On-demand LED refresh failed: {e}")
+
     with button_led_lock:
         return {"stations": button_led_states.copy(), "count": len(button_led_states)}
+
+
+@app.get("/api/loads", dependencies=API_DEPENDENCIES)
+def get_all_loads(force: bool = False):
+    """Return aggregated load levels for all configured loads.
+
+    The result looks like:
+    {"loads": {"254": 0, "241": 100}, "count": 2}
+    """
+    global loads_cache, loads_cache_ts
+    now = perf_counter()
+    # If force requested or cache expired, update
+    if (
+        force
+        or loads_cache_ts is None
+        or (now - (loads_cache_ts or 0.0)) > LOADS_CACHE_TTL
+    ):
+        # Defensive: prefer calling the helper but fall back to inline computation
+        # if the helper isn't present at runtime (e.g., old deployed code mismatch).
+        try:
+            _update_loads_cache()
+        except NameError:
+            logger.warning(
+                "_update_loads_cache not available at runtime, computing loads inline as fallback"
+            )
+            # Inline fallback avoids repeating the whole function definition
+            loads = _get_load_list()
+            newmap: Dict[int, int] = {}
+            for ld in loads:
+                lid = ld.get("id")
+                if lid is None:
+                    continue
+                try:
+                    resp = qlink_send(f"VGL@ {int(lid)}")
+                    val = 0
+                    try:
+                        val = int(str(resp).strip().split()[-1])
+                    except Exception:
+                        try:
+                            val = int(str(resp).strip())
+                        except Exception:
+                            val = 0
+                    newmap[int(lid)] = max(0, min(100, val))
+                except Exception:
+                    newmap[int(lid)] = loads_cache.get(int(lid), 0)
+            with loads_cache_lock:
+                loads_cache = newmap
+                loads_cache_ts = perf_counter()
+    with loads_cache_lock:
+        return {"loads": loads_cache.copy(), "count": len(loads_cache)}
+
+
+def _get_loads_subset(subset_num: int) -> Dict[int, int]:
+    """Get a subset of loads by querying only loads in that subset's range.
+
+    Subsets are divided to avoid timeout:
+    - Subset 1: loads 0-33 (approx 34 loads)
+    - Subset 2: loads 34-67 (approx 34 loads)
+    - Subset 3: loads 68-101 (approx 34 loads)
+    - Subset 4: loads 102-135 (approx 34 loads)
+
+    Each subset takes ~3-5 seconds to query, well under the 30s HA timeout.
+    """
+    if subset_num not in (1, 2, 3, 4):
+        return {}
+
+    global loads_subset_caches, loads_subset_ts
+
+    now = perf_counter()
+    lock = loads_subset_locks[subset_num]
+
+    # Check if cache is still valid
+    if (
+        loads_subset_ts[subset_num] is not None
+        and (now - loads_subset_ts[subset_num]) < LOADS_SUBSET_TTL
+    ):
+        with lock:
+            return loads_subset_caches[subset_num].copy()
+
+    # Determine load range for this subset
+    # Assuming 136 total loads (0-135), split into 4 groups
+    range_size = 34  # 136 / 4 = 34 per subset
+    start_idx = (subset_num - 1) * range_size
+    end_idx = (
+        start_idx + range_size if subset_num < 4 else 136
+    )  # Last set gets remainder
+
+    # Query only loads in this subset by index
+    all_loads = _get_load_list()
+    subset_loads = [
+        ld
+        for i, ld in enumerate(all_loads)
+        if i >= start_idx and i < end_idx and ld.get("id") is not None
+    ]
+
+    newmap: Dict[int, int] = {}
+    for ld in subset_loads:
+        lid = int(ld.get("id", -1))
+        if lid < 0:
+            continue
+        try:
+            resp = qlink_send(f"VGL@ {lid}")
+            val = 0
+            try:
+                val = int(str(resp).strip().split()[-1])
+            except Exception:
+                try:
+                    val = int(str(resp).strip())
+                except Exception:
+                    val = 0
+            newmap[lid] = max(0, min(100, val))
+        except Exception:
+            # Use cached value if query fails
+            with lock:
+                newmap[lid] = loads_subset_caches[subset_num].get(lid, 0)
+
+    # Update cache
+    with lock:
+        loads_subset_caches[subset_num] = newmap
+        loads_subset_ts[subset_num] = perf_counter()
+
+    return newmap.copy()
+
+
+@app.get("/api/loads/set1", dependencies=API_DEPENDENCIES)
+def get_loads_set_1():
+    """Get loads subset 1 (faster queries, avoids timeout)."""
+    return {
+        "loads": _get_loads_subset(1),
+        "subset": 1,
+        "count": len(_get_loads_subset(1)),
+    }
+
+
+@app.get("/api/loads/set2", dependencies=API_DEPENDENCIES)
+def get_loads_set_2():
+    """Get loads subset 2 (faster queries, avoids timeout)."""
+    return {
+        "loads": _get_loads_subset(2),
+        "subset": 2,
+        "count": len(_get_loads_subset(2)),
+    }
+
+
+@app.get("/api/loads/set3", dependencies=API_DEPENDENCIES)
+def get_loads_set_3():
+    """Get loads subset 3 (faster queries, avoids timeout)."""
+    return {
+        "loads": _get_loads_subset(3),
+        "subset": 3,
+        "count": len(_get_loads_subset(3)),
+    }
+
+
+@app.get("/api/loads/set4", dependencies=API_DEPENDENCIES)
+def get_loads_set_4():
+    """Get loads subset 4 (faster queries, avoids timeout)."""
+    return {
+        "loads": _get_loads_subset(4),
+        "subset": 4,
+        "count": len(_get_loads_subset(4)),
+    }
 
 
 ## NOTE: DUPLICATE ROUTE - This endpoint is shadowed by the one at line 569
@@ -1523,11 +2014,11 @@ def debug_ui_mapping():
                 except Exception:
                     continue
 
-            loads = [
-                item.get("id")
-                for item in room.get("loads", [])
-                if isinstance(item, dict) and item.get("id") is not None
-            ]
+        loads = [
+            item.get("id")
+            for item in room.get("loads", [])
+            if isinstance(item, dict) and item.get("id") is not None
+        ]
 
         # Build a sample of button DOM ids the UI would use
         button_ids = []
@@ -1711,6 +2202,13 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.info(
             f"❌ WebSocket client disconnected (total: {len(websocket_clients)})"
         )
+        # If in auto mode and no clients remain, stop polling
+        try:
+            if QLINK_MONITOR_MODE == "auto" and len(websocket_clients) == 0:
+                stop_polling_thread()
+                logger.info("Auto mode: stopped polling (no WebSocket clients)")
+        except Exception:
+            pass
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         websocket_clients.discard(websocket)
@@ -1721,8 +2219,8 @@ async def startup_event():
     """Start event listener and SSDP advertiser on application startup"""
     global event_loop, ssdp_advertiser
     event_loop = asyncio.get_running_loop()
-    print("🚀 Starting Vantage QLink Bridge...")
-    logger.info("🚀 Starting Vantage QLink Bridge...")
+    print("Starting Vantage QLink Bridge...")
+    logger.info("Starting Vantage QLink Bridge...")
     start_monitoring()
 
     # Start SSDP advertiser for SmartThings LAN discovery
