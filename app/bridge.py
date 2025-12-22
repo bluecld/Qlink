@@ -88,6 +88,13 @@ QLINK_DISABLE_EVENTS = _env("QLINK_DISABLE_EVENTS", "0").lower() in (
 QLINK_LED_POLL_INTERVAL = float(_env("QLINK_LED_POLL_INTERVAL", "7.5"))
 # TTL (seconds) for on-demand LED cache when in 'auto' mode (default 5s)
 QLINK_LED_CACHE_TTL = float(_env("QLINK_LED_CACHE_TTL", "5.0"))
+# Optional alternate ports to try if the configured VANTAGE_PORT is unreachable
+# e.g. QLINK_ALT_PORTS="3040,23"
+_raw_alt_ports = _env("QLINK_ALT_PORTS", "").strip()
+try:
+    QLINK_ALT_PORTS = [int(p.strip()) for p in _raw_alt_ports.split(",") if p.strip()]
+except Exception:
+    QLINK_ALT_PORTS = []
 # Retry/backoff tuning (configurable via env or runtime /settings)
 QLINK_MAX_RETRIES = int(_env("QLINK_MAX_RETRIES", "3"))
 QLINK_RETRY_BASE_SEC = float(_env("QLINK_RETRY_BASE_SEC", "0.1"))
@@ -298,46 +305,86 @@ def _perform_qlink_send(cmd: str, timeout: float) -> str:
     t0 = perf_counter()
     max_retries = QLINK_MAX_RETRIES
 
-    for attempt in range(max_retries):
-        try:
-            with qlink_io_lock:
-                with socket.create_connection(
-                    (VANTAGE_IP, VANTAGE_PORT), timeout=timeout
-                ) as s:
-                    s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
-                    s.settimeout(timeout)
-                    try:
-                        data = s.recv(4096)
-                    except socket.timeout:
-                        data = b""
+    # Build list of candidate ports to try: configured port first, then any alternates
+    port_candidates = [VANTAGE_PORT] + [p for p in QLINK_ALT_PORTS if p != VANTAGE_PORT]
 
-            dt = (perf_counter() - t0) * 1000
-            logger.info("cmd=%s elapsedMs=%.1f attempt=%d", cmd, dt, attempt + 1)
-            _update_metric("last_rtt_ms", dt)
-            _update_metric("last_command", datetime.now().isoformat())
-            return data.decode("ascii", errors="ignore").strip()
+    # Attempt each candidate port in order
+    for port in port_candidates:
+        for attempt in range(max_retries):
+            try:
+                with qlink_io_lock:
+                    with socket.create_connection(
+                        (VANTAGE_IP, port), timeout=timeout
+                    ) as s:
+                        s.sendall((cmd + EOL).encode("ascii", errors="ignore"))
+                        s.settimeout(timeout)
+                        try:
+                            data = s.recv(4096)
+                        except socket.timeout:
+                            data = b""
 
-        except socket.timeout as ex:
-            raise HTTPException(
-                status_code=504, detail="Timeout contacting Vantage IP-Enabler"
-            ) from ex
-        except OSError as ex:
-            if "refused" in str(ex).lower() and attempt < max_retries - 1:
-                base = QLINK_RETRY_BASE_SEC
-                delay = base * (2**attempt)
-                jitter = random.uniform(0, delay * 0.5)
-                sleep_for = delay + jitter
-                logger.debug(
-                    "Connection refused, retry %d/%d - sleeping %.3fs",
+                dt = (perf_counter() - t0) * 1000
+                logger.info(
+                    "cmd=%s elapsedMs=%.1f attempt=%d port=%d",
+                    cmd,
+                    dt,
                     attempt + 1,
-                    max_retries,
-                    sleep_for,
+                    port,
                 )
-                time.sleep(sleep_for)
-                continue
-            raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+                _update_metric("last_rtt_ms", dt)
+                _update_metric("last_command", datetime.now().isoformat())
 
-    raise HTTPException(status_code=502, detail="Max retries exceeded")
+                # If we used an alternate port, update the in-memory port for future requests
+                global VANTAGE_PORT
+                if port != VANTAGE_PORT:
+                    try:
+                        old = VANTAGE_PORT
+                        VANTAGE_PORT = port
+                        logger.info(
+                            "Switching active VANTAGE_PORT from %s to %s after successful connect",
+                            old,
+                            port,
+                        )
+                    except Exception:
+                        pass
+
+                return data.decode("ascii", errors="ignore").strip()
+
+            except socket.timeout as ex:
+                raise HTTPException(
+                    status_code=504, detail="Timeout contacting Vantage IP-Enabler"
+                ) from ex
+            except OSError as ex:
+                # Connection refused - allow retry/backoff for this port then try next candidate
+                if "refused" in str(ex).lower():
+                    if attempt < max_retries - 1:
+                        base = QLINK_RETRY_BASE_SEC
+                        delay = base * (2**attempt)
+                        jitter = random.uniform(0, delay * 0.5)
+                        sleep_for = delay + jitter
+                        logger.debug(
+                            "Connection refused (port=%d), retry %d/%d - sleeping %.3fs",
+                            port,
+                            attempt + 1,
+                            max_retries,
+                            sleep_for,
+                        )
+                        time.sleep(sleep_for)
+                        continue
+                    else:
+                        logger.debug(
+                            "Connection refused on port %d after %d attempts, trying next port if any",
+                            port,
+                            max_retries,
+                        )
+                        break
+                raise HTTPException(
+                    status_code=502, detail=f"Connect error: {ex}"
+                ) from ex
+
+    raise HTTPException(
+        status_code=502, detail="Connect error: all candidate ports failed"
+    )
 
 
 def _command_worker() -> None:
@@ -462,6 +509,96 @@ monitor_thread_stop_event = threading.Event()
 # DO NOT GUESS based on station number - read from config file!
 STATION_MASTER_MAP: Dict[int, int] = {}
 STATION_PHYSICAL_MAP: Dict[int, int] = {}
+
+# ===== Pending commands (queued while Vantage is unreachable) =====
+pending_commands: list = []
+pending_commands_lock = threading.Lock()
+PENDING_COMMANDS_FILE = os.path.join(CONFIG_DIR, "pending_commands.json")
+PENDING_MAX_ATTEMPTS = int(_env("PENDING_MAX_ATTEMPTS", "10"))
+
+
+def _load_pending_commands() -> None:
+    global pending_commands
+    try:
+        if os.path.exists(PENDING_COMMANDS_FILE):
+            with open(PENDING_COMMANDS_FILE, "r", encoding="utf-8") as f:
+                pending_commands = json.load(f)
+                logger.info(f"Loaded {len(pending_commands)} pending command(s) from {PENDING_COMMANDS_FILE}")
+    except Exception as e:
+        logger.warning(f"Failed to load pending commands: {e}")
+
+
+def _persist_pending_commands() -> None:
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        with open(PENDING_COMMANDS_FILE, "w", encoding="utf-8") as f:
+            json.dump(pending_commands, f)
+    except Exception as e:
+        logger.warning(f"Failed to persist pending commands: {e}")
+
+
+def enqueue_pending_command(cmd: str) -> None:
+    with pending_commands_lock:
+        pending_commands.append({"cmd": cmd, "attempts": 0, "created_at": datetime.now().isoformat()})
+        _persist_pending_commands()
+
+
+def _replay_pending_commands_loop():
+    """Background thread that tries to replay queued commands when controller is reachable."""
+    logger.info("🔁 Pending command replayer thread started")
+    while True:
+        try:
+            to_send = []
+            with pending_commands_lock:
+                # copy to avoid holding lock while sending
+                for c in pending_commands:
+                    if c.get("attempts", 0) >= PENDING_MAX_ATTEMPTS:
+                        continue
+                    to_send.append(c)
+            if to_send:
+                # Quick connectivity check
+                try:
+                    with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=1):
+                        pass
+                except Exception:
+                    time.sleep(5.0)
+                    continue
+
+                # Try to send queued commands sequentially
+                for c in to_send:
+                    cmd = c.get("cmd")
+                    try:
+                        logger.info(f"Replaying pending cmd: {cmd}")
+                        qlink_send(cmd)
+                        # remove from list
+                        with pending_commands_lock:
+                            if c in pending_commands:
+                                pending_commands.remove(c)
+                                _persist_pending_commands()
+                    except Exception as exc:
+                        # increment attempt count
+                        with pending_commands_lock:
+                            for pc in pending_commands:
+                                if pc.get("cmd") == cmd:
+                                    pc["attempts"] = pc.get("attempts", 0) + 1
+                                    _persist_pending_commands()
+                                    break
+                        logger.debug(f"Replay failed for cmd {cmd}: {exc}")
+                        continue
+            time.sleep(5.0)
+        except Exception as e:
+            logger.exception(f"Pending replayer error: {e}")
+            time.sleep(5.0)
+
+# Load persisted pending commands and start the replayer thread
+try:
+    _load_pending_commands()
+    replay_thread = threading.Thread(target=_replay_pending_commands_loop, daemon=True, name="PendingReplayer")
+    replay_thread.start()
+except Exception as e:
+    logger.warning(f"Failed to start pending command replayer: {e}")
+    pass
+
 
 
 def load_station_master_map():
@@ -1014,7 +1151,11 @@ def event_listener_loop():
 
 def led_polling_loop():
     """Background thread that polls LED states using VLT command in a throttled manner."""
-    global event_monitoring_enabled, event_socket_connected, active_monitor_mode, leds_cache_ts
+    global \
+        event_monitoring_enabled, \
+        event_socket_connected, \
+        active_monitor_mode, \
+        leds_cache_ts
     import json
 
     logger.info("🔄 LED polling thread started (safe mode)")
@@ -1174,7 +1315,11 @@ def start_polling_thread():
 
 def stop_polling_thread():
     """Stop the LED polling thread if running (used by auto mode)."""
-    global monitor_thread, active_monitor_mode, event_monitoring_enabled, event_socket_connected
+    global \
+        monitor_thread, \
+        active_monitor_mode, \
+        event_monitoring_enabled, \
+        event_socket_connected
     try:
         monitor_thread_stop_event.set()
         if monitor_thread and monitor_thread.is_alive():
@@ -1216,7 +1361,9 @@ def start_monitoring():
     elif QLINK_MONITOR_MODE == "auto":
         # Auto mode: do not start polling at startup; polling will begin when
         # a WebSocket client connects or when an on-demand request forces it.
-        logger.info("Auto monitoring enabled; polling will start on client connect or on-demand")
+        logger.info(
+            "Auto monitoring enabled; polling will start on client connect or on-demand"
+        )
         active_monitor_mode = "off"
         return
     else:
@@ -1410,10 +1557,29 @@ def set_device(id: int, body: LevelCmd):
             return {"resp": resp}
 
         raise HTTPException(400, "provide switch or level")
-    except HTTPException:
-        # Re-raise HTTPExceptions from qlink_send to preserve proper status codes
+    except HTTPException as he:
+        # If the failure was due to connectivity to Vantage, queue the command
+        if isinstance(he.detail, str) and ("Connect error" in he.detail or "Timeout" in he.detail or he.status_code in (502, 504)):
+            try:
+                # Enqueue the last attempted command for later replay
+                cmd_var = locals().get('cmd', '')
+                logger.info(f"Queuing command due to connectivity issue: {cmd_var}")
+                enqueue_pending_command(cmd_var)
+                return JSONResponse(status_code=202, content={"status": "queued", "cmd": cmd_var, "reason": he.detail})
+            except Exception:
+                pass
+        # Re-raise other HTTP errors
         raise
     except Exception as e:
+        # If the failure was a connectivity issue, queue the command for later replay
+        if "connect error" in str(e).lower() or "connection refused" in str(e).lower() or "timeout" in str(e).lower():
+            try:
+                cmd_var = locals().get('cmd', '')
+                logger.info(f"Queuing command due to connectivity exception: {cmd_var}")
+                enqueue_pending_command(cmd_var)
+                return JSONResponse(status_code=202, content={"status": "queued", "cmd": cmd_var, "reason": str(e)})
+            except Exception:
+                pass
         logger.exception(f"set_device failed for id={id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1626,6 +1792,7 @@ def monitor_status():
             command_worker_thread.is_alive() if command_worker_thread else False
         ),
         "command_gap_seconds": QLINK_COMMAND_GAP,
+        "pending_commands": len(pending_commands),
     }
 
 
@@ -1719,7 +1886,9 @@ def get_all_led_states(force: bool = False):
     global leds_cache_ts
 
     now = perf_counter()
-    cache_expired = leds_cache_ts is None or (now - (leds_cache_ts or 0.0)) > QLINK_LED_CACHE_TTL
+    cache_expired = (
+        leds_cache_ts is None or (now - (leds_cache_ts or 0.0)) > QLINK_LED_CACHE_TTL
+    )
     if force or cache_expired:
         try:
             _refresh_led_cache_once()
@@ -1728,6 +1897,23 @@ def get_all_led_states(force: bool = False):
 
     with button_led_lock:
         return {"stations": button_led_states.copy(), "count": len(button_led_states)}
+
+
+@app.get("/pending_commands", dependencies=API_DEPENDENCIES)
+def list_pending_commands():
+    """Return currently queued pending commands (for debugging)."""
+    with pending_commands_lock:
+        return {"count": len(pending_commands), "pending": list(pending_commands)}
+
+
+@app.post("/pending_commands", dependencies=API_DEPENDENCIES)
+def add_pending_command(payload: dict):
+    """Add a command to the pending queue (body: {"cmd":"VLO@ 127 100"})."""
+    cmd = payload.get("cmd")
+    if not cmd:
+        raise HTTPException(status_code=400, detail="cmd required")
+    enqueue_pending_command(str(cmd))
+    return {"status": "queued", "cmd": cmd}
 
 
 @app.get("/api/loads", dependencies=API_DEPENDENCIES)
@@ -2149,19 +2335,38 @@ def probe_connection(
 
     Returns 200 with {ok: True} on success, or 502/504 on failure.
     """
+    """Quick TCP connectivity probe to the Vantage IP-Enabler.
+
+    Query parameters:
+    - ip: optional IP address to probe (defaults to configured VANTAGE_IP)
+    - port: optional port to probe (defaults to configured VANTAGE_PORT)
+    - timeout: optional timeout in seconds (defaults to small value)
+
+    Returns 200 with {ok: True} on success, or 502/504 on failure.
+    """
     tgt_ip = ip or VANTAGE_IP
-    tgt_port = int(port or VANTAGE_PORT)
     to = float(timeout or min(QLINK_TIMEOUT, 2.0))
 
-    try:
-        with socket.create_connection((tgt_ip, tgt_port), timeout=to):
-            return {"ok": True, "ip": tgt_ip, "port": tgt_port}
-    except socket.timeout as ex:
-        raise HTTPException(
-            status_code=504, detail="Timeout connecting to target"
-        ) from ex
-    except Exception as ex:
-        raise HTTPException(status_code=502, detail=f"Connect error: {ex}") from ex
+    # If a specific port was provided, probe only that. Otherwise probe the
+    # configured port and any alternates from QLINK_ALT_PORTS and return a map
+    # of results to help diagnose connectivity issues.
+    ports_to_test = [int(port)] if port else [VANTAGE_PORT] + QLINK_ALT_PORTS
+
+    results = {}
+    for p in ports_to_test:
+        try:
+            with socket.create_connection((tgt_ip, p), timeout=to):
+                results[str(p)] = {"ok": True}
+        except socket.timeout:
+            results[str(p)] = {"ok": False, "error": "timeout"}
+        except Exception as ex:
+            results[str(p)] = {"ok": False, "error": str(ex)}
+
+    # If any port succeeded, return 200 with details. Otherwise raise 502 with details.
+    if any(v.get("ok") for v in results.values()):
+        return {"ok": True, "ip": tgt_ip, "ports": results}
+
+    raise HTTPException(status_code=502, detail={"ip": tgt_ip, "ports": results})
 
 
 @app.websocket("/events")
