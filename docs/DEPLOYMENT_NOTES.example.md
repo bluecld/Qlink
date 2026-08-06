@@ -7,8 +7,8 @@
 - Channel: *My Vantage Bridge Channel*
 - Driver ID: `0dd7f90d-9d6b-46e3-8d1f-6c46b7d2a11f`
 - Hub ID: `92e0cdbe-81a5-49c6-91a5-45f31204b21b`
-- Hub IP: `192.168.1.155`
-- Bridge IP: `192.168.1.227:8000`
+- Hub IP: `<SMARTTHINGS_IP>`
+- Bridge IP: `<BRIDGE_IP>:8000`
 
 **Problem Identified:**
 - Parent device not being created automatically
@@ -53,7 +53,7 @@
    - Open SmartThings app
    - Devices → + → Scan for nearby devices
    - Look for "Vantage QLink Bridge"
-   - Configure bridge IP: `192.168.1.227`, port: `8000`
+   - Configure bridge IP: `<BRIDGE_IP>`, port: `8000`
 
 4. **Verify child device creation**:
    - After configuring bridge preferences, child devices should auto-create
@@ -72,10 +72,10 @@
 Enable Siri voice control for Vantage Q-Link lights using Home Assistant and Apple HomeKit Bridge.
 
 **System Configuration:**
-- **Platform**: Raspberry Pi (192.168.1.213) - same Pi running bridge.py and NAS backup
+- **Platform**: Raspberry Pi (<BRIDGE_TAILSCALE_IP>) - same Pi running bridge.py and NAS backup
 - **Home Assistant**: Docker container (ghcr.io/home-assistant/home-assistant:stable)
 - **Container Name**: homeassistant
-- **Web UI**: http://192.168.1.213:8123
+- **Web UI**: http://<BRIDGE_TAILSCALE_IP>:8123
 - **Architecture**: Siri → Apple Home → HomeKit Bridge → HA → RESTful → bridge.py → Q-Link → Vantage
 
 **Key Discovery:**
@@ -119,13 +119,13 @@ Enable Siri voice control for Vantage Q-Link lights using Home Assistant and App
    - **Brightness Scaling**: Proper conversion between HA (0-255) and Vantage (0-100) scales
 
 **Current Status:**
-- Home Assistant running and accessible at http://192.168.1.213:8123
+- Home Assistant running and accessible at http://<BRIDGE_TAILSCALE_IP>:8123
 - All 6 lights configured and integrated with HomeKit Bridge
 - HomeKit storage files created (`.storage/homekit.*`)
 - Configuration validated with no errors in logs
 
 **Next Steps (for user):**
-1. Access HA UI at http://192.168.1.213:8123
+1. Access HA UI at http://<BRIDGE_TAILSCALE_IP>:8123
 2. Navigate to Settings → Devices & Services
 3. Find HomeKit Bridge integration card
 4. Copy pairing code (8-digit PIN) or QR code

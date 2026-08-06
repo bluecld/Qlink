@@ -66,5 +66,5 @@ $envStr = $envPairs -join ' '
 ## Run remote setup: unpack package (using python's zipfile) and run remote-setup.sh with env
 $py = "import zipfile,sys; zipfile.ZipFile('app.zip').extractall('.')"
 $pyB64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($py))
-$remoteCmd = "cd ${RemoteDir} && echo ${pyB64} | base64 -d | python3 && ./scripts/remote-setup.sh"
+$remoteCmd = "cd ${RemoteDir} && echo ${pyB64} | base64 -d | python3 && chmod +x ./scripts/remote-setup.sh && ./scripts/remote-setup.sh"
 ssh -i $Key "${User}@${HostName}" "${envStr} REMOTE_DIR='${RemoteDir}' bash -lc '${remoteCmd}'"

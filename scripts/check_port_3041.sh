@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
     echo "Usage: $0 [HOST] [PORT]" >&2
     echo "  HOST defaults to \$VANTAGE_IP (or local check if unset)." >&2
-    echo "  PORT defaults to \$VANTAGE_PORT or 3041." >&2
+    echo "  PORT defaults to \$VANTAGE_PORT or 3040." >&2
     exit 1
 }
 
@@ -13,7 +13,7 @@ if [[ $# -gt 2 ]]; then
 fi
 
 HOST="${VANTAGE_IP:-}"
-PORT="${VANTAGE_PORT:-3041}"
+PORT="${VANTAGE_PORT:-3040}"
 
 if [[ $# -ge 1 ]]; then
     HOST="$1"

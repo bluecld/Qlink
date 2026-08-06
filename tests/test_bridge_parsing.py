@@ -85,7 +85,7 @@ def test_qlink_send_retries(monkeypatch):
             pass
 
         def recv(self, n):
-            return b"OK"
+            return b"OK\r"
 
         def close(self):
             pass

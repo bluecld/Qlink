@@ -97,27 +97,27 @@ The `loads.json` file now supports station and button mappings:
 
 1. **Test Button Press Command:**
    ```bash
-   curl http://192.168.1.213:8000/button/23/5
+   curl http://<BRIDGE_TAILSCALE_IP>:8000/button/23/5
    ```
    - Expected: Game Room lights turn on
    - Confirms `VBTN@` command format
 
 2. **Test Load Polling:**
    ```bash
-   curl http://192.168.1.213:8000/load/127/status
+   curl http://<BRIDGE_TAILSCALE_IP>:8000/load/127/status
    ```
    - Expected: Returns current level (e.g., `R:V50`)
    - Already know VGL works
 
 3. **Test Button LED Status:**
    ```bash
-   curl http://192.168.1.213:8000/button/23/5/status
+   curl http://<BRIDGE_TAILSCALE_IP>:8000/button/23/5/status
    ```
    - Expected: Returns LED state
    - May need different command (VBTN?, GETLED, etc.)
 
 4. **Test Web UI:**
-   - Open `http://192.168.1.213:8000/ui/home-v2.html`
+   - Open `http://<BRIDGE_TAILSCALE_IP>:8000/ui/home-v2.html`
    - Verify polling updates load levels
    - Test scene buttons
    - Check visual feedback and animations

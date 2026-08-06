@@ -165,7 +165,7 @@ LE 1 3 4C 20[CR]
 
 ### Current Setup
 
-Your Pi bridge at `192.168.1.213:8000` is connected to port 3041. To enable monitoring:
+Your Pi bridge at `<BRIDGE_TAILSCALE_IP>:8000` is connected to port 3040. To enable monitoring:
 
 ### Step 1: Enable Monitoring Commands
 
@@ -202,7 +202,7 @@ def disable_monitoring():
 
 The challenge: Vantage sends events asynchronously over the same TCP connection. You need to:
 
-1. **Maintain persistent connection** to port 3041
+1. **Maintain persistent connection** to port 3040
 2. **Parse incoming events** (SW, LO, LS, LV, LE, LC messages)
 3. **Emit events** to external systems (WebSocket, MQTT, HTTP webhooks, etc.)
 
@@ -365,7 +365,7 @@ async def process_vantage_event(message: str):
 ### Test 1: Enable Monitoring
 ```bash
 # Enable all monitoring
-curl -X POST http://192.168.1.213:8000/monitor/enable
+curl -X POST http://<BRIDGE_TAILSCALE_IP>:8000/monitor/enable
 ```
 
 ### Test 2: Press Physical Button
@@ -383,7 +383,7 @@ LO 1 3 2 5 75[CR]  # Load changed to 75%
 
 ### Test 4: WebSocket Stream
 ```javascript
-const ws = new WebSocket('ws://192.168.1.213:8000/events');
+const ws = new WebSocket('ws://<BRIDGE_TAILSCALE_IP>:8000/events');
 ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
     console.log('Vantage event:', data);
@@ -436,7 +436,7 @@ ws.onmessage = (event) => {
 - **Asynchronous:** Events arrive at any time, not in response to commands
 - **Buffering:** May need to handle partial messages and buffer incoming data
 - **Reconnection:** Handle connection drops gracefully
-- **Port Choice:** Use port 3041 (read/write) not 3040 (read-only)
+- **Port Choice:** Use port 3040 (read/write). Port 3041 is not exposed on this controller.
 
 ---
 

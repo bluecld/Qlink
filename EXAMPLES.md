@@ -24,7 +24,7 @@ This document provides example configurations and usage patterns for the Vantage
   "remote_dir": "/home/pi/qlink-bridge",
   "env": {
     "VANTAGE_IP": "192.168.1.200",
-    "VANTAGE_PORT": "3041",
+    "VANTAGE_PORT": "3040",
     "QLINK_FADE": "2.3",
     "QLINK_TIMEOUT": "2.0"
   }
@@ -287,7 +287,7 @@ await bridge.pressButton(23, 1);
 ```bash
 # Set environment variables
 export VANTAGE_IP="192.168.1.200"
-export VANTAGE_PORT="3041"
+export VANTAGE_PORT="3040"
 
 # Run bridge
 python -m uvicorn app.bridge:app --host 0.0.0.0 --port 8000 --reload
@@ -307,7 +307,7 @@ Type=simple
 User=pi
 WorkingDirectory=/home/pi/qlink-bridge
 Environment="VANTAGE_IP=192.168.1.200"
-Environment="VANTAGE_PORT=3041"
+Environment="VANTAGE_PORT=3040"
 ExecStart=/home/pi/qlink-bridge/.venv/bin/uvicorn app.bridge:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=10
@@ -328,7 +328,7 @@ services:
       - "8000:8000"
     environment:
       - VANTAGE_IP=192.168.1.200
-      - VANTAGE_PORT=3041
+      - VANTAGE_PORT=3040
       - QLINK_FADE=2.3
     volumes:
       - ./config:/app/config
@@ -554,7 +554,7 @@ fi
 # test-connection.sh - Verify bridge connectivity
 
 echo "Testing Vantage Controller..."
-nc -zv 192.168.1.200 3041
+nc -zv 192.168.1.200 3040
 
 echo ""
 echo "Testing Bridge API..."

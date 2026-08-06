@@ -11,6 +11,7 @@ This directory contains current, actively-used documentation for the Vantage QLi
 
 - **SCHEMAS.md** - JSON schema documentation for configuration files
 - **README_AI.md** - AI assistant context and development guidelines
+- **BRIDGE_MONITORING.md** - Operational guidance for logs and rogue process cleanup
 
 ## Reference Directories
 

@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
-A modern REST API bridge for legacy Vantage lighting control systems. Run on a Raspberry Pi to control your Vantage devices via HTTP from any home automation platform, mobile app, or voice assistant.
+A modern REST API bridge for legacy Vantage lighting control systems. Runs on any small Linux host (Raspberry Pi, mini PC, old Mac mini) to control your Vantage devices via HTTP from any home automation platform, mobile app, or voice assistant.
 
 Note: Config Schemas and validation guidance live in docs/SCHEMAS.md.
 TODO (placeholder): After cleaning up README encoding artifacts, add a dedicated "Config Schemas" section here linking to docs/SCHEMAS.md and showing local/CI validation commands.
@@ -14,7 +14,7 @@ TODO (placeholder): After cleaning up README encoding artifacts, add a dedicated
 - **Real-time Event Monitoring** - WebSocket streaming of button presses, load changes, and LED updates
 - **Web UI** - Browser-based control panel with configurable settings
 - **Home Assistant Integration** - Full support for Home Assistant with HomeKit/Siri voice control
-- **Easy Deployment** - One-command deploy to Raspberry Pi with systemd service
+- **Easy Deployment** - One-command deploy to a Linux host with systemd service
 - **Low Latency** - Persistent TCP connection to Vantage for instant updates
 - **Auto-reconnect** - Resilient connection handling with automatic retry
 - **Extensible** - Simple REST API for integration with any home automation platform
@@ -48,7 +48,7 @@ pip install -r app/requirements.txt
 
 # Set environment variables (optional)
 $env:VANTAGE_IP="192.168.1.200"
-$env:VANTAGE_PORT="3041"
+$env:VANTAGE_PORT="3040"
 
 # Run the bridge
 python -m uvicorn app.bridge:app --host 0.0.0.0 --port 8000
@@ -57,7 +57,7 @@ python -m uvicorn app.bridge:app --host 0.0.0.0 --port 8000
 start http://localhost:8000/ui/
 ```
 
-### For Production (Raspberry Pi)
+### For Production (Linux host)
 
 ```powershell
 # 1. Copy and edit deployment config
@@ -68,7 +68,7 @@ Copy-Item config\targets.example.json config\targets.json
 powershell -ExecutionPolicy Bypass -File .\scripts\deploy.ps1
 
 # 3. Access your bridge
-start http://qlinkpi.local:8000/ui/
+start http://<BRIDGE_IP>:8000/ui/
 ```
 
 ## 📦 Requirements
@@ -78,9 +78,9 @@ start http://qlinkpi.local:8000/ui/
 - Python 3.11 or higher
 - Git
 
-### Raspberry Pi (Production)
-- Raspberry Pi 3/4/5 or Zero 2 W
-- Raspberry Pi OS (Bullseye or newer)
+### Bridge Host (Production)
+- Any x86_64 or ARM Linux host (Raspberry Pi 3/4/5, mini PC, repurposed Mac mini)
+- Debian 12/13, Ubuntu 22.04+, or Raspberry Pi OS (Bullseye or newer)
 - SSH enabled
 - Network access to Vantage IP-Enabler
 
@@ -93,11 +93,11 @@ start http://qlinkpi.local:8000/ui/
 ### Vantage System
 - Vantage InFusion controller with Q-Link protocol
 - IP-Enabler or network-connected controller
-- Port 3041 accessible (read/write: tested with `VLO@`, `VSW`, `VLT@`, `VGL@`); optional port 3040 for read-only polling (`VLT@` only)
+- Port 3040 accessible (read/write: tested with `VLO@`, `VSW`, `VLT@`, `VGL@`). Port 3041 is usually closed on production controllers.
 
 ## 🔧 Installation
 
-### Option 1: Deploy to Raspberry Pi (Recommended)
+### Option 1: Deploy to a Linux host (Recommended)
 
 1. **Prepare your deployment config:**
 
@@ -108,13 +108,13 @@ Copy-Item config\targets.example.json config\targets.json
 Edit `config\targets.json`:
 ```json
 {
-  "host": "qlinkpi.local",
+  "host": "<BRIDGE_TAILSCALE_IP>",
   "user": "pi",
   "key": "C:\\Users\\yourname\\.ssh\\id_ed25519",
-  "remote_dir": "/home/pi/qlink-bridge",
+  "remote_dir": "/home/<USER>/qlink-bridge",
   "env": {
     "VANTAGE_IP": "192.168.1.200",
-    "VANTAGE_PORT": "3041"
+    "VANTAGE_PORT": "3040"
   }
 }
 ```
@@ -137,7 +137,7 @@ This will:
 
 ```bash
 # SSH to your Pi
-ssh pi@qlinkpi.local
+ssh <USER>@<BRIDGE_IP>
 
 # Clone repository
 git clone https://github.com/bluecld/Qlink.git
@@ -152,7 +152,7 @@ pip install -r app/requirements.txt
 
 # Set environment variables
 export VANTAGE_IP="192.168.1.200"
-export VANTAGE_PORT="3041"
+export VANTAGE_PORT="3040"
 
 # Run bridge
 python -m uvicorn app.bridge:app --host 0.0.0.0 --port 8000
@@ -167,7 +167,7 @@ Configure the bridge using environment variables or the web settings interface:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `VANTAGE_IP` | `192.168.1.200` | IP address of Vantage controller |
-| `VANTAGE_PORT` | `3041` | Port for Q-Link commands (3041=RW, 3040=RO) |
+| `VANTAGE_PORT` | `3040` | Port for Q-Link commands (3040=RW; 3041 is typically disabled) |
 | `QLINK_FADE` | `2.3` | Default fade time in seconds |
 | `QLINK_TIMEOUT` | `2.0` | Command timeout in seconds |
 | `QLINK_EOL` | `CR` | Line terminator (CR or CRLF) |
@@ -241,7 +241,7 @@ GET /config
 
 Response: {
   "ip": "192.168.1.200",
-  "port": 3041,
+  "port": 3040,
   "fade": "2.3",
   "rooms": [...]
 }
@@ -272,7 +272,7 @@ Response: {
   "monitoring_enabled": true,
   "websocket_clients": 2,
   "vantage_ip": "192.168.1.200",
-  "vantage_port": 3041,
+  "vantage_port": 3040,
   "stations_tracked": 42,
   "note": "Polling LED states every 7.5s via VLT@"
 }
@@ -303,18 +303,26 @@ docker run -d \
 
 2. **Generate Configuration**:
 ```bash
-python3 generate_ha_config.py
+python3 generate_ha_config.py --use-aggregated > /tmp/ha_config.yaml
+# If HA runs in Docker without --network=host, add:
+#   --ha-in-docker
 ```
 
 3. **Deploy**:
 ```bash
-sudo cp /tmp/ha_config_all.yaml /home/pi/homeassistant/configuration.yaml
+sudo cp /tmp/ha_config.yaml /home/pi/homeassistant/configuration.yaml
 sudo docker restart homeassistant
 ```
 
 4. **Enable HomeKit** - Pair with your iPhone via Home app for Siri voice control
 
 For detailed instructions, see [docs/HOME_ASSISTANT.md](docs/HOME_ASSISTANT.md).
+
+### Handoff and Operations
+
+- [Handoff Notes](docs/HANDOFF.md)
+- [Runbook](docs/RUNBOOK.md)
+- [Production Checklist](docs/PRODUCTION_CHECKLIST.md)
 
 ### Features
 
@@ -362,7 +370,7 @@ Connect to real-time events at `ws://yourpi:8000/events`
 
 **Example (JavaScript):**
 ```javascript
-const ws = new WebSocket('ws://qlinkpi.local:8000/events');
+const ws = new WebSocket('ws://<BRIDGE_IP>:8000/events');
 // Append ?token=YOUR_SECRET if BRIDGE_API_SECRET is set
 
 ws.onmessage = (event) => {
@@ -448,7 +456,7 @@ The included PowerShell script handles complete deployment:
 
 Or manually:
 ```bash
-ssh pi@qlinkpi.local
+ssh <USER>@<BRIDGE_IP>
 journalctl -u qlink-bridge -f
 ```
 
@@ -491,7 +499,7 @@ Qlink/
 │       ├── loads.rooms.v1.schema.json
 │       └── targets.v1.schema.json
 ├── scripts/                # Deployment and utility scripts
-│   ├── deploy.ps1          # Deploy to Raspberry Pi
+│   ├── deploy.ps1          # Deploy to the bridge host
 │   ├── update.ps1          # Quick update deployment
 │   ├── logs.ps1            # View remote logs
 │   ├── remote-setup.sh     # Pi setup script

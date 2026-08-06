@@ -41,7 +41,7 @@ pip install -r dev-requirements.txt  # When available
 ```bash
 # Set test environment variables
 export VANTAGE_IP="192.168.1.200"
-export VANTAGE_PORT="3041"
+export VANTAGE_PORT="3040"
 
 # Start the bridge
 python -m uvicorn app.bridge:app --reload --host 0.0.0.0 --port 8000
@@ -169,7 +169,7 @@ Brief description of the issue
 **Vantage System**
 - Controller: InFusion Controller
 - Firmware: X.XX
-- Port: 3041
+- Port: 3040
 
 **Steps to Reproduce**
 1. Start bridge

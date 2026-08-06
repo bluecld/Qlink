@@ -4,6 +4,7 @@ Generate Home Assistant configuration for Vantage lights
 """
 
 import sys
+
 import requests
 
 
@@ -77,7 +78,7 @@ def generate_homekit_entity(load_id, room_name, light_name):
 def main():
     # Fetch config from bridge
     try:
-        response = requests.get("http://192.168.1.213:8000/config")
+        response = requests.get("http://<BRIDGE_TAILSCALE_IP>:8000/config")
         config = response.json()
     except Exception as e:
         print(f"Error fetching config from bridge: {e}")

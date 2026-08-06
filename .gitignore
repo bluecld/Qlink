@@ -9,6 +9,7 @@ __pycache__/
 venv/
 env/
 ENV/
+venv-linux/
 
 # Distribution / packaging
 build/
@@ -40,6 +41,8 @@ Thumbs.db
 # Local config and secrets
 config/targets.json
 config/bridge_settings.json
+config/ha_areas.json
+config/priority_state.json
 .env
 *.local
 
@@ -64,6 +67,8 @@ archive/
 
 # Local reference repos
 SmartThings_Edge/reference/
+esp32-room-panel/
+waveshare-official/
 
 # Personal documentation (use .example versions)
 PROJECT_URLS.md
@@ -78,5 +83,11 @@ NAS_BACKUP_README.md
 NUL
 :USERPROFILE/
 
+# One-off local files
+udo npm uninstall -g claude-code
+
 # Home Assistant generated configs (use generator script)
 ha_config_*.yaml
+
+# Full-house Vantage/HA export (reveals home layout)
+vantage.yaml

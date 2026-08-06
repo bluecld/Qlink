@@ -54,22 +54,29 @@ Install Home Assistant OS on a separate device or SD card. See: https://www.home
 Use the included generator script to create your Home Assistant configuration:
 
 ```bash
-# On your Pi
-python3 generate_ha_config.py
+# On your Pi (aggregated mode reduces load on Vantage)
+python3 generate_ha_config.py --use-aggregated > /tmp/ha_config.yaml
+# If HA runs in Docker without --network=host, add:
+#   --ha-in-docker
 ```
 
 The script will:
 1. Fetch your configuration from the bridge API
-2. Generate REST sensors for all lights
+2. Generate REST sensors for all lights (or one aggregated sensor)
 3. Create template light entities
 4. Configure HomeKit Bridge integration
+
+If Home Assistant runs in Docker without `--network=host`, use `--ha-in-docker`
+(defaults to `http://172.17.0.1:8000`) or set `--bridge-base-url` explicitly.
+
+> If you run the generator on a different machine, provide `--url http://YOUR_BRIDGE:8000/config` to fetch the config, and set `--bridge-base-url` to the address Home Assistant can reach.
 
 ### Step 2: Deploy Configuration
 
 Copy the generated config to Home Assistant:
 
 ```bash
-sudo cp /tmp/ha_config_all.yaml /home/pi/homeassistant/configuration.yaml
+sudo cp /tmp/ha_config.yaml /home/pi/homeassistant/configuration.yaml
 sudo docker restart homeassistant
 ```
 
@@ -79,6 +86,39 @@ sudo docker restart homeassistant
 2. Navigate to **Settings** → **Devices & Services**
 3. Verify lights are appearing
 4. Check for errors in **Settings** → **System** → **Logs**
+
+### Endpoint Alignment & Verification
+
+1. Run the generator with the same base URL Home Assistant will reach (see Step 1).
+2. Confirm the emitted YAML references `http://YOUR_BRIDGE:8000/device/{{ load_id }}/set` and `http://YOUR_BRIDGE:8000/load/{id}/status`.
+3. Validate the bridge API directly:
+
+  ```bash
+  curl http://<BRIDGE_TAILSCALE_IP>:8000/about
+  curl http://<BRIDGE_TAILSCALE_IP>:8000/api/leds
+  curl http://<BRIDGE_TAILSCALE_IP>:8000/load/254/status
+  ```
+
+4. Update Home Assistant's `configuration.yaml` (or packages) with the regenerated REST commands and sensors, then reload the REST integration.
+5. If any HA entities still call `/api/status`, search your config for that path and swap it for `/api/leds` (panel views) or `/load/{id}/status` (per-load sensors).
+
+### Large-installation performance notes
+
+If you have many loads (~100+) using individual `rest` sensors, Home Assistant may generate many concurrent HTTP requests every polling cycle which can overwhelm the bridge and lead to `Timeout while fetching data` and stale dashboards. To avoid this:
+
+- Use `generate_ha_config.py --use-aggregated --scan-interval 120 --timeout 15` to produce a config that polls less frequently.
+- If `/api/loads` is too slow on large installs, use `--use-subsets` to split load polling across 4 faster endpoints.
+- Add `--use-priority` to keep recently used or active loads fresh without polling every load frequently.
+- Prefer limiting the set of sensors to only the lights you actually want in the dashboard using `--include-loads` (comma-separated IDs).
+- For dashboard-only LED indications, use the bridge's `/api/leds` endpoint rather than per-load REST sensors.
+- If you need all loads visible, consider a bridge enhancement to return a consolidated `/api/loads` endpoint; this reduces HA-to-bridge request counts.
+
+Tips to recover a stale dashboard:
+
+1. Stop Home Assistant (or restart the container).
+2. Replace `configuration.yaml` with a smaller generated file (or use packages) so only the critical sensors are active.
+3. Restart HA and confirm `docker logs homeassistant` shows no `Timeout while fetching data` messages.
+4. Remove old sensor entities from the HA UI or clear the `.storage/core.entity_registry` file if you understand the risk of direct edits.
 
 ## HomeKit Integration
 
@@ -110,7 +150,7 @@ Controls lights by posting to the bridge API:
 ```yaml
 rest_command:
   vantage_light_on:
-    url: "http://localhost:8000/device/{{ load_id }}/set"
+    url: "http://<BRIDGE_TAILSCALE_IP>:8000/device/{{ load_id }}/set"
     method: POST
     headers:
       Content-Type: "application/json"
@@ -125,7 +165,7 @@ Polls light status every 30 seconds:
 sensor:
   - platform: rest
     name: "Vantage Load 254 Status"
-    resource: "http://localhost:8000/load/254/status"
+    resource: "http://<BRIDGE_TAILSCALE_IP>:8000/load/254/status"
     value_template: "{{ value_json.resp | int }}"
     scan_interval: 30
 ```
@@ -207,7 +247,10 @@ After HomeKit pairing, use Siri to control lights:
 
 ```bash
 # Check bridge is running
-curl http://localhost:8000/config
+curl http://<BRIDGE_TAILSCALE_IP>:8000/config
+
+# Preferred LED endpoint (replaces legacy /api/status)
+curl http://<BRIDGE_TAILSCALE_IP>:8000/api/leds
 
 # Check HA logs
 docker logs homeassistant --tail 100

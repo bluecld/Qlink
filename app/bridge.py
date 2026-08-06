@@ -99,6 +99,17 @@ except Exception:
 QLINK_MAX_RETRIES = int(_env("QLINK_MAX_RETRIES", "3"))
 QLINK_RETRY_BASE_SEC = float(_env("QLINK_RETRY_BASE_SEC", "0.1"))
 QLINK_COMMAND_GAP = float(_env("QLINK_COMMAND_GAP", "0.05"))
+# Hold ONE persistent TCP connection to the IP-Enabler and reuse it for every
+# command instead of opening a fresh socket per command. Single-session serial
+# gateways (Vantage IP-Enabler) cannot tolerate rapid connect/close churn and
+# start refusing connections, which stalls the command worker and backs up the
+# queue. Set QLINK_PERSISTENT_CONN=0 to fall back to per-command connections.
+QLINK_PERSISTENT_CONN = _env("QLINK_PERSISTENT_CONN", "1").lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
 BRIDGE_API_SECRET = _env("BRIDGE_API_SECRET", "")
 
 _DEFAULT_CONFIG_DIR = os.path.normpath(
@@ -261,6 +272,118 @@ monitor_thread: Optional[threading.Thread] = None
 # Lock to serialize access to the Vantage IP-Enabler to avoid port exhaustion
 qlink_io_lock = threading.Lock()
 
+# ===== Persistent command socket =====
+# One long-lived TCP connection to the IP-Enabler, reused for every command.
+# Touched only by the single command-worker thread (via _perform_qlink_send),
+# always under qlink_io_lock. See QLINK_PERSISTENT_CONN.
+_cmd_socket: Optional[socket.socket] = None
+_cmd_socket_buf: bytearray = bytearray()
+
+
+def _close_cmd_socket() -> None:
+    """Close and forget the persistent command socket."""
+    global _cmd_socket, _cmd_socket_buf
+    if _cmd_socket is not None:
+        try:
+            _cmd_socket.close()
+        except Exception:
+            pass
+    _cmd_socket = None
+    _cmd_socket_buf = bytearray()
+
+
+def _connect_cmd_socket(timeout: float) -> socket.socket:
+    """Open a fresh persistent command socket, trying candidate ports in order.
+
+    A refused connect is retried with exponential backoff up to
+    QLINK_MAX_RETRIES per port (the gateway can briefly refuse right after a
+    dropped session). This only runs when there is no live connection, so it
+    does not churn during normal operation.
+    """
+    global VANTAGE_PORT, _cmd_socket, _cmd_socket_buf
+    port_candidates = [VANTAGE_PORT] + [p for p in QLINK_ALT_PORTS if p != VANTAGE_PORT]
+    last_exc: Optional[Exception] = None
+    for port in port_candidates:
+        for attempt in range(max(1, QLINK_MAX_RETRIES)):
+            try:
+                s = socket.create_connection((VANTAGE_IP, port), timeout=timeout)
+                s.settimeout(timeout)
+                try:
+                    s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                    s.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+                except Exception:  # pragma: no cover - platform dependent
+                    pass
+                if port != VANTAGE_PORT:
+                    logger.info(
+                        "Switching active VANTAGE_PORT from %s to %s after successful connect",
+                        VANTAGE_PORT,
+                        port,
+                    )
+                    VANTAGE_PORT = port
+                _cmd_socket = s
+                _cmd_socket_buf = bytearray()
+                logger.info(
+                    "Opened persistent command connection to %s:%s", VANTAGE_IP, port
+                )
+                return s
+            except OSError as ex:
+                last_exc = ex
+                # Retry a refused connect (with backoff) before moving on.
+                if "refused" in str(ex).lower() and attempt < QLINK_MAX_RETRIES - 1:
+                    delay = QLINK_RETRY_BASE_SEC * (2**attempt)
+                    time.sleep(delay + random.uniform(0, delay * 0.5))
+                    continue
+                break  # timeout / other error: try next candidate port
+    if isinstance(last_exc, socket.timeout):
+        raise HTTPException(
+            status_code=504, detail="Timeout contacting Vantage IP-Enabler"
+        ) from last_exc
+    raise HTTPException(
+        status_code=502, detail="Connect error: all candidate ports failed"
+    ) from last_exc
+
+
+def _read_response_line(
+    sock: socket.socket, buf: bytearray, delimiter: bytes, timeout: float
+):
+    """Read one delimiter-terminated line from ``sock`` within ``timeout``.
+
+    Returns ``(line, closed)``:
+      - ``(str, False)``  a complete line was read (delimiter stripped)
+      - ``(None, False)`` timed out before a full line (command gave no response)
+      - ``(None, True)``  the peer closed the connection (socket is dead)
+    Any bytes after the delimiter remain in ``buf`` for the next read.
+    """
+    deadline = perf_counter() + timeout
+    while True:
+        idx = buf.find(delimiter)
+        if idx != -1:
+            line = buf[:idx].decode("ascii", errors="ignore")
+            del buf[: idx + len(delimiter)]
+            return line, False
+        remaining = deadline - perf_counter()
+        if remaining <= 0:
+            # Timed out waiting for a delimiter. Return any bytes we did collect
+            # (matches the per-command recv-once behaviour) rather than losing a
+            # response that happened to arrive without a trailing CR.
+            if buf:
+                line = buf.decode("ascii", errors="ignore")
+                buf.clear()
+                return line, False
+            return None, False
+        try:
+            sock.settimeout(remaining)
+            chunk = sock.recv(4096)
+        except socket.timeout:
+            if buf:
+                line = buf.decode("ascii", errors="ignore")
+                buf.clear()
+                return line, False
+            return None, False
+        if not chunk:
+            return None, True
+        buf.extend(chunk)
+
 
 class CommandRequest:
     __slots__ = ("cmd", "timeout", "response_queue")
@@ -302,8 +425,96 @@ def _set_queue_depth(depth: int) -> None:
 
 
 def _perform_qlink_send(cmd: str, timeout: float) -> str:
+    """Send one command to the IP-Enabler and return its response.
+
+    Uses a single persistent connection (reused across commands) unless
+    QLINK_PERSISTENT_CONN is disabled, in which case it falls back to opening a
+    fresh connection per command.
+    """
+    if not QLINK_PERSISTENT_CONN:
+        return _perform_qlink_send_per_command(cmd, timeout)
+
+    t0 = perf_counter()
+    global _cmd_socket
+    payload = (cmd + EOL).encode("ascii", errors="ignore")
+    delimiter = b"\r"
+    last_exc: Optional[Exception] = None
+
+    with qlink_io_lock:
+        # Up to two tries: reuse the open socket; if it turns out to be dead,
+        # reconnect once and resend. This never opens more than one connection
+        # per command, so it cannot storm a single-session gateway.
+        for attempt in range(2):
+            try:
+                sock = _cmd_socket
+                if sock is None:
+                    sock = _connect_cmd_socket(timeout)
+                else:
+                    sock.settimeout(timeout)
+                    # Discard any stale/unsolicited bytes so this command reads
+                    # its own response, not a late reply to a prior command.
+                    _cmd_socket_buf.clear()
+
+                sock.sendall(payload)
+                line, closed = _read_response_line(
+                    sock, _cmd_socket_buf, delimiter, timeout
+                )
+
+                if closed:
+                    # Peer dropped the connection; refresh and retry once.
+                    _close_cmd_socket()
+                    if attempt == 0:
+                        continue
+                    raise HTTPException(
+                        status_code=502,
+                        detail="Connect error: IP-Enabler closed connection",
+                    )
+
+                dt = (perf_counter() - t0) * 1000
+                logger.info(
+                    "cmd=%s elapsedMs=%.1f attempt=%d port=%d persistent=1",
+                    cmd,
+                    dt,
+                    attempt + 1,
+                    VANTAGE_PORT,
+                )
+                _update_metric("last_rtt_ms", dt)
+                _update_metric("last_command", datetime.now().isoformat())
+                # line is None when the command returned no response before the
+                # timeout; tolerate that as an empty response (matches the
+                # per-command behaviour) rather than treating it as an error.
+                return (line or "").strip()
+
+            except HTTPException:
+                raise
+            except (BrokenPipeError, ConnectionResetError, socket.timeout) as ex:
+                last_exc = ex
+                _close_cmd_socket()
+                if attempt == 0:
+                    time.sleep(QLINK_RETRY_BASE_SEC)
+                    continue
+                break
+            except OSError as ex:
+                last_exc = ex
+                _close_cmd_socket()
+                if attempt == 0:
+                    time.sleep(QLINK_RETRY_BASE_SEC)
+                    continue
+                break
+
+    if isinstance(last_exc, socket.timeout):
+        raise HTTPException(
+            status_code=504, detail="Timeout contacting Vantage IP-Enabler"
+        ) from last_exc
+    raise HTTPException(
+        status_code=502, detail=f"Connect error: {last_exc}"
+    ) from last_exc
+
+
+def _perform_qlink_send_per_command(cmd: str, timeout: float) -> str:
     t0 = perf_counter()
     max_retries = QLINK_MAX_RETRIES
+    global VANTAGE_PORT
 
     # Build list of candidate ports to try: configured port first, then any alternates
     port_candidates = [VANTAGE_PORT] + [p for p in QLINK_ALT_PORTS if p != VANTAGE_PORT]
@@ -335,7 +546,6 @@ def _perform_qlink_send(cmd: str, timeout: float) -> str:
                 _update_metric("last_command", datetime.now().isoformat())
 
                 # If we used an alternate port, update the in-memory port for future requests
-                global VANTAGE_PORT
                 if port != VANTAGE_PORT:
                     try:
                         old = VANTAGE_PORT
@@ -485,6 +695,152 @@ loads_cache_ts: Optional[float] = None
 loads_cache_lock = threading.Lock()
 LOADS_CACHE_TTL = float(_env("LOADS_CACHE_TTL", "30.0"))  # seconds (default 30s)
 
+# ===== Priority Loads Cache (dynamic, smaller set) =====
+priority_cache: Dict[int, int] = {}
+priority_cache_ts: Optional[float] = None
+priority_cache_lock = threading.Lock()
+PRIORITY_CACHE_TTL = float(_env("PRIORITY_CACHE_TTL", "15.0"))  # seconds
+PRIORITY_MAX_LOADS = int(_env("PRIORITY_MAX_LOADS", "24"))
+PRIORITY_RECENT_WINDOW = float(_env("PRIORITY_RECENT_WINDOW", "600.0"))  # seconds
+
+# ===== Enabler health / circuit breaker =====
+# The Vantage IP-Enabler is a single-session gateway that wedges when hammered.
+# When background reads (LED poll, load refreshes) start failing, we "open the
+# circuit" and stop sweeping it for a cool-down, serving cached data instead of
+# piling more commands onto a busy gateway. A single probe per cycle detects
+# recovery. User control commands are never gated by this.
+_enabler_fail_streak = 0
+_enabler_circuit_until = 0.0
+_enabler_health_lock = threading.Lock()
+ENABLER_FAIL_THRESHOLD = int(_env("ENABLER_FAIL_THRESHOLD", "3"))
+ENABLER_COOLDOWN_SEC = float(_env("ENABLER_COOLDOWN_SEC", "20.0"))
+# Non-blocking guards so concurrent requests can't stampede a refresh.
+loads_refresh_lock = threading.Lock()
+priority_refresh_lock = threading.Lock()
+
+
+def _note_enabler_result(ok: bool) -> None:
+    """Record a command outcome to drive the circuit breaker."""
+    global _enabler_fail_streak, _enabler_circuit_until
+    with _enabler_health_lock:
+        if ok:
+            _enabler_fail_streak = 0
+            _enabler_circuit_until = 0.0
+        else:
+            _enabler_fail_streak += 1
+            if _enabler_fail_streak >= ENABLER_FAIL_THRESHOLD:
+                _enabler_circuit_until = perf_counter() + ENABLER_COOLDOWN_SEC
+
+
+def _enabler_busy() -> bool:
+    """True while the circuit is open (enabler failing; back off)."""
+    with _enabler_health_lock:
+        return perf_counter() < _enabler_circuit_until
+
+
+PRIORITY_USAGE_HALF_LIFE = float(_env("PRIORITY_USAGE_HALF_LIFE", "86400.0"))  # seconds
+PRIORITY_ON_WEIGHT = float(_env("PRIORITY_ON_WEIGHT", "100.0"))
+PRIORITY_RECENT_WEIGHT = float(_env("PRIORITY_RECENT_WEIGHT", "50.0"))
+PRIORITY_USAGE_WEIGHT = float(_env("PRIORITY_USAGE_WEIGHT", "10.0"))
+
+priority_usage_scores: Dict[int, float] = {}
+priority_usage_ts: Dict[int, float] = {}
+priority_last_control_ts: Dict[int, float] = {}
+priority_state_lock = threading.Lock()
+
+last_known_load_levels: Dict[int, int] = {}
+last_known_load_levels_lock = threading.Lock()
+
+PRIORITY_STATE_FILE = os.path.join(CONFIG_DIR, "priority_state.json")
+PRIORITY_PERSIST_INTERVAL = float(_env("PRIORITY_PERSIST_INTERVAL", "30.0"))
+last_priority_persist_ts: Optional[float] = None
+
+load_id_to_room: Dict[int, str] = {}
+room_to_load_ids: Dict[str, list[int]] = {}
+room_maps_lock = threading.Lock()
+
+
+# ===== Priority state persistence =====
+def _load_priority_state() -> None:
+    global priority_usage_scores, priority_usage_ts, priority_last_control_ts
+    global last_known_load_levels, last_priority_persist_ts
+    if not os.path.exists(PRIORITY_STATE_FILE):
+        return
+    try:
+        with open(PRIORITY_STATE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return
+
+    def _coerce_map(src: Any, cast_fn):
+        if not isinstance(src, dict):
+            return {}
+        out: Dict[int, Any] = {}
+        for key, value in src.items():
+            try:
+                lid = int(key)
+                out[lid] = cast_fn(value)
+            except Exception:
+                continue
+        return out
+
+    usage_scores = _coerce_map(data.get("usage_scores", {}), float)
+    usage_ts = _coerce_map(data.get("usage_ts", {}), float)
+    control_ts = _coerce_map(data.get("last_control_ts", {}), float)
+    last_levels = _coerce_map(data.get("last_known_levels", {}), int)
+
+    with priority_state_lock:
+        priority_usage_scores = usage_scores
+        priority_usage_ts = usage_ts
+        priority_last_control_ts = control_ts
+
+    with last_known_load_levels_lock:
+        last_known_load_levels = last_levels
+
+    try:
+        last_priority_persist_ts = float(data.get("saved_at", 0)) or time.time()
+    except Exception:
+        last_priority_persist_ts = time.time()
+
+
+def _persist_priority_state(force: bool = False) -> None:
+    global last_priority_persist_ts
+    now = time.time()
+    if (
+        not force
+        and last_priority_persist_ts is not None
+        and (now - last_priority_persist_ts) < PRIORITY_PERSIST_INTERVAL
+    ):
+        return
+
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        with priority_state_lock:
+            usage_scores = dict(priority_usage_scores)
+            usage_ts = dict(priority_usage_ts)
+            control_ts = dict(priority_last_control_ts)
+        with last_known_load_levels_lock:
+            last_levels = dict(last_known_load_levels)
+
+        payload = {
+            "saved_at": now,
+            "usage_scores": usage_scores,
+            "usage_ts": usage_ts,
+            "last_control_ts": control_ts,
+            "last_known_levels": last_levels,
+        }
+
+        tmp_path = f"{PRIORITY_STATE_FILE}.tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+        os.replace(tmp_path, PRIORITY_STATE_FILE)
+        last_priority_persist_ts = now
+    except Exception:
+        return
+
+
+_load_priority_state()
+
 # ===== Loads Subset Caches (for distributed REST endpoints) =====
 # Split 136 loads into 4 smaller sets to avoid timeouts
 # Set 1: loads 0-33, Set 2: loads 34-67, Set 3: loads 68-101, Set 4: loads 102-135
@@ -523,7 +879,9 @@ def _load_pending_commands() -> None:
         if os.path.exists(PENDING_COMMANDS_FILE):
             with open(PENDING_COMMANDS_FILE, "r", encoding="utf-8") as f:
                 pending_commands = json.load(f)
-                logger.info(f"Loaded {len(pending_commands)} pending command(s) from {PENDING_COMMANDS_FILE}")
+                logger.info(
+                    f"Loaded {len(pending_commands)} pending command(s) from {PENDING_COMMANDS_FILE}"
+                )
     except Exception as e:
         logger.warning(f"Failed to load pending commands: {e}")
 
@@ -539,7 +897,9 @@ def _persist_pending_commands() -> None:
 
 def enqueue_pending_command(cmd: str) -> None:
     with pending_commands_lock:
-        pending_commands.append({"cmd": cmd, "attempts": 0, "created_at": datetime.now().isoformat()})
+        pending_commands.append(
+            {"cmd": cmd, "attempts": 0, "created_at": datetime.now().isoformat()}
+        )
         _persist_pending_commands()
 
 
@@ -558,7 +918,9 @@ def _replay_pending_commands_loop():
             if to_send:
                 # Quick connectivity check
                 try:
-                    with socket.create_connection((VANTAGE_IP, VANTAGE_PORT), timeout=1):
+                    with socket.create_connection(
+                        (VANTAGE_IP, VANTAGE_PORT), timeout=1
+                    ):
                         pass
                 except Exception:
                     time.sleep(5.0)
@@ -590,15 +952,17 @@ def _replay_pending_commands_loop():
             logger.exception(f"Pending replayer error: {e}")
             time.sleep(5.0)
 
+
 # Load persisted pending commands and start the replayer thread
 try:
     _load_pending_commands()
-    replay_thread = threading.Thread(target=_replay_pending_commands_loop, daemon=True, name="PendingReplayer")
+    replay_thread = threading.Thread(
+        target=_replay_pending_commands_loop, daemon=True, name="PendingReplayer"
+    )
     replay_thread.start()
 except Exception as e:
     logger.warning(f"Failed to start pending command replayer: {e}")
     pass
-
 
 
 def load_station_master_map():
@@ -1075,11 +1439,7 @@ def _handle_event_line(line: str) -> None:
 
 def event_listener_loop():
     """Long-lived event monitoring loop using VOS/VOD/VOL stream."""
-    global \
-        event_socket, \
-        event_socket_connected, \
-        event_monitoring_enabled, \
-        active_monitor_mode
+    global event_socket, event_socket_connected, event_monitoring_enabled, active_monitor_mode
 
     delimiter = _line_delimiter()
     backoff = 1.0
@@ -1151,11 +1511,7 @@ def event_listener_loop():
 
 def led_polling_loop():
     """Background thread that polls LED states using VLT command in a throttled manner."""
-    global \
-        event_monitoring_enabled, \
-        event_socket_connected, \
-        active_monitor_mode, \
-        leds_cache_ts
+    global event_monitoring_enabled, event_socket_connected, active_monitor_mode, leds_cache_ts
     import json
 
     logger.info("🔄 LED polling thread started (safe mode)")
@@ -1219,6 +1575,23 @@ def led_polling_loop():
 
             polled_count = 0
             error_count = 0
+
+            # Circuit breaker: if the enabler is failing, don't sweep every
+            # station (that just piles onto a busy single-session gateway).
+            # Probe one station to detect recovery, then wait for next cycle.
+            if _enabler_busy():
+                probe_station = sorted(stations)[0]
+                try:
+                    master = get_station_master(probe_station)
+                    qlink_send(f"VLT@ {master} {probe_station}")
+                except Exception:
+                    pass
+                logger.debug("Enabler busy; skipping full LED sweep this cycle")
+                for _ in range(int(max(1, poll_interval))):
+                    if monitor_thread_stop_event.is_set():
+                        break
+                    time.sleep(1.0)
+                continue
 
             for station in sorted(stations):
                 if monitor_thread_stop_event.is_set():
@@ -1315,11 +1688,7 @@ def start_polling_thread():
 
 def stop_polling_thread():
     """Stop the LED polling thread if running (used by auto mode)."""
-    global \
-        monitor_thread, \
-        active_monitor_mode, \
-        event_monitoring_enabled, \
-        event_socket_connected
+    global monitor_thread, active_monitor_mode, event_monitoring_enabled, event_socket_connected
     try:
         monitor_thread_stop_event.set()
         if monitor_thread and monitor_thread.is_alive():
@@ -1385,13 +1754,16 @@ def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
         status, payload = response_queue.get(timeout=to + QLINK_TIMEOUT + 2)
     except Empty:
         _update_metric("last_error", "Command queue timeout")
+        _note_enabler_result(False)
         raise HTTPException(status_code=504, detail="Command queue timeout") from None
 
     if status == "error":
+        _note_enabler_result(False)
         if isinstance(payload, HTTPException):
             raise payload
         raise HTTPException(status_code=500, detail=str(payload))
 
+    _note_enabler_result(True)
     return cast(str, payload)
 
 
@@ -1541,11 +1913,13 @@ def set_device(id: int, body: LevelCmd):
                 cmd = f"VLO@ {id} 100"
                 resp = qlink_send(cmd)
                 logger.info(f"set_device: cmd={cmd} resp={resp}")
+                _record_load_control(id, 100)
                 return {"resp": resp}
             if body.switch.lower() == "off":
                 cmd = f"VLO@ {id} 0"
                 resp = qlink_send(cmd)
                 logger.info(f"set_device: cmd={cmd} resp={resp}")
+                _record_load_control(id, 0)
                 return {"resp": resp}
             raise HTTPException(400, "switch must be on/off")
 
@@ -1554,30 +1928,45 @@ def set_device(id: int, body: LevelCmd):
             cmd = f"VLO@ {id} {lvl}"
             resp = qlink_send(cmd)
             logger.info(f"set_device: cmd={cmd} resp={resp}")
+            _record_load_control(id, lvl)
             return {"resp": resp}
 
         raise HTTPException(400, "provide switch or level")
     except HTTPException as he:
         # If the failure was due to connectivity to Vantage, queue the command
-        if isinstance(he.detail, str) and ("Connect error" in he.detail or "Timeout" in he.detail or he.status_code in (502, 504)):
+        if isinstance(he.detail, str) and (
+            "Connect error" in he.detail
+            or "Timeout" in he.detail
+            or he.status_code in (502, 504)
+        ):
             try:
                 # Enqueue the last attempted command for later replay
-                cmd_var = locals().get('cmd', '')
+                cmd_var = locals().get("cmd", "")
                 logger.info(f"Queuing command due to connectivity issue: {cmd_var}")
                 enqueue_pending_command(cmd_var)
-                return JSONResponse(status_code=202, content={"status": "queued", "cmd": cmd_var, "reason": he.detail})
+                return JSONResponse(
+                    status_code=202,
+                    content={"status": "queued", "cmd": cmd_var, "reason": he.detail},
+                )
             except Exception:
                 pass
         # Re-raise other HTTP errors
         raise
     except Exception as e:
         # If the failure was a connectivity issue, queue the command for later replay
-        if "connect error" in str(e).lower() or "connection refused" in str(e).lower() or "timeout" in str(e).lower():
+        if (
+            "connect error" in str(e).lower()
+            or "connection refused" in str(e).lower()
+            or "timeout" in str(e).lower()
+        ):
             try:
-                cmd_var = locals().get('cmd', '')
+                cmd_var = locals().get("cmd", "")
                 logger.info(f"Queuing command due to connectivity exception: {cmd_var}")
                 enqueue_pending_command(cmd_var)
-                return JSONResponse(status_code=202, content={"status": "queued", "cmd": cmd_var, "reason": str(e)})
+                return JSONResponse(
+                    status_code=202,
+                    content={"status": "queued", "cmd": cmd_var, "reason": str(e)},
+                )
             except Exception:
                 pass
         logger.exception(f"set_device failed for id={id}: {e}")
@@ -1589,6 +1978,8 @@ def get_load_status(id: int):
     """Get current level of a load (0-100) using VGL@ command"""
     try:
         response = qlink_send(f"VGL@ {id}")
+        level = _parse_load_level(response)
+        _update_last_known_level(id, level)
         return {"resp": response}
     except HTTPException:
         # Re-raise HTTPExceptions from qlink_send to preserve proper status codes
@@ -1600,6 +1991,195 @@ def get_load_status(id: int):
         )
 
 
+def _parse_load_level(response: Any) -> int:
+    """Best-effort parse of a Vantage load level from response."""
+    try:
+        token = str(response).strip().split()[-1]
+        return max(0, min(100, int(token)))
+    except Exception:
+        return 0
+
+
+def _update_last_known_level(load_id: int, level: int) -> None:
+    with last_known_load_levels_lock:
+        last_known_load_levels[int(load_id)] = int(level)
+
+
+def _record_load_control(load_id: int, level: int) -> None:
+    now = time.time()
+    lid = int(load_id)
+    _update_last_known_level(lid, level)
+    with priority_state_lock:
+        priority_last_control_ts[lid] = now
+        last_ts = priority_usage_ts.get(lid, now)
+        age = now - last_ts
+        score = priority_usage_scores.get(lid, 0.0)
+        score = _decay_score(score, age)
+        priority_usage_scores[lid] = score + 1.0
+        priority_usage_ts[lid] = now
+    _persist_priority_state()
+
+
+def _decay_score(score: float, age_sec: float) -> float:
+    if PRIORITY_USAGE_HALF_LIFE <= 0:
+        return score
+    if age_sec <= 0:
+        return score
+    return score * (0.5 ** (age_sec / PRIORITY_USAGE_HALF_LIFE))
+
+
+def _get_room_maps() -> None:
+    global load_id_to_room, room_to_load_ids
+    if load_id_to_room and room_to_load_ids:
+        return
+    with room_maps_lock:
+        if load_id_to_room and room_to_load_ids:
+            return
+        load_id_to_room = {}
+        room_to_load_ids = {}
+        config_paths = [
+            os.path.join(os.path.dirname(__file__), "..", "config", "loads.json"),
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "..", "config", "loads.json"
+            ),
+            "/home/pi/qlink-bridge/config/loads.json",
+            "config/loads.json",
+        ]
+        config_file = None
+        for path in config_paths:
+            if os.path.exists(path):
+                config_file = path
+                break
+        if not config_file:
+            return
+        try:
+            with open(config_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            return
+        for room in data.get("rooms", []):
+            room_name = room.get("name")
+            if not room_name:
+                continue
+            room_list = room_to_load_ids.setdefault(room_name, [])
+            for ld in room.get("loads", []):
+                lid = ld.get("id")
+                if lid is None:
+                    continue
+                lid = int(lid)
+                load_id_to_room[lid] = room_name
+                room_list.append(lid)
+
+
+def _score_load(load_id: int, now: float) -> float:
+    lid = int(load_id)
+    with last_known_load_levels_lock:
+        level = last_known_load_levels.get(lid, 0)
+    on_bonus = PRIORITY_ON_WEIGHT if level > 0 else 0.0
+    with priority_state_lock:
+        last_control = priority_last_control_ts.get(lid)
+        last_ts = priority_usage_ts.get(lid, now)
+        usage_score_raw = priority_usage_scores.get(lid, 0.0)
+    if last_control is not None:
+        age = now - last_control
+        if age <= PRIORITY_RECENT_WINDOW:
+            recent_bonus = PRIORITY_RECENT_WEIGHT * (
+                1.0 - (age / PRIORITY_RECENT_WINDOW)
+            )
+        else:
+            recent_bonus = 0.0
+    else:
+        recent_bonus = 0.0
+    age = now - last_ts
+    usage_score = _decay_score(usage_score_raw, age)
+    return on_bonus + recent_bonus + (usage_score * PRIORITY_USAGE_WEIGHT)
+
+
+def _compute_priority_load_ids(max_loads: int) -> list[int]:
+    now = time.time()
+    candidates: set[int] = set()
+
+    with last_known_load_levels_lock:
+        on_loads = [lid for lid, level in last_known_load_levels.items() if level > 0]
+    candidates.update(on_loads)
+
+    # Expand to other loads in the same rooms when available
+    _get_room_maps()
+    for lid in on_loads:
+        room = load_id_to_room.get(lid)
+        if room:
+            candidates.update(room_to_load_ids.get(room, []))
+
+    # Recently controlled loads
+    with priority_state_lock:
+        recent_controls = list(priority_last_control_ts.items())
+    for lid, ts in recent_controls:
+        if now - ts <= PRIORITY_RECENT_WINDOW:
+            candidates.add(lid)
+
+    # Most used loads (top N by decayed usage score)
+    usage_scored = []
+    with priority_state_lock:
+        usage_items = list(priority_usage_scores.items())
+        usage_ts = dict(priority_usage_ts)
+    for lid, score in usage_items:
+        last_ts = usage_ts.get(lid, now)
+        usage_scored.append((lid, _decay_score(score, now - last_ts)))
+    usage_scored.sort(key=lambda x: x[1], reverse=True)
+    for lid, _ in usage_scored[: max(6, max_loads // 3)]:
+        candidates.add(lid)
+
+    scored = sorted(candidates, key=lambda lid: _score_load(lid, now), reverse=True)
+    return scored[:max_loads]
+
+
+def _update_priority_cache(
+    force: bool = False, max_loads: Optional[int] = None
+) -> None:
+    global priority_cache, priority_cache_ts
+    now = perf_counter()
+    if (
+        not force
+        and priority_cache_ts is not None
+        and (now - priority_cache_ts) <= PRIORITY_CACHE_TTL
+    ):
+        return
+
+    # Back off when the enabler is failing; serve stale cache instead.
+    if _enabler_busy():
+        return
+    # Only one refresh at a time — concurrent callers serve stale, no stampede.
+    if not priority_refresh_lock.acquire(blocking=False):
+        return
+    try:
+        limit = max_loads or PRIORITY_MAX_LOADS
+        load_ids = _compute_priority_load_ids(limit)
+        newmap: Dict[int, int] = {}
+        for lid in load_ids:
+            if _enabler_busy():
+                break
+            try:
+                resp = qlink_send(f"VGL@ {int(lid)}")
+                val = _parse_load_level(resp)
+                newmap[int(lid)] = val
+                _update_last_known_level(int(lid), val)
+            except Exception:
+                with last_known_load_levels_lock:
+                    newmap[int(lid)] = last_known_load_levels.get(int(lid), 0)
+
+        # Don't clobber a good cache with a partial sweep.
+        if newmap and not _enabler_busy():
+            with priority_cache_lock:
+                priority_cache = newmap
+                priority_cache_ts = perf_counter()
+            _persist_priority_state()
+    finally:
+        try:
+            priority_refresh_lock.release()
+        except Exception:
+            pass
+
+
 def _update_loads_cache() -> None:
     """Query configured loads and cache the current levels (0-100) with TTL.
 
@@ -1607,6 +2187,12 @@ def _update_loads_cache() -> None:
     It catches exceptions to avoid crashing the service if the Vantage controller is slow.
     """
     global loads_cache, loads_cache_ts
+    # Back off when the enabler is failing; serve stale cache instead.
+    if _enabler_busy():
+        return
+    # Only one refresh at a time — concurrent callers serve stale, no stampede.
+    if not loads_refresh_lock.acquire(blocking=False):
+        return
     try:
         loads = _get_load_list()
         newmap: Dict[int, int] = {}
@@ -1614,6 +2200,9 @@ def _update_loads_cache() -> None:
             lid = ld.get("id")
             if lid is None:
                 continue
+            # Bail out mid-sweep if the enabler starts failing.
+            if _enabler_busy():
+                break
             try:
                 resp = qlink_send(f"VGL@ {int(lid)}")
                 # Try parse final integer or fallback to 0
@@ -1626,85 +2215,85 @@ def _update_loads_cache() -> None:
                     except Exception:
                         val = 0
                 newmap[int(lid)] = max(0, min(100, val))
+                _update_last_known_level(int(lid), newmap[int(lid)])
             except Exception:
                 # Don't fail the entire update for a single load read error
                 newmap[int(lid)] = loads_cache.get(int(lid), 0)
+                _update_last_known_level(int(lid), newmap[int(lid)])
 
-        with loads_cache_lock:
-            loads_cache = newmap
-            loads_cache_ts = perf_counter()
+        # Only replace the cache if we actually read the full set; a partial
+        # sweep (enabler went busy) must not clobber good cached values.
+        if newmap and not _enabler_busy():
+            with loads_cache_lock:
+                loads_cache = newmap
+                loads_cache_ts = perf_counter()
     except Exception as e:
         logger.exception(f"Failed to update loads cache: {e}")
+    finally:
+        try:
+            loads_refresh_lock.release()
+        except Exception:
+            pass
 
 
 @app.get("/api/leds/{station}", dependencies=API_DEPENDENCIES)
-def get_station_leds(station: int):
-    """Get LED states for all 8 buttons on a station using VLT@ command.
+def get_station_leds(station: int, force: bool = False):
+    """Get LED states for all 8 buttons on a station.
 
-    Returns LED state for buttons 1-8 as array of integers (0=off, 255=on).
-    Command format: VLT@ <master> <station>
-    Response format: R:V 01 02 03 04 05 06 07 08 (hex values, 00=off, FF=on)
+    Serves from the background LED poll cache (``button_led_states``), which the
+    monitor refreshes every ``QLINK_LED_POLL_INTERVAL`` seconds. High-frequency
+    pollers (room panels, Home Assistant) therefore never trigger a live Vantage
+    query, which previously flooded the single command worker and caused runaway
+    queue depth / 504 timeouts. Pass ``force=true`` to perform a one-off
+    synchronous ``VLT@`` refresh for this station.
+
+    Returns LED state for buttons 1-8 as array of integers
+    (0=off, 128=blink, 255=on).
     """
-    try:
-        # Get actual master from Vantage config mapping
-        master = get_station_master(station)
+    station_id = f"V{station}"
 
-        response = qlink_send(f"VLT@ {master} {station}")
-    except HTTPException:
-        # Re-raise HTTPExceptions from qlink_send
-        raise
-    except Exception as e:
-        logger.exception(f"get_station_leds failed for station {station}: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get LED status: {str(e)}"
-        )
+    # Opt-in live refresh. Off by default so per-request polling stays cheap.
+    if force:
+        try:
+            master = get_station_master(station)
+            response = qlink_send(f"VLT@ {master} {station}")
+            parts = response.split()
+            on_hex: Optional[str] = None
+            blink_hex: Optional[str] = None
+            if parts:
+                head = parts[0].upper()
+                if head == "RLT" and len(parts) >= 5:
+                    on_hex = parts[-2]
+                    blink_hex = parts[-1]
+                elif len(parts) >= 2:
+                    on_hex = parts[0]
+                    blink_hex = parts[1]
+            if on_hex is not None and blink_hex is not None:
+                update_station_leds(station, decode_led_hex(on_hex, blink_hex))
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning(f"Forced LED refresh failed for station {station}: {e}")
 
-    parts = response.split()
-    on_hex: Optional[str] = None
-    blink_hex: Optional[str] = None
+    with button_led_lock:
+        button_states = dict(button_led_states.get(station_id, {}))
 
-    if parts:
-        head = parts[0].upper()
-        if head == "RLT" and len(parts) >= 5:
-            # Detailed response: RLT <master> <station> <onleds> <blinkleds>
-            on_hex = parts[-2]
-            blink_hex = parts[-1]
-        elif len(parts) >= 2:
-            # Regular response: <onleds> <blinkleds>
-            on_hex = parts[0]
-            blink_hex = parts[1]
+    leds = []
+    for btn in range(1, 9):
+        state = button_states.get(btn, "off")
+        if state == "on":
+            leds.append(255)
+        elif state == "blink":
+            leds.append(128)
+        else:
+            leds.append(0)
 
-    if on_hex is not None and blink_hex is not None:
-        button_states = decode_led_hex(on_hex, blink_hex)
-        update_station_leds(station, button_states)
-
-        leds = []
-        for btn in range(1, 9):
-            state = button_states.get(btn, "off")
-            if state == "on":
-                leds.append(255)
-            elif state == "blink":
-                leds.append(128)
-            else:
-                leds.append(0)
-
-        return {
-            "station": station,
-            "station_id": f"V{station}",
-            "leds": leds,
-            "button_states": button_states,
-            "on_leds": on_hex,
-            "blink_leds": blink_hex,
-            "raw": response,
-        }
-
-    # Fallback if parsing fails
     return {
         "station": station,
-        "station_id": f"V{station}",
-        "leds": [0] * 8,
-        "raw": response,
-        "error": "Parse failed",
+        "station_id": station_id,
+        "leds": leds,
+        "button_states": button_states,
+        "cached": not force,
     }
 
 
@@ -1782,6 +2371,8 @@ def monitor_status():
         "vantage_port": VANTAGE_PORT,
         "stations_tracked": len(button_led_states),
         "note": note,
+        "enabler_circuit_open": _enabler_busy(),
+        "enabler_fail_streak": _enabler_fail_streak,
         "command_queue_depth": command_metrics.get("queue_depth", 0),
         "command_queue_peak": command_metrics.get("queue_peak", 0),
         "last_command_rtt_ms": command_metrics.get("last_rtt_ms"),
@@ -1804,6 +2395,10 @@ def _refresh_led_cache_once() -> None:
     one cycle to avoid long-running background polling.
     """
     global leds_cache_ts
+
+    # Back off when the enabler is failing; serve stale cache instead.
+    if _enabler_busy():
+        return
 
     # Prevent concurrent refreshes
     if not leds_refresh_lock.acquire(blocking=False):
@@ -1957,13 +2552,23 @@ def get_all_loads(force: bool = False):
                         except Exception:
                             val = 0
                     newmap[int(lid)] = max(0, min(100, val))
+                    _update_last_known_level(int(lid), newmap[int(lid)])
                 except Exception:
                     newmap[int(lid)] = loads_cache.get(int(lid), 0)
+                    _update_last_known_level(int(lid), newmap[int(lid)])
             with loads_cache_lock:
                 loads_cache = newmap
                 loads_cache_ts = perf_counter()
     with loads_cache_lock:
         return {"loads": loads_cache.copy(), "count": len(loads_cache)}
+
+
+@app.get("/api/loads/priority", dependencies=API_DEPENDENCIES)
+def get_priority_loads(force: bool = False, max: Optional[int] = None):
+    """Return a dynamic subset of load levels prioritized by usage and activity."""
+    _update_priority_cache(force=force, max_loads=max)
+    with priority_cache_lock:
+        return {"loads": priority_cache.copy(), "count": len(priority_cache)}
 
 
 def _get_loads_subset(subset_num: int) -> Dict[int, int]:
@@ -1990,6 +2595,12 @@ def _get_loads_subset(subset_num: int) -> Dict[int, int]:
         loads_subset_ts[subset_num] is not None
         and (now - loads_subset_ts[subset_num]) < LOADS_SUBSET_TTL
     ):
+        with lock:
+            return loads_subset_caches[subset_num].copy()
+
+    # Back off when the enabler is failing; serve stale cache instead of
+    # hammering a busy single-session gateway.
+    if _enabler_busy():
         with lock:
             return loads_subset_caches[subset_num].copy()
 
@@ -2025,10 +2636,12 @@ def _get_loads_subset(subset_num: int) -> Dict[int, int]:
                 except Exception:
                     val = 0
             newmap[lid] = max(0, min(100, val))
+            _update_last_known_level(lid, newmap[lid])
         except Exception:
             # Use cached value if query fails
             with lock:
                 newmap[lid] = loads_subset_caches[subset_num].get(lid, 0)
+            _update_last_known_level(lid, newmap[lid])
 
     # Update cache
     with lock:
@@ -2250,6 +2863,12 @@ def update_settings(settings: dict):
         updated.append("vantage_port")
         restart_required = True
 
+    if "vantage_ip" in settings or "vantage_port" in settings:
+        # Drop the persistent connection so the next command reconnects to the
+        # new target instead of talking to the old IP/port.
+        with qlink_io_lock:
+            _close_cmd_socket()
+
     if "qlink_fade" in settings:
         QLINK_FADE = str(settings["qlink_fade"])
         updated.append("qlink_fade")
@@ -2446,7 +3065,8 @@ async def startup_event():
                     interval=30,
                 )
                 ssdp_advertiser.start()
-                msg = f"📡 SSDP advertiser started on {local_ip}:{bridge_port}"
+                # Avoid non-ASCII characters here to prevent Windows console encode errors
+                msg = f"SSDP advertiser started on {local_ip}:{bridge_port}"
                 print(msg)
                 logger.info(msg)
             else:

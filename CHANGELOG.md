@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+### Changed
+- Documentation, sample configs, UI copy, and helper scripts now state that port 3040 is the only exposed read/write Q-Link port on production systems; references to 3041 were removed or clarified.
+
+### Fixed
+- `QLINK_EOL` environment variable is now honored (the deprecated `Q_LINK_EOL` alias still works for backwards compatibility).
+- `/debug/ui-mapping` no longer fails for rooms that define a single `station` or omit the `stations` array.
+- `scripts/validate_config.py` correctly detects legacy `station_*` keys when choosing schemas.
+- `generate_ha_config.py` can call secured bridges by sending the `X-Bridge-Secret` header via `--secret` or the `BRIDGE_API_SECRET` environment variable.
+
 ## 0.4.0 - 2025-10-16
 ### Added
 - Real-time event monitoring via WebSocket (/events endpoint)

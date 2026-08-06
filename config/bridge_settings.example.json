@@ -1,0 +1,8 @@
+{
+  "vantage_ip": "192.168.1.200",
+  "vantage_port": 3040,
+  "qlink_timeout": 2.0,
+  "qlink_fade": "2.3",
+  "qlink_eol": "CR",
+  "bridge_api_secret": ""
+}

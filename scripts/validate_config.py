@@ -58,7 +58,7 @@ def validate_file(path: Path, strict: bool = False) -> list[str]:
             for err in errors:
                 problems.append(f"{path}: {list(err.path)}: {err.message}")
         elif any(
-            re.match(r"^station_\\d+$", k)
+            re.match(r"^station_\d+$", k)
             for k in (data.keys() if isinstance(data, dict) else [])
         ):
             errors = sorted(LOADS_LEGACY_V1.iter_errors(data), key=lambda e: e.path)

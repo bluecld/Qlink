@@ -54,7 +54,7 @@ VLO@ 201 50 2.3[CR]
 ```
 Sets load 201 to 50% with 2.3 second fade.
 
-**Status:** ✅ Tested Oct 15, 2025 - Working on port 3041
+**Status:** ✅ Tested Oct 15, 2025 - Working on port 3040
 
 ---
 
@@ -151,8 +151,8 @@ Simulates pressing button 5 on station V23 (master 1).
 ## Important Notes
 
 1. **Port Configuration:**
-   - Port 3040 = Read-only (queries)
-   - Port 3041 = Write/control (commands) ⭐
+   - Port 3040 = Read + write (queries + commands)
+   - Port 3041 = Not exposed on this controller
 
 2. **@ Symbol:**
    - Originally thought to be part of the command name
@@ -333,7 +333,7 @@ When Pi comes online:
 
 2. **Test via bridge API:**
    ```
-   POST http://192.168.1.213:8000/button/23/5
+   POST http://<BRIDGE_TAILSCALE_IP>:8000/button/23/5
    ```
    - Should call VSW@ internally
    - Verify same result as direct command

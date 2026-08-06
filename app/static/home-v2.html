@@ -7,6 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vantage Control - Dark Theme</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Fraunces:wght@500;600&display=swap');
+
         :root {
             /* Spacing scale using clamp() for responsive sizing */
             --spacing-xs: clamp(4px, 0.5vw, 6px);
@@ -16,15 +18,22 @@
             --spacing-xl: clamp(24px, 3vw, 32px);
 
             /* Colors */
-            --bg-primary: #1a1a2e;
-            --bg-secondary: #16213e;
-            --bg-card: rgba(255, 255, 255, 0.05);
-            --bg-card-hover: rgba(255, 255, 255, 0.08);
-            --border-color: rgba(255, 255, 255, 0.1);
-            --text-primary: #e4e4e4;
-            --text-secondary: #94a3b8;
-            --text-accent: #667eea;
-            --accent-purple: #a78bfa;
+            --bg-primary: #0f141a;
+            --bg-secondary: #111f2a;
+            --bg-card: rgba(255, 255, 255, 0.06);
+            --bg-card-hover: rgba(255, 255, 255, 0.1);
+            --border-color: rgba(255, 255, 255, 0.12);
+            --text-primary: #f6f2e9;
+            --text-secondary: #9aa6b6;
+            --text-accent: #f59e0b;
+            --accent-purple: #f59e0b;
+            --accent-teal: #2dd4bf;
+            --accent-amber: #fbbf24;
+            --accent-ink: #1f2a37;
+            --shadow-soft: 0 18px 40px rgba(7, 11, 16, 0.55);
+            --shadow-strong: 0 24px 60px rgba(7, 11, 16, 0.75);
+            --font-body: "Figtree", "Avenir Next", "Trebuchet MS", sans-serif;
+            --font-display: "Fraunces", "Cormorant Garamond", "Georgia", serif;
 
             /* Touch targets */
             --touch-target-min: 44px;
@@ -37,11 +46,37 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            font-family: var(--font-body);
+            background: radial-gradient(circle at 20% 10%, rgba(45, 212, 191, 0.08), transparent 55%),
+                radial-gradient(circle at 80% 0%, rgba(251, 191, 36, 0.14), transparent 45%),
+                linear-gradient(140deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
             color: var(--text-primary);
             min-height: 100vh;
             padding: var(--spacing-md);
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before,
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        body::before {
+            background:
+                radial-gradient(circle at 15% 80%, rgba(15, 118, 110, 0.18), transparent 55%),
+                radial-gradient(circle at 85% 70%, rgba(245, 158, 11, 0.2), transparent 50%);
+            opacity: 0.7;
+        }
+
+        body::after {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 24px 24px;
+            opacity: 0.35;
         }
 
         .header {
@@ -51,10 +86,16 @@
             gap: var(--spacing-lg);
             margin-bottom: var(--spacing-lg);
             padding: var(--spacing-md) var(--spacing-lg);
-            background: var(--bg-card);
+            background: rgba(10, 15, 22, 0.7);
             backdrop-filter: blur(10px);
             border-radius: 12px;
             border: 1px solid var(--border-color);
+            position: relative;
+            position: sticky;
+            top: var(--spacing-md);
+            z-index: 50;
+            box-shadow: var(--shadow-soft);
+            animation: pageIn 0.6s ease both;
         }
 
         .header-left {
@@ -67,8 +108,10 @@
 
         .header h1 {
             font-size: clamp(1.25rem, 3vw, 1.75rem);
-            font-weight: 500;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-weight: 600;
+            font-family: var(--font-display);
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-amber) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -78,7 +121,7 @@
         .nav-tabs {
             display: flex;
             gap: var(--spacing-xs);
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(8, 12, 18, 0.6);
             border-radius: 8px;
             padding: var(--spacing-xs);
         }
@@ -103,7 +146,7 @@
         }
 
         .nav-tab.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-amber) 100%);
             color: white;
         }
 
@@ -112,10 +155,11 @@
             align-items: center;
             gap: var(--spacing-sm);
             padding: var(--spacing-xs) var(--spacing-md);
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(8, 12, 18, 0.6);
             border-radius: 8px;
             font-size: 0.75rem;
             white-space: nowrap;
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .status-dot {
@@ -125,6 +169,185 @@
             background: #4ade80;
             box-shadow: 0 0 15px #4ade80;
             animation: pulse 2s ease-in-out infinite;
+        }
+
+        /* Active Loads Quick View */
+        .active-loads-dropdown {
+            position: relative;
+            z-index: 60;
+        }
+
+        .quick-status-btn {
+            background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-amber) 100%);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            min-height: 32px;
+        }
+
+        .quick-status-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(45, 212, 191, 0.35);
+        }
+
+        .active-count {
+            background: rgba(255, 255, 255, 0.3);
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .active-loads-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200000;
+            background: transparent;
+            pointer-events: none;
+        }
+
+        .active-loads-overlay.show {
+            display: block;
+            pointer-events: auto;
+        }
+
+        .active-loads-panel {
+            display: none;
+            position: fixed;
+            top: 70px;
+            right: var(--spacing-md);
+            background: rgba(12, 19, 27, 0.96);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow-strong);
+            z-index: 200001;
+            min-width: min(340px, calc(100vw - 32px));
+            max-width: min(460px, calc(100vw - 32px));
+            max-height: min(420px, calc(100vh - 120px));
+            overflow-y: auto;
+        }
+
+        .active-loads-panel.show {
+            display: block;
+        }
+
+        .panel-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 700;
+            color: var(--accent-amber);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+        }
+
+        .panel-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: color 0.2s;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+        }
+
+        .panel-close:hover {
+            color: var(--accent-purple);
+        }
+
+        .active-loads-list {
+            padding: 8px 0;
+        }
+
+        .active-load-item {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .active-load-item:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .load-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .load-room {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .load-name {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 2px 0;
+        }
+
+        .load-level {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .level-badge {
+            background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-amber) 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            min-width: 45px;
+            text-align: center;
+        }
+
+        .quick-off-btn {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+        }
+
+        .quick-off-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+            border-color: #ef4444;
+        }
+
+        .no-active-loads {
+            padding: 24px 16px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .no-active-loads .icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+            opacity: 0.5;
         }
 
         @keyframes pulse {
@@ -141,6 +364,30 @@
             }
         }
 
+        @keyframes cardIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pageIn {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .controls {
             display: flex;
             gap: 16px;
@@ -154,12 +401,12 @@
         /* Dismissible Quick Start tip */
         .quick-start-tip {
             position: relative;
-            background: rgba(102, 126, 234, 0.1);
-            border: 1px solid rgba(102, 126, 234, 0.3);
+            background: rgba(251, 191, 36, 0.12);
+            border: 1px solid rgba(251, 191, 36, 0.35);
             border-radius: 8px;
             padding: var(--spacing-md) var(--spacing-xl);
             margin-bottom: var(--spacing-lg);
-            color: #c7d2fe;
+            color: #fef3c7;
             font-size: 0.875rem;
             line-height: 1.5;
             display: none;
@@ -209,6 +456,13 @@
             grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
             gap: var(--spacing-sm);
             margin-bottom: var(--spacing-lg);
+            padding: var(--spacing-sm);
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(8, 13, 20, 0.65);
+            box-shadow: var(--shadow-soft);
+            align-items: stretch;
+            animation: pageIn 0.55s ease both;
         }
 
         .control-chip {
@@ -232,11 +486,36 @@
 
         .control-chip:hover {
             background: var(--bg-card-hover);
-            border-color: rgba(102, 126, 234, 0.5);
+            border-color: rgba(45, 212, 191, 0.45);
         }
 
         .control-chip:active {
             transform: scale(0.98);
+        }
+
+        .control-chip:focus-visible {
+            outline: 2px solid rgba(45, 212, 191, 0.6);
+            outline-offset: 2px;
+        }
+
+        .control-chip.filter-label {
+            cursor: default;
+            border-style: dashed;
+            color: var(--text-secondary);
+            background: transparent;
+            font-weight: 600;
+        }
+
+        .control-chip.filter-chip {
+            font-weight: 600;
+            border-color: rgba(45, 212, 191, 0.25);
+        }
+
+        .control-chip.filter-chip.active {
+            background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-amber) 100%);
+            color: var(--accent-ink);
+            border-color: transparent;
+            box-shadow: 0 8px 18px rgba(45, 212, 191, 0.25);
         }
 
         /* Dropdown specific */
@@ -252,6 +531,44 @@
             color: var(--text-primary);
         }
 
+        .search-input {
+            justify-content: flex-start;
+            text-align: left;
+            padding-left: 14px;
+            background: rgba(8, 12, 18, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-primary);
+            font-weight: 500;
+            cursor: text;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-input:focus {
+            outline: 2px solid rgba(45, 212, 191, 0.5);
+            outline-offset: 2px;
+        }
+
+        @media (min-width: 900px) {
+            .search-input {
+                grid-column: span 2;
+            }
+        }
+
+        .empty-state {
+            margin: 32px auto;
+            max-width: 520px;
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px dashed rgba(255, 255, 255, 0.18);
+            background: rgba(12, 17, 24, 0.7);
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
         @media (min-width: 768px) {
             .controls-grid {
                 grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -261,19 +578,20 @@
         .floor-section {
             margin-bottom: 24px;
             /* 8px scale */
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(10, 16, 22, 0.6);
             backdrop-filter: blur(10px);
             border-radius: 16px;
             /* 8px scale */
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             transition: all 0.3s;
+            box-shadow: var(--shadow-soft);
         }
 
         .floor-header {
             padding: 24px;
             /* 8px scale - simplified */
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+            background: linear-gradient(135deg, rgba(45, 212, 191, 0.18) 0%, rgba(251, 191, 36, 0.18) 100%);
             cursor: pointer;
             display: flex;
             justify-content: space-between;
@@ -282,13 +600,14 @@
         }
 
         .floor-header:hover {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
+            background: linear-gradient(135deg, rgba(45, 212, 191, 0.28) 0%, rgba(251, 191, 36, 0.25) 100%);
         }
 
         .floor-header h2 {
             font-size: 1.5em;
-            font-weight: 400;
-            letter-spacing: 1px;
+            font-weight: 500;
+            letter-spacing: 0.6px;
+            font-family: var(--font-display);
         }
 
         .floor-arrow {
@@ -315,18 +634,25 @@
         }
 
         .room-card {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(10, 16, 24, 0.75);
             border-radius: 16px;
             padding: 24px;
             /* 8px scale */
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             transition: all 0.3s;
             cursor: move;
+            animation: cardIn 0.4s ease both;
+            animation-delay: calc(var(--card-index, 0) * 35ms);
+        }
+
+        .room-card.room-active {
+            border-color: rgba(45, 212, 191, 0.5);
+            box-shadow: 0 16px 32px rgba(45, 212, 191, 0.12);
         }
 
         .room-card:hover {
-            border-color: rgba(102, 126, 234, 0.5);
-            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+            border-color: rgba(45, 212, 191, 0.4);
+            box-shadow: 0 14px 32px rgba(45, 212, 191, 0.15);
             transform: translateY(-2px);
         }
 
@@ -369,8 +695,11 @@
         .room-name {
             font-size: 1.2em;
             font-weight: 500;
-            color: #667eea;
-            display: block;
+            color: var(--accent-teal);
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
             /* allow wrapping while preventing the header from stretching buttons */
             flex: 1 1 auto;
             min-width: 0;
@@ -379,9 +708,28 @@
             line-height: 1.2;
         }
 
+        .room-active-badge {
+            display: none;
+            align-items: center;
+            gap: 4px;
+            margin-left: 8px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.7em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            background: rgba(45, 212, 191, 0.18);
+            color: #e2f8f4;
+        }
+
+        .room-active-badge.show {
+            display: inline-flex;
+        }
+
         .room-collapse-icon {
             font-size: 0.8em;
-            color: #a78bfa;
+            color: var(--accent-amber);
             transition: transform 0.3s;
         }
 
@@ -431,14 +779,14 @@
             /* 8px scale */
             padding: 16px;
             /* 8px scale */
-            background: rgba(102, 126, 234, 0.05);
+            background: rgba(45, 212, 191, 0.08);
             border-radius: 12px;
-            border: 1px solid rgba(102, 126, 234, 0.2);
+            border: 1px solid rgba(45, 212, 191, 0.2);
         }
 
         .scene-label {
             font-size: 0.85em;
-            color: #a78bfa;
+            color: var(--accent-amber);
             margin-bottom: 8px;
             /* 8px scale */
             /* Removed text-transform: uppercase for consistency */
@@ -460,11 +808,11 @@
             /* Increased minimum width */
             padding: 8px 16px;
             /* 8px scale - wider padding for text */
-            background: rgba(102, 126, 234, 0.2);
-            border: 1px solid rgba(102, 126, 234, 0.3);
+            background: rgba(45, 212, 191, 0.18);
+            border: 1px solid rgba(45, 212, 191, 0.3);
             border-radius: 8px;
             /* 8px scale */
-            color: #c7d2fe;
+            color: #e2f8f4;
             cursor: pointer;
             font-size: 0.9em;
             font-weight: 500;
@@ -479,17 +827,17 @@
         }
 
         .scene-btn:hover {
-            background: rgba(102, 126, 234, 0.3);
-            border-color: rgba(102, 126, 234, 0.5);
+            background: rgba(45, 212, 191, 0.3);
+            border-color: rgba(45, 212, 191, 0.6);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 6px 14px rgba(45, 212, 191, 0.25);
         }
 
         .scene-btn.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-color: #667eea;
+            background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-amber) 100%);
+            border-color: var(--accent-teal);
             color: white;
-            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.5);
+            box-shadow: 0 6px 18px rgba(45, 212, 191, 0.35);
         }
 
         /* Station Tabs - for rooms with multiple faceplates */
@@ -497,16 +845,16 @@
             display: flex;
             gap: 8px;
             margin-bottom: 12px;
-            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+            border-bottom: 2px solid rgba(45, 212, 191, 0.25);
             padding-bottom: 8px;
         }
 
         .station-tab {
             padding: 8px 16px;
-            background: rgba(102, 126, 234, 0.1);
-            border: 1px solid rgba(102, 126, 234, 0.2);
+            background: rgba(45, 212, 191, 0.12);
+            border: 1px solid rgba(45, 212, 191, 0.25);
             border-radius: 8px 8px 0 0;
-            color: #a78bfa;
+            color: #e2f8f4;
             cursor: pointer;
             font-size: 0.85em;
             font-weight: 600;
@@ -514,15 +862,15 @@
         }
 
         .station-tab:hover {
-            background: rgba(102, 126, 234, 0.2);
-            border-color: rgba(102, 126, 234, 0.4);
+            background: rgba(45, 212, 191, 0.2);
+            border-color: rgba(45, 212, 191, 0.45);
         }
 
         .station-tab.active {
-            background: rgba(102, 126, 234, 0.3);
-            border-color: #667eea;
+            background: rgba(45, 212, 191, 0.35);
+            border-color: var(--accent-teal);
             color: white;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 2px 8px rgba(45, 212, 191, 0.25);
         }
 
         .station-content {
@@ -582,7 +930,7 @@
 
         .loads-label {
             font-size: 0.85em;
-            color: #a78bfa;
+            color: var(--accent-amber);
             font-weight: 600;
             display: flex;
             align-items: center;
@@ -620,10 +968,15 @@
             gap: 12px;
             padding: 16px;
             /* 8px scale */
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(10, 16, 24, 0.7);
             border-radius: 8px;
             /* 8px scale */
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .load-item.load-active {
+            border-color: rgba(45, 212, 191, 0.45);
+            background: linear-gradient(135deg, rgba(45, 212, 191, 0.12) 0%, rgba(10, 16, 24, 0.72) 100%);
         }
 
         .load-header {
@@ -641,7 +994,7 @@
 
         .load-name {
             font-size: 0.95em;
-            color: #cbd5e1;
+            color: #d3d9e4;
             margin-bottom: 4px;
         }
 
@@ -649,10 +1002,10 @@
             display: inline-block;
             font-size: 0.75em;
             color: #94a3b8;
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.08);
             padding: 2px 8px;
             border-radius: 4px;
-            font-family: monospace;
+            font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
             cursor: pointer;
             transition: all 0.3s;
             user-select: none;
@@ -660,7 +1013,7 @@
 
         .load-level-badge:hover {
             background: rgba(255, 255, 255, 0.1);
-            color: #c7d2fe;
+            color: var(--accent-amber);
         }
 
         .load-controls {
@@ -769,25 +1122,25 @@
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-amber) 100%);
             cursor: pointer;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 2px 8px rgba(45, 212, 191, 0.4);
             transition: all 0.3s;
         }
 
         .slider::-webkit-slider-thumb:hover {
             transform: scale(1.2);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.6);
+            box-shadow: 0 4px 12px rgba(45, 212, 191, 0.55);
         }
 
         .slider::-moz-range-thumb {
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-amber) 100%);
             cursor: pointer;
             border: none;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 2px 8px rgba(45, 212, 191, 0.4);
             transition: all 0.3s;
         }
 
@@ -1030,6 +1383,11 @@
             </nav>
         </div>
         <div class="status-bar">
+            <div class="active-loads-dropdown">
+                <button class="quick-status-btn" onclick="toggleActiveLoadsPanel()">
+                    Active <span class="active-count" id="activeCount">0</span>
+                </button>
+            </div>
             <div class="status-dot" role="status" aria-live="polite" aria-label="System online"></div>
             <span id="lastUpdate">--:--:--</span>
         </div>
@@ -1039,8 +1397,8 @@
     <div class="quick-start-tip" id="quickStartTip" role="alert" aria-live="polite">
         <button class="tip-close" onclick="dismissQuickStart()" aria-label="Dismiss quick start tip"
             title="Close">×</button>
-        <strong>Quick Start:</strong> Click room names to collapse/expand • Drag rooms to reorder • Use floor dropdown
-        to jump between levels • Tap loads to see details
+        <strong>Quick Start:</strong> Click room names to collapse/expand • Drag rooms to reorder • Use view filters and
+        search (press /) • Use floor dropdown to jump between levels • Tap loads to see details
     </div>
 
     <!-- Compact controls grid -->
@@ -1048,6 +1406,14 @@
         <select id="floorFilter" class="control-chip dropdown" aria-label="Jump to floor">
             <option value="">Jump to floor...</option>
         </select>
+        <input id="roomSearch" class="control-chip search-input" type="search"
+            placeholder="Search rooms or loads (press /)" aria-label="Search rooms or loads">
+        <div class="control-chip filter-label" aria-hidden="true">View</div>
+        <button class="control-chip filter-chip active" type="button" data-filter="all" aria-pressed="true">All</button>
+        <button class="control-chip filter-chip" type="button" data-filter="active" aria-pressed="false">On</button>
+        <button class="control-chip filter-chip" type="button" data-filter="recent" aria-pressed="false"
+            title="Rooms used in the last 30 minutes">Recent</button>
+        <button class="control-chip" type="button" onclick="refreshStatus()">Refresh</button>
         <button class="control-chip" onclick="toggleAllFloors()">Toggle floors</button>
         <button class="control-chip" onclick="collapseAllRooms()">Collapse rooms</button>
         <button class="control-chip" onclick="expandAllRooms()">Expand rooms</button>
@@ -1058,6 +1424,21 @@
 
     <div class="toast" id="toast"></div>
 
+    <div class="active-loads-overlay" id="activeLoadsOverlay">
+        <div class="active-loads-panel" id="activeLoadsPanel">
+            <div class="panel-header">
+                <span>Active Loads</span>
+                <button class="panel-close" onclick="toggleActiveLoadsPanel()">✕</button>
+            </div>
+            <div class="active-loads-list" id="activeLoadsList">
+                <div class="no-active-loads">
+                    <div class="icon">✓</div>
+                    <div>All lights off</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let configData = null;
         let floorStates = {};
@@ -1065,9 +1446,24 @@
         let roomOrder = {}; // Track custom room order per floor
         let selectedStationTabs = {}; // Track selected faceplate tab per room
         let loadsVisibility = {}; // Track loads section visibility per room
+        let viewFilter = 'all';
+        let loadLevels = {};
+        let lastLoadSnapshotAt = 0;
+        let hasFullLoadSnapshot = false;
+        let roomActivity = {};
+        let roomLoadsMap = {};
+        let loadToRoomMap = {};
+        let roomSearchQuery = '';
+        let searchDebounce = null;
         let pollInterval = null;
         let activeButtons = {}; // Track active scene buttons per room
         let buttonDebounce = {}; // Track last button press time for debouncing
+        const ACTIVE_LOADS_FORCE_MS = 15000; // baseline refresh cadence (ms)
+        const ACTIVE_LOADS_FORCE_WHEN_OPEN_MS = 7000; // faster when panel is open
+        const RECENT_ACTIVITY_MS = 30 * 60 * 1000;
+        let lastActiveLoadsForce = 0;
+        let activeLoadsPromise = null;
+        const LOAD_FETCH_TIMEOUT_MS = 12000; // avoid hanging badge if controller is slow
 
         // LocalStorage helpers
         function loadRoomStates() {
@@ -1107,6 +1503,36 @@
                 localStorage.setItem('vantage_room_order', JSON.stringify(roomOrder));
             } catch (error) {
                 console.error('Failed to save room order to localStorage:', error);
+            }
+        }
+
+        async function fetchJsonWithTimeout(url, timeoutMs) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const response = await fetch(url, { signal: controller.signal });
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return await response.json();
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        async function fetchLoadsData(url) {
+            // Try aggregated loads first; if it fails or times out, fall back to subsets
+            try {
+                return await fetchJsonWithTimeout(url, LOAD_FETCH_TIMEOUT_MS);
+            } catch (err) {
+                console.warn('Aggregated /api/loads failed, falling back to subsets', err);
+                const subsetUrls = ['/api/loads/set1', '/api/loads/set2', '/api/loads/set3', '/api/loads/set4'];
+                const results = await Promise.all(subsetUrls.map(u => fetchJsonWithTimeout(u, LOAD_FETCH_TIMEOUT_MS)));
+                const merged = {};
+                for (const r of results) {
+                    Object.assign(merged, r.loads || {});
+                }
+                return { loads: merged, count: Object.keys(merged).length };
             }
         }
 
@@ -1174,6 +1600,56 @@
             }
         }
 
+        function loadRoomActivity() {
+            try {
+                const saved = localStorage.getItem('vantage_room_activity');
+                if (saved) {
+                    roomActivity = JSON.parse(saved);
+                }
+            } catch (error) {
+                console.error('Failed to load room activity from localStorage:', error);
+                roomActivity = {};
+            }
+        }
+
+        function saveRoomActivity() {
+            try {
+                localStorage.setItem('vantage_room_activity', JSON.stringify(roomActivity));
+            } catch (error) {
+                console.error('Failed to save room activity to localStorage:', error);
+            }
+        }
+
+        function normalizeRoomName(roomName) {
+            if (!roomName) return roomName;
+            return roomName.replace(/&quot;/g, '"');
+        }
+
+        function markRoomActivity(roomName) {
+            const normalized = normalizeRoomName(roomName);
+            if (!normalized) return;
+            roomActivity[normalized] = Date.now();
+            saveRoomActivity();
+            if (viewFilter === 'recent') {
+                renderRooms();
+            }
+        }
+
+        function buildLoadMaps() {
+            roomLoadsMap = {};
+            loadToRoomMap = {};
+            if (!configData || !Array.isArray(configData.rooms)) return;
+
+            configData.rooms.forEach(room => {
+                const loads = room.loads || [];
+                if (loads.length === 0) return;
+                roomLoadsMap[room.name] = loads.map(load => load.id);
+                loads.forEach(load => {
+                    loadToRoomMap[load.id] = room.name;
+                });
+            });
+        }
+
         // Quick Start tip management
         function showQuickStartTip() {
             const dismissed = localStorage.getItem('quick_start_dismissed');
@@ -1200,10 +1676,14 @@
                 loadRoomOrder(); // Load saved room order
                 loadSelectedStationTabs(); // Load saved faceplate tab selections
                 loadLoadsVisibility(); // Load saved loads visibility
+                loadRoomActivity(); // Load saved recent activity
                 showQuickStartTip(); // Show quick start tip if not dismissed
                 const response = await fetch('/config');
                 configData = await response.json();
+                buildLoadMaps();
                 populateFloorDropdown();
+                setupSearch();
+                setupViewFilters();
                 renderRooms();
                 startPolling();
                 setupSliderTouchHandlers(); // Setup non-passive touch listeners
@@ -1254,17 +1734,121 @@
             });
         }
 
+        function setupSearch() {
+            const input = document.getElementById('roomSearch');
+            if (!input) return;
+            input.addEventListener('input', () => {
+                roomSearchQuery = input.value.trim().toLowerCase();
+                if (searchDebounce) {
+                    clearTimeout(searchDebounce);
+                }
+                searchDebounce = setTimeout(() => renderRooms(), 120);
+            });
+
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    input.value = '';
+                    roomSearchQuery = '';
+                    renderRooms();
+                    input.blur();
+                }
+            });
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return;
+                const activeTag = document.activeElement?.tagName;
+                if (activeTag && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag)) return;
+                event.preventDefault();
+                input.focus();
+            });
+        }
+
+        function setupViewFilters() {
+            const chips = Array.from(document.querySelectorAll('.filter-chip'));
+            if (!chips.length) return;
+            chips.forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const filter = chip.dataset.filter || 'all';
+                    setViewFilter(filter);
+                });
+            });
+        }
+
+        function setViewFilter(filter) {
+            viewFilter = filter;
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                const isActive = chip.dataset.filter === filter;
+                chip.classList.toggle('active', isActive);
+                chip.setAttribute('aria-pressed', String(isActive));
+            });
+            renderRooms();
+        }
+
+        function getRoomActiveCount(room) {
+            if (!room || !Array.isArray(room.loads)) return 0;
+            return room.loads.reduce((count, load) => {
+                const level = Number(loadLevels[load.id]);
+                return count + (Number.isNaN(level) ? 0 : (level > 0 ? 1 : 0));
+            }, 0);
+        }
+
+        function isRoomRecent(roomName) {
+            const last = roomActivity[roomName];
+            if (!last) return false;
+            return (Date.now() - last) <= RECENT_ACTIVITY_MS;
+        }
+
+        function roomHasActiveLoad(room) {
+            if (!hasFullLoadSnapshot) return true;
+            return getRoomActiveCount(room) > 0;
+        }
+
         function renderRooms() {
             const container = document.getElementById('floorsContainer');
             container.innerHTML = '';
 
+            const query = roomSearchQuery.trim().toLowerCase();
+            const searchActive = query.length > 0;
+            let roomsToRender = searchActive ? configData.rooms.filter(room => {
+                const roomName = (room.name || '').toLowerCase();
+                if (roomName.includes(query)) return true;
+                const loads = room.loads || [];
+                if (loads.some(load => (load.name || '').toLowerCase().includes(query))) return true;
+                const roomButtons = room.buttons || [];
+                if (roomButtons.some(btn => (btn.name || '').toLowerCase().includes(query))) return true;
+                const stationButtons = (room.stations || []).flatMap(st => st.buttons || []);
+                return stationButtons.some(btn => (btn.name || '').toLowerCase().includes(query));
+            }) : configData.rooms;
+
+            if (viewFilter === 'active') {
+                roomsToRender = roomsToRender.filter(room => roomHasActiveLoad(room));
+            } else if (viewFilter === 'recent') {
+                roomsToRender = roomsToRender.filter(room => isRoomRecent(room.name));
+            }
+
             // Group rooms by floor
             const floors = {};
-            configData.rooms.forEach(room => {
+            roomsToRender.forEach(room => {
                 const floor = room.floor || 'Other';
                 if (!floors[floor]) floors[floor] = [];
                 floors[floor].push(room);
             });
+
+            if (Object.keys(floors).length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'empty-state';
+                if (query) {
+                    empty.textContent = `No rooms or loads match "${query}".`;
+                } else if (viewFilter === 'active') {
+                    empty.textContent = 'No rooms with lights on.';
+                } else if (viewFilter === 'recent') {
+                    empty.textContent = 'No recently used rooms yet.';
+                } else {
+                    empty.textContent = 'No rooms available.';
+                }
+                container.appendChild(empty);
+                return;
+            }
 
             // Initialize floor states
             Object.keys(floors).forEach(floor => {
@@ -1279,7 +1863,7 @@
                 floorSection.className = 'floor-section';
                 floorSection.id = `floor-${floor}`;
 
-                const isCollapsed = !floorStates[floor];
+                const isCollapsed = searchActive ? false : !floorStates[floor];
 
                 // Sort rooms by custom order
                 const sortedRooms = sortRoomsByOrder(rooms, floor);
@@ -1290,7 +1874,7 @@
                         <span class="floor-arrow ${isCollapsed ? 'collapsed' : ''}">▼</span>
                     </div>
                     <div class="rooms-container ${isCollapsed ? 'collapsed' : ''}" id="rooms-${floor}" data-floor="${floor}">
-                        ${sortedRooms.map(room => renderRoom(room, floor)).join('')}
+                        ${sortedRooms.map((room, idx) => renderRoom(room, floor, idx)).join('')}
                     </div>
                 `;
 
@@ -1304,7 +1888,7 @@
             setupSliderTouchHandlers();
         }
 
-        function renderRoom(room, floor) {
+        function renderRoom(room, floor, roomIndex = 0) {
             if (room.loads.length === 0) return ''; // Skip separator entries
 
             const roomId = room.name.replace(/\s+/g, '-').toLowerCase();
@@ -1324,6 +1908,9 @@
 
             // Create summary text for collapsed state
             const summary = `${room.loads.length} load${room.loads.length !== 1 ? 's' : ''}, ${totalButtons} button${totalButtons !== 1 ? 's' : ''}`;
+            const activeCount = getRoomActiveCount(room);
+            const activeBadgeText = activeCount > 0 ? `${activeCount} on` : '';
+            const activeBadge = `<span class="room-active-badge${activeCount > 0 ? ' show' : ''}">${activeBadgeText}</span>`;
 
             // NEW: Support stations array for multiple faceplates
             let sceneButtons = '';
@@ -1400,11 +1987,12 @@
             }
 
             return `
-                <div class="room-card" draggable="true" data-room-name="${room.name}" data-floor="${floor}">
+                <div class="room-card${activeCount > 0 ? ' room-active' : ''}" draggable="true" data-room-name="${room.name}" data-floor="${floor}" style="--card-index: ${roomIndex}">
                     <div class="room-header" onclick="toggleRoom('${escapedRoomName}', event)">
                         <div class="room-name">
                             <span class="room-collapse-icon ${isCollapsed ? 'collapsed' : ''}">▼</span>
                             ${room.name}
+                            ${activeBadge}
                         </div>
                         <button class="room-all-off" onclick="allOff('${escapedRoomName}'); event.stopPropagation();">All Off</button>
                         <button class="room-get-status" onclick="getStatus('${escapedRoomName}'); event.stopPropagation();">Get Status</button>
@@ -1544,6 +2132,7 @@
                     showToast(`${loadName}: ${level}%`);
                     // Update immediately
                     updateLoadStatus(id, level);
+                    markRoomActivity(roomName);
                 } else {
                     showToast(`Failed to control ${loadName}`, true);
                 }
@@ -1587,6 +2176,7 @@
 
                 if (response.ok) {
                     showToast(`${roomName}: ${sceneName}`);
+                    markRoomActivity(roomName);
 
                     // DISABLED: LED poll after button press (contributes to port exhaustion)
                     // TODO: Re-enable when connection pooling is implemented
@@ -1771,28 +2361,13 @@
         }
 
         // Polling function to update load levels and LED states
-        async function pollLoadStatus() {
+        async function pollLoadStatus(forceRefresh = true) {
             if (!configData) return;
 
-            const now = new Date();
-            document.getElementById('lastUpdate').textContent =
-                `Updated: ${now.toLocaleTimeString()}`;
-
-            // Poll load levels
-            for (const room of configData.rooms) {
-                for (const load of room.loads) {
-                    try {
-                        const response = await fetch(`/load/${load.id}/status`);
-                        if (response.ok) {
-                            const data = await response.json();
-                            // Parse response (format may be "R:V<level>" or just a number)
-                            const level = parseLoadLevel(data.resp);
-                            updateLoadStatus(load.id, level);
-                        }
-                    } catch (error) {
-                        console.error(`Failed to poll load ${load.id}:`, error);
-                    }
-                }
+            try {
+                await updateActiveLoads({ force: forceRefresh });
+            } catch (error) {
+                console.error('Failed to refresh load snapshot', error);
             }
 
             // Poll LED states for all stations
@@ -1984,7 +2559,34 @@
             showToast('All loads minimized');
         }
 
+        function updateRoomActiveState(roomName) {
+            if (!roomName) return;
+            const roomCard = document.querySelector(`.room-card[data-room-name="${roomName}"]`);
+            if (!roomCard) return;
+
+            const loadIds = roomLoadsMap[roomName] || [];
+            const activeCount = loadIds.reduce((count, id) => {
+                const level = Number(loadLevels[id]);
+                return count + (Number.isNaN(level) ? 0 : (level > 0 ? 1 : 0));
+            }, 0);
+
+            roomCard.classList.toggle('room-active', activeCount > 0);
+            const badge = roomCard.querySelector('.room-active-badge');
+            if (badge) {
+                badge.textContent = activeCount > 0 ? `${activeCount} on` : '';
+                badge.classList.toggle('show', activeCount > 0);
+            }
+        }
+
         function updateLoadStatus(loadId, level) {
+            const numericLevel = Number(level);
+            const hasLevel = !Number.isNaN(numericLevel);
+            if (hasLevel) {
+                loadLevels[loadId] = numericLevel;
+            } else {
+                delete loadLevels[loadId];
+            }
+
             const badge = document.getElementById(`load-${loadId}-badge`);
             if (badge) {
                 badge.textContent = `Level: ${level}%`;
@@ -1997,11 +2599,10 @@
 
             const loadEl = document.getElementById(`load-${loadId}`);
             if (loadEl) {
+                loadEl.classList.toggle('load-active', hasLevel && numericLevel > 0);
                 const onBtn = loadEl.querySelector('.btn-on');
                 const offBtn = loadEl.querySelector('.btn-off');
                 if (onBtn && offBtn) {
-                    const numericLevel = Number(level);
-                    const hasLevel = !Number.isNaN(numericLevel);
                     const isOn = hasLevel && numericLevel > 0;
                     const isOff = hasLevel && numericLevel <= 0;
 
@@ -2019,15 +2620,37 @@
                     }
                 }
             }
+
+            const roomName = loadToRoomMap[loadId];
+            if (roomName) {
+                updateRoomActiveState(roomName);
+            }
+        }
+
+        function applyLoadLevels(loadMap) {
+            if (!loadMap || typeof loadMap !== 'object') return;
+
+            Object.entries(loadMap).forEach(([id, level]) => {
+                const numericId = Number(id);
+                if (!Number.isNaN(numericId)) {
+                    updateLoadStatus(numericId, level);
+                }
+            });
+
+            hasFullLoadSnapshot = true;
+            lastLoadSnapshotAt = Date.now();
+        }
+
+        function refreshStatus() {
+            updateActiveLoads({ force: true });
+            pollVisibleLEDs();
+            checkHealth();
+            showToast('Refreshing status...');
         }
 
         function startPolling() {
-            // DISABLED: Continuous polling creates too many connections and exhausts Vantage port limit
-            // Poll every 10 seconds
-            // pollInterval = setInterval(pollLoadStatus, 10000);
-
-            // Do ONE initial poll on page load to show current status
-            pollLoadStatus();
+            // Use aggregated load polling with throttled force refreshes
+            pollLoadStatus(true);
 
             // Previously disabled due to TIME_WAIT build-up on the controller.
             // The bridge now serializes LED polling requests, keeping connection counts low.
@@ -2108,6 +2731,20 @@
                 }
             });
         }
+
+        window.addEventListener('resize', () => {
+            const panel = document.getElementById('activeLoadsPanel');
+            if (panel && panel.classList.contains('show')) {
+                positionActiveLoadsPanel();
+            }
+        });
+
+        window.addEventListener('scroll', () => {
+            const panel = document.getElementById('activeLoadsPanel');
+            if (panel && panel.classList.contains('show')) {
+                positionActiveLoadsPanel();
+            }
+        }, { passive: true });
 
         function showToast(message, isError = false) {
             const toast = document.getElementById('toast');
@@ -2204,6 +2841,143 @@
                 if (headerBtn) headerBtn.classList.remove('loading');
             }
         }
+
+        // Toggle active loads panel
+        function toggleActiveLoadsPanel() {
+            const panel = document.getElementById('activeLoadsPanel');
+            const overlay = document.getElementById('activeLoadsOverlay');
+            if (!panel) return;
+
+            const willShow = !panel.classList.contains('show');
+            panel.classList.toggle('show');
+            if (overlay) {
+                overlay.classList.toggle('show', willShow);
+                overlay.onclick = (e) => {
+                    if (e.target === overlay) {
+                        panel.classList.remove('show');
+                        overlay.classList.remove('show');
+                    }
+                };
+            }
+
+            if (willShow) {
+                positionActiveLoadsPanel();
+                updateActiveLoads({ force: true });
+            }
+        }
+
+        function positionActiveLoadsPanel() {
+            const panel = document.getElementById('activeLoadsPanel');
+            const trigger = document.querySelector('.quick-status-btn');
+            const overlay = document.getElementById('activeLoadsOverlay');
+            if (!panel || !trigger || !overlay) return;
+
+            const rect = trigger.getBoundingClientRect();
+            const top = rect.bottom + 8 + window.scrollY;
+            const right = Math.max(12, window.innerWidth - rect.right - 4);
+
+            panel.style.top = `${top}px`;
+            panel.style.right = `${right}px`;
+        }
+
+        // Update active loads display
+        async function updateActiveLoads(options = {}) {
+            const force = options.force === true;
+            const panel = document.getElementById('activeLoadsPanel');
+            const panelOpen = panel && panel.classList.contains('show');
+            const now = Date.now();
+            const forceInterval = panelOpen ? ACTIVE_LOADS_FORCE_WHEN_OPEN_MS : ACTIVE_LOADS_FORCE_MS;
+            const shouldForce = force || !lastActiveLoadsForce || (now - lastActiveLoadsForce) > forceInterval;
+
+            if (activeLoadsPromise) {
+                return activeLoadsPromise;
+            }
+
+            const url = shouldForce ? '/api/loads?force=true' : '/api/loads';
+
+            activeLoadsPromise = (async () => {
+                try {
+                    const data = await fetchLoadsData(url);
+                    const loads = data.loads || {};
+
+                    applyLoadLevels(loads);
+                    if (viewFilter === 'active' && shouldForce) {
+                        renderRooms();
+                    }
+
+                    // Find active loads (level > 0)
+                    const activeLoads = [];
+                    if (configData && Array.isArray(configData.rooms)) {
+                        for (const [id, level] of Object.entries(loads)) {
+                            const numericLevel = Number(level);
+                            const numericId = parseInt(id, 10);
+                            if (Number.isNaN(numericId) || numericLevel <= 0) continue;
+
+                            const room = configData.rooms.find(r => r.loads?.some(l => l.id === numericId));
+                            const load = room?.loads?.find(l => l.id === numericId);
+                            if (room && load) {
+                                activeLoads.push({
+                                    id: numericId,
+                                    name: load.name,
+                                    room: room.name,
+                                    level: numericLevel,
+                                    type: load.type
+                                });
+                            }
+                        }
+                    }
+
+                    // Update UI
+                    const countEl = document.getElementById('activeCount');
+                    const listEl = document.getElementById('activeLoadsList');
+                    if (countEl) {
+                        countEl.textContent = activeLoads.length;
+                    }
+
+                    if (listEl) {
+                        if (activeLoads.length === 0) {
+                            listEl.innerHTML = '<div class="no-active-loads"><div class="icon">✓</div><div>All lights off</div></div>';
+                        } else {
+                            listEl.innerHTML = activeLoads.map(load => {
+                                const escapedRoom = load.room.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                                const escapedName = load.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                                return `
+                        <div class="active-load-item">
+                            <div class="load-info">
+                                <div class="load-room">${load.room}</div>
+                                <div class="load-name">${load.name}</div>
+                            </div>
+                            <div class="load-level">
+                                <span class="level-badge">${load.level}%</span>
+                                <button class="quick-off-btn" onclick="setLevel(${load.id}, 0, '${escapedRoom}', '${escapedName}')">OFF</button>
+                            </div>
+                        </div>
+                        `;
+                            }).join('');
+                        }
+                    }
+
+                    const lastUpdateEl = document.getElementById('lastUpdate');
+                    if (lastUpdateEl && shouldForce) {
+                        lastUpdateEl.textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+                    }
+
+                    if (shouldForce) {
+                        lastActiveLoadsForce = Date.now();
+                    }
+                } catch (error) {
+                    console.error('Failed to update active loads', error);
+                } finally {
+                    activeLoadsPromise = null;
+                }
+            })();
+
+            return activeLoadsPromise;
+        }
+
+        // Start active loads updates
+        setInterval(() => updateActiveLoads(), 3000);
+        setTimeout(() => updateActiveLoads({ force: true }), 700); // Initial update after config loads
     </script>
 </body>
 

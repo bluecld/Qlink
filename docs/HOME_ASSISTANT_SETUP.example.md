@@ -9,9 +9,9 @@ Siri → Apple Home → HomeKit Bridge → Home Assistant → RESTful API → br
 ```
 
 ## System Information
-- **Raspberry Pi IP**: 192.168.1.213
-- **Home Assistant URL**: http://192.168.1.213:8123
-- **Bridge API**: http://192.168.1.213:8000
+- **Raspberry Pi IP**: <BRIDGE_TAILSCALE_IP>
+- **Home Assistant URL**: http://<BRIDGE_TAILSCALE_IP>:8123
+- **Bridge API**: http://<BRIDGE_TAILSCALE_IP>:8000
 - **Vantage Controller**: 192.168.1.200:3040 (Q-Link protocol)
 
 ## Installation Summary
@@ -67,7 +67,7 @@ The configuration includes:
 
 ### Step 1: Access Home Assistant UI
 1. Open a web browser on your local network
-2. Navigate to: http://192.168.1.213:8123
+2. Navigate to: http://<BRIDGE_TAILSCALE_IP>:8123
 3. Log in with your Home Assistant credentials
 
 ### Step 2: Get HomeKit Pairing Code
@@ -120,7 +120,7 @@ curl http://localhost:8000/config
 
 **View Logs**:
 ```bash
-ssh pi@192.168.1.213
+ssh pi@<BRIDGE_TAILSCALE_IP>
 sudo docker logs homeassistant --tail 100
 ```
 
@@ -140,7 +140,7 @@ sudo docker start homeassistant
 - **Host**: `/home/pi/homeassistant/configuration.yaml`
 
 To edit configuration:
-1. SSH to Pi: `ssh pi@192.168.1.213`
+1. SSH to Pi: `ssh pi@<BRIDGE_TAILSCALE_IP>`
 2. Edit file: `sudo nano /home/pi/homeassistant/configuration.yaml`
 3. Restart HA: `sudo docker restart homeassistant`
 
@@ -150,7 +150,7 @@ To add additional lights to the HomeKit integration:
 
 1. Get available loads from bridge:
 ```bash
-curl http://192.168.1.213:8000/config | python3 -m json.tool
+curl http://<BRIDGE_TAILSCALE_IP>:8000/config | python3 -m json.tool
 ```
 
 2. Edit `/home/pi/homeassistant/configuration.yaml`
