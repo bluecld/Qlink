@@ -1,12 +1,14 @@
 {
-  "host": "qlinkpi.local",
-  "user": "pi",
+  "host": "<BRIDGE_IP or hostname>",
+  "user": "<ssh-user>",
   "key": "C:\\\\Users\\\\YOURNAME\\\\.ssh\\\\id_ed25519",
-  "remote_dir": "/home/pi/qlink-bridge",
+  "remote_dir": "/home/<ssh-user>/qlink-bridge",
   "env": {
     "VANTAGE_IP": "192.168.1.200",
-    "VANTAGE_PORT": "23",
+    "VANTAGE_PORT": "3040",
     "Q_LINK_EOL": "CR",
-    "QLINK_TIMEOUT": "2.0"
+    "QLINK_TIMEOUT": "2.0",
+    "QLINK_MONITOR_MODE": "auto",
+    "QLINK_LED_CACHE_TTL": "5.0"
   }
 }

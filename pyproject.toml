@@ -4,3 +4,10 @@ line-length = 88
 [tool.ruff]
 line-length = 88
 exclude = [".venv", "build", "dist", "docs"]
+
+[tool.pytest.ini_options]
+# Scope collection to tests/ so pytest never walks local virtualenvs.
+# Without this, a Linux venv checked out on Windows (venv-linux/bin/python)
+# breaks collection with WinError 1920.
+testpaths = ["tests"]
+norecursedirs = [".venv", "venv", "venv-linux", "env", "build", "dist", "archive", "waveshare-official", "esp32-room-panel"]

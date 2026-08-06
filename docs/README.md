@@ -2,6 +2,14 @@
 
 This directory contains current, actively-used documentation for the Vantage QLink Bridge project.
 
+## Start Here
+
+- **ONBOARDING.md** - what a new maintainer needs: access, local setup, offline
+  development against the mock controller, and the rules of the road
+- **HANDOFF.md** - how the live deployment is actually wired
+- **RUNBOOK.md** - day-to-day service and Home Assistant guest operations
+- **PRODUCTION_CHECKLIST.md** - run through this before and after live changes
+
 ## API Documentation
 
 - **OPENAPI.yaml** - OpenAPI specification for the REST API endpoints

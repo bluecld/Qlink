@@ -25,6 +25,14 @@ Siri / HomeKit → Home Assistant → REST API → Q-Link Bridge → Vantage Con
 
 ## Installation
 
+> **How the reference deployment runs:** Home Assistant OS as a **KVM/libvirt
+> guest** on the same Linux host as the bridge, bridged onto the LAN. In that
+> setup the bridge base URL is simply the host's LAN address,
+> `http://<BRIDGE_IP>:8000` - do **not** pass `--ha-in-docker`.
+> Manage the guest with `virsh --connect qemu:///system`. See `docs/RUNBOOK.md`.
+>
+> The Docker instructions below remain valid if you prefer a container install.
+
 ### Option 1: Docker Installation (Recommended)
 
 ```bash
@@ -66,8 +74,13 @@ The script will:
 3. Create template light entities
 4. Configure HomeKit Bridge integration
 
-If Home Assistant runs in Docker without `--network=host`, use `--ha-in-docker`
-(defaults to `http://172.17.0.1:8000`) or set `--bridge-base-url` explicitly.
+Pick the bridge base URL to match how HA is installed:
+
+| HA install | Bridge base URL | Flag |
+|---|---|---|
+| HAOS / VM bridged to the LAN | `http://<BRIDGE_IP>:8000` | `--bridge-base-url http://<BRIDGE_IP>:8000` |
+| Docker, no `--network=host` | `http://172.17.0.1:8000` | `--ha-in-docker` |
+| Docker with `--network=host`, same box | `http://localhost:8000` | *(default)* |
 
 > If you run the generator on a different machine, provide `--url http://YOUR_BRIDGE:8000/config` to fetch the config, and set `--bridge-base-url` to the address Home Assistant can reach.
 

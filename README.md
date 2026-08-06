@@ -290,7 +290,9 @@ The bridge integrates seamlessly with Home Assistant for advanced automation and
 
 ### Quick Setup
 
-1. **Install Home Assistant** (Docker recommended):
+1. **Install Home Assistant** (Docker shown below; Home Assistant OS in a VM
+   also works - if HA is a LAN-bridged VM, use
+   `--bridge-base-url http://<BRIDGE_IP>:8000` instead of `--ha-in-docker`):
 ```bash
 docker run -d \
   --name homeassistant \
@@ -320,6 +322,7 @@ For detailed instructions, see [docs/HOME_ASSISTANT.md](docs/HOME_ASSISTANT.md).
 
 ### Handoff and Operations
 
+- **[Onboarding a New Maintainer](docs/ONBOARDING.md)** - start here if you just got access
 - [Handoff Notes](docs/HANDOFF.md)
 - [Runbook](docs/RUNBOOK.md)
 - [Production Checklist](docs/PRODUCTION_CHECKLIST.md)
