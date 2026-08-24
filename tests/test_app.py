@@ -115,7 +115,7 @@ def test_get_all_loads_aggregated(monkeypatch):
     )
 
     # Stub qlink_send to return final integer level
-    def fake_q(cmd):
+    def fake_q(cmd, **kwargs):
         # expect 'VGL@ <id>' - return a numeric string
         parts = cmd.split()
         return "75" if parts[-1] == "101" else "0"
@@ -140,7 +140,7 @@ def test_get_all_loads_fallback(monkeypatch):
         lambda: [{"id": 201}, {"id": 202}],
     )
 
-    def fake_q2(cmd):
+    def fake_q2(cmd, **kwargs):
         return "33" if cmd.endswith("201") else "66"
 
     monkeypatch.setattr("app.bridge.qlink_send", fake_q2)

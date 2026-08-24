@@ -25,7 +25,8 @@ import socket
 import threading
 import time
 from datetime import datetime
-from queue import Empty, Queue
+from itertools import count as _itertools_count
+from queue import Empty, PriorityQueue, Queue
 from time import perf_counter
 from typing import Any, Dict, Optional, Set, cast
 
@@ -385,17 +386,66 @@ def _read_response_line(
         buf.extend(chunk)
 
 
-class CommandRequest:
-    __slots__ = ("cmd", "timeout", "response_queue")
+# Command priorities: lower runs first. User-initiated commands (a person
+# tapping a light) must never wait behind background polling sweeps on the
+# slow (~9600 baud) Q-Link serial link.
+PRIO_USER = 0
+PRIO_POLL = 10
 
-    def __init__(self, cmd: str, timeout: float, response_queue: "Queue[Any]") -> None:
+
+class CommandRequest:
+    __slots__ = ("cmd", "timeout", "response_queue", "priority", "coalesce_key", "superseded")
+
+    def __init__(
+        self,
+        cmd: str,
+        timeout: float,
+        response_queue: "Queue[Any]",
+        priority: int = PRIO_USER,
+        coalesce_key: Optional[str] = None,
+    ) -> None:
         self.cmd = cmd
         self.timeout = timeout
         self.response_queue = response_queue
+        self.priority = priority
+        self.coalesce_key = coalesce_key
+        self.superseded = False
 
 
-command_queue: "Queue[CommandRequest]" = Queue()
+# Priority queue entries are (priority, sequence, request); the sequence
+# counter keeps FIFO order within a priority class.
+command_queue: "PriorityQueue[Any]" = PriorityQueue()
+_command_seq = _itertools_count()
 command_worker_thread: Optional[threading.Thread] = None
+
+# Count of user-priority commands currently queued or executing. Background
+# sweeps consult this to yield the serial link to humans immediately.
+_user_pending_lock = threading.Lock()
+_user_pending_count = 0
+
+# Latest queued command per coalesce key (e.g. "load:254"). A newer command
+# for the same key marks the older one superseded so rapid taps collapse to
+# the final state instead of replaying serially.
+_coalesce_lock = threading.Lock()
+_coalesce_registry: Dict[str, "CommandRequest"] = {}
+
+
+def _user_commands_waiting() -> bool:
+    return _user_pending_count > 0
+
+
+def _adjust_user_pending(delta: int) -> None:
+    global _user_pending_count
+    with _user_pending_lock:
+        _user_pending_count = max(0, _user_pending_count + delta)
+
+
+def _yield_to_user_commands(max_wait: float = 20.0) -> None:
+    """Block a background sweep while user commands are queued or running."""
+    waited = 0.0
+    while _user_commands_waiting() and waited < max_wait:
+        time.sleep(0.2)
+        waited += 0.2
 command_metrics_lock = threading.Lock()
 command_metrics: Dict[str, Any] = {
     "queue_depth": 0,
@@ -600,9 +650,26 @@ def _perform_qlink_send_per_command(cmd: str, timeout: float) -> str:
 def _command_worker() -> None:
     while True:
         try:
-            request: CommandRequest = command_queue.get()
-            if request is None:  # pragma: no cover - allow graceful shutdown if needed
+            entry = command_queue.get()
+            if entry is None:  # pragma: no cover - allow graceful shutdown if needed
                 break
+            request: CommandRequest = entry[2]
+
+            # Superseded by a newer command for the same load: answer without
+            # touching the serial link and without burning a command gap.
+            if request.superseded:
+                request.response_queue.put(("ok", "SUPERSEDED"))
+                _increment_metric("commands_coalesced", 1)
+                _set_queue_depth(command_queue.qsize())
+                continue
+
+            # This request is now the one being executed; drop it from the
+            # coalesce registry so a later command starts a fresh entry.
+            if request.coalesce_key is not None:
+                with _coalesce_lock:
+                    if _coalesce_registry.get(request.coalesce_key) is request:
+                        _coalesce_registry.pop(request.coalesce_key, None)
+
             start_time = perf_counter()
             try:
                 result = _perform_qlink_send(request.cmd, request.timeout)
@@ -1583,7 +1650,7 @@ def led_polling_loop():
                 probe_station = sorted(stations)[0]
                 try:
                     master = get_station_master(probe_station)
-                    qlink_send(f"VLT@ {master} {probe_station}")
+                    qlink_send(f"VLT@ {master} {probe_station}", priority=PRIO_POLL)
                 except Exception:
                     pass
                 logger.debug("Enabler busy; skipping full LED sweep this cycle")
@@ -1596,9 +1663,12 @@ def led_polling_loop():
             for station in sorted(stations):
                 if monitor_thread_stop_event.is_set():
                     break
+                # A human tapped a light: hand the serial link over immediately
+                # and resume the sweep once their commands have executed.
+                _yield_to_user_commands()
                 master = get_station_master(station)
                 try:
-                    response = qlink_send(f"VLT@ {master} {station}")
+                    response = qlink_send(f"VLT@ {master} {station}", priority=PRIO_POLL)
                 except HTTPException as exc:  # pragma: no cover - depends on hardware
                     logger.debug(f"V{station}: VLT@ failed ({exc.detail})")
                     error_count += 1
@@ -1741,21 +1811,57 @@ def start_monitoring():
         active_monitor_mode = "poll"
 
 
-def qlink_send(cmd: str, timeout: Optional[float] = None) -> str:
-    """Enqueue a command to the Vantage IP-Enabler and return its response."""
+def qlink_send(
+    cmd: str,
+    timeout: Optional[float] = None,
+    priority: int = PRIO_USER,
+    coalesce_key: Optional[str] = None,
+) -> str:
+    """Enqueue a command to the Vantage IP-Enabler and return its response.
+
+    ``priority`` orders the shared serial link: PRIO_USER commands (a person
+    acting on a light) jump ahead of PRIO_POLL background sweeps. When
+    ``coalesce_key`` is set, a newer command with the same key supersedes any
+    still-queued older one, which then resolves as "SUPERSEDED" untransmitted.
+    """
     _ensure_command_worker()
     to = timeout or QLINK_TIMEOUT
     response_queue: Queue[Any] = Queue(maxsize=1)
-    command_queue.put(
-        CommandRequest(cmd=cmd, timeout=to, response_queue=response_queue)
+    request = CommandRequest(
+        cmd=cmd,
+        timeout=to,
+        response_queue=response_queue,
+        priority=priority,
+        coalesce_key=coalesce_key,
     )
-    _set_queue_depth(command_queue.qsize())
+    if coalesce_key is not None:
+        with _coalesce_lock:
+            previous = _coalesce_registry.get(coalesce_key)
+            if previous is not None:
+                previous.superseded = True
+            _coalesce_registry[coalesce_key] = request
+
+    is_user = priority <= PRIO_USER
+    if is_user:
+        _adjust_user_pending(1)
     try:
-        status, payload = response_queue.get(timeout=to + QLINK_TIMEOUT + 2)
-    except Empty:
-        _update_metric("last_error", "Command queue timeout")
-        _note_enabler_result(False)
-        raise HTTPException(status_code=504, detail="Command queue timeout") from None
+        command_queue.put((priority, next(_command_seq), request))
+        _set_queue_depth(command_queue.qsize())
+        # Polls may legitimately wait behind a burst of user commands; give
+        # them a longer response window instead of failing spuriously.
+        wait_budget = to + QLINK_TIMEOUT + (2 if is_user else 15)
+        try:
+            status, payload = response_queue.get(timeout=wait_budget)
+        except Empty:
+            _update_metric("last_error", "Command queue timeout")
+            request.superseded = True  # worker will skip it if still queued
+            _note_enabler_result(False)
+            raise HTTPException(
+                status_code=504, detail="Command queue timeout"
+            ) from None
+    finally:
+        if is_user:
+            _adjust_user_pending(-1)
 
     if status == "error":
         _note_enabler_result(False)
@@ -1908,16 +2014,19 @@ def set_device(id: int, body: LevelCmd):
     logger.info(f"set_device called: id={id} body={body}")
 
     try:
+        # Rapid repeat commands for the same load coalesce: only the newest
+        # still-queued VLO@ for this load reaches the serial link.
+        ckey = f"load:{id}"
         if body.switch:
             if body.switch.lower() == "on":
                 cmd = f"VLO@ {id} 100"
-                resp = qlink_send(cmd)
+                resp = qlink_send(cmd, coalesce_key=ckey)
                 logger.info(f"set_device: cmd={cmd} resp={resp}")
                 _record_load_control(id, 100)
                 return {"resp": resp}
             if body.switch.lower() == "off":
                 cmd = f"VLO@ {id} 0"
-                resp = qlink_send(cmd)
+                resp = qlink_send(cmd, coalesce_key=ckey)
                 logger.info(f"set_device: cmd={cmd} resp={resp}")
                 _record_load_control(id, 0)
                 return {"resp": resp}
@@ -1926,7 +2035,7 @@ def set_device(id: int, body: LevelCmd):
         if body.level is not None:
             lvl = max(0, min(100, int(body.level)))
             cmd = f"VLO@ {id} {lvl}"
-            resp = qlink_send(cmd)
+            resp = qlink_send(cmd, coalesce_key=ckey)
             logger.info(f"set_device: cmd={cmd} resp={resp}")
             _record_load_control(id, lvl)
             return {"resp": resp}
@@ -2158,8 +2267,9 @@ def _update_priority_cache(
         for lid in load_ids:
             if _enabler_busy():
                 break
+            _yield_to_user_commands()
             try:
-                resp = qlink_send(f"VGL@ {int(lid)}")
+                resp = qlink_send(f"VGL@ {int(lid)}", priority=PRIO_POLL)
                 val = _parse_load_level(resp)
                 newmap[int(lid)] = val
                 _update_last_known_level(int(lid), val)
@@ -2203,8 +2313,9 @@ def _update_loads_cache() -> None:
             # Bail out mid-sweep if the enabler starts failing.
             if _enabler_busy():
                 break
+            _yield_to_user_commands()
             try:
-                resp = qlink_send(f"VGL@ {int(lid)}")
+                resp = qlink_send(f"VGL@ {int(lid)}", priority=PRIO_POLL)
                 # Try parse final integer or fallback to 0
                 val = 0
                 try:
@@ -2384,6 +2495,8 @@ def monitor_status():
         ),
         "command_gap_seconds": QLINK_COMMAND_GAP,
         "pending_commands": len(pending_commands),
+        "user_commands_waiting": _user_pending_count,
+        "commands_coalesced": command_metrics.get("commands_coalesced", 0),
     }
 
 
@@ -2435,9 +2548,10 @@ def _refresh_led_cache_once() -> None:
             return
 
         for station in sorted(stations):
+            _yield_to_user_commands()
             try:
                 master = get_station_master(station)
-                response = qlink_send(f"VLT@ {master} {station}")
+                response = qlink_send(f"VLT@ {master} {station}", priority=PRIO_POLL)
             except Exception:
                 time.sleep(0.05)
                 continue
@@ -2542,7 +2656,7 @@ def get_all_loads(force: bool = False):
                 if lid is None:
                     continue
                 try:
-                    resp = qlink_send(f"VGL@ {int(lid)}")
+                    resp = qlink_send(f"VGL@ {int(lid)}", priority=PRIO_POLL)
                     val = 0
                     try:
                         val = int(str(resp).strip().split()[-1])
@@ -2625,8 +2739,9 @@ def _get_loads_subset(subset_num: int) -> Dict[int, int]:
         lid = int(ld.get("id", -1))
         if lid < 0:
             continue
+        _yield_to_user_commands()
         try:
-            resp = qlink_send(f"VGL@ {lid}")
+            resp = qlink_send(f"VGL@ {lid}", priority=PRIO_POLL)
             val = 0
             try:
                 val = int(str(resp).strip().split()[-1])
