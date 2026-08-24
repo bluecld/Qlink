@@ -1,5 +1,9 @@
 # Onboarding a New Maintainer
 
+> **Project status:** this project has a single maintainer (Anthony / bluecld).
+> This document is kept as reference for any future collaborator and for
+> the maintainer's own re-onboarding after time away.
+
 Read this first if you have just been given access to this project. It controls
 a **live house** - real lights respond to real API calls. Nothing here is a
 sandbox unless you make it one (see "Working offline" below).
