@@ -17,6 +17,8 @@ TODO (placeholder): After cleaning up README encoding artifacts, add a dedicated
 - **Easy Deployment** - One-command deploy to a Linux host with systemd service
 - **Low Latency** - Persistent TCP connection to Vantage for instant updates
 - **Auto-reconnect** - Resilient connection handling with automatic retry
+- **Command-first scheduling** - User commands preempt background polling; rapid repeats for the same load coalesce
+- **Instant state write-through** - Commanded levels update all served caches immediately, so dashboards never briefly revert
 - **Extensible** - Simple REST API for integration with any home automation platform
 
 ## 📋 Table of Contents

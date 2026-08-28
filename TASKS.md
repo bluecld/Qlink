@@ -1,56 +1,34 @@
 # Project Roadmap: Vantage Q-Link Bridge
 
-This roadmap defines the work breakdown for the AI assistant and human contributors.
-Each phase builds toward full integration with SmartThings (Edge) and Matter.
+Current state and work breakdown. Sole maintainer: Anthony.
 
 ---
 
-## Phase 1 — Core Functionality (Done)
-✅ Base FastAPI bridge `app/bridge.py`  
-✅ `/about`, `/send/{cmd}`, `/device/{id}/set` endpoints  
-✅ Local deploy scripts for Pi + VS Code Windows task automation
+## Done
 
----
+- FastAPI bridge (`app/bridge.py`) on the Mac mini bridge host, systemd `qlink-bridge.service`, Web UI at `/ui/`
+- Home Assistant OS as a KVM/libvirt guest on the same host (`virsh` managed, autostart on) with 132 template lights via REST sensors + `rest_command` (config package `vantage.yaml`)
+- Host IP pinned against DHCP drift (`qlink-lan-alias.service`)
+- Serial pacing tuned for the slow Q-Link RS-232 link (command gap, cache TTLs via systemd drop-in `serial-pacing.conf`)
+- Command-first scheduling: user commands preempt background polls (PriorityQueue), sweeps yield mid-run
+- Per-load coalescing: rapid repeat commands for one load collapse to the newest
+- Instant write-through of commanded levels to all served caches + mid-sweep overlay guard (fixes HA dashboard revert flicker)
+- Command replay queue: commands issued while the enabler is offline are queued and fire on reconnect
+- Q-Link protocol reference mined (`Info/qlink-commands-reference.csv`): `VOS` event push, `VGD`/`VGT` batch reads, `VLT@` station LEDs
+- Docs: RUNBOOK (enabler quirks, IP drift, cable flap), ONBOARDING, HANDOFF, HOME_ASSISTANT, PRODUCTION_CHECKLIST; public repo sanitized (real values live in gitignored `PROJECT_URLS.md`)
 
-## Phase 2 — System Hardening (Next)
-1. Add `/healthz` endpoint returning `{ "ok": true }`.
-2. Implement error handling with structured JSON (`ok`, `error`, `detail`).
-3. Add configurable `Q_LINK_EOL` for CR vs CRLF.
-4. Add logging to file `/var/log/qlink-bridge.log`.
-5. Add `/config` endpoint showing runtime settings (safe subset).
+## Next: event-driven state (in progress)
 
----
+Goal: stop polling for state; let the panel push changes so HA reflects wall-keypad presses in ~1 s instead of up to a poll cycle.
 
-## Phase 3 — SmartThings Integration
-1. Create `SmartThings_Edge/` folder.  
-2. Scaffold Edge driver (Lua) that sends local HTTP POSTs to the Pi bridge.  
-3. Implement `switch` and `switchLevel` capabilities mapped to REST endpoints.  
-4. Provide discovery of bridge via `/manifest`.  
-5. Add Edge CLI packaging and VS Code task to deploy driver.
+1. On connect, enable push events: send `VOS 0 1` (persistent "SW m s b v" station events)
+2. Parse incoming event lines on the persistent socket; map station/button events to load-level updates in the served caches
+3. Replace/slow the VGL@ sweeps with `VGD`/`VGT` batch reads for periodic reconciliation
+4. Fall back to poll mode automatically if events go quiet (watchdog)
 
----
+## Backlog
 
-## Phase 4 — Configuration + Monitoring
-1. Support `.env` file and `config.yaml`.  
-2. Add systemd journal watcher script for remote log streaming.  
-3. Create `/metrics` endpoint (simple counters).  
-4. Add update notifier in VS Code (checks GitHub release).
-
----
-
-## Phase 5 — Docker + Matter
-1. Write optimized `Dockerfile` with multi-stage build.  
-2. Add `docker-compose.yaml` with bridge + Edge emulator.  
-3. Explore exposing bridge as a Matter bridge (optional).
-
----
-
-## Maintenance Tasks (AI May Automate)
-- Keep dependencies updated (`fastapi`, `uvicorn`).  
-- Maintain CI tests once integrated.  
-- Verify connectivity to Q-Link IP-Enabler and handle socket timeouts gracefully.  
-- Add auto-restart watchdog for Pi service.
-
----
-
-This file acts as the **AI assistant’s development brief**: it can plan, prioritize, and execute these tasks within VS Code using project context.
+- Split `commands_coalesced` metric: true coalesces vs queue-timeout skips
+- Decide whether to commit `Info/QLink Help File.pdf` (Vantage copyright - currently untracked on purpose)
+- Set proper git author name/email in repo config
+- Optional `.gitattributes` for line endings

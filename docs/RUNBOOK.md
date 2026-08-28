@@ -101,3 +101,34 @@ is suddenly unreachable at the canonical address, verify that unit first, then
   controller is reachable: `nc -vz <VANTAGE_IP> 3040`.
 - **Slow updates:** reduce `scan_interval` or enable priority polling.
 - **Timeouts:** increase `LOADS_CACHE_TTL` and keep subset polling enabled.
+
+## Dashboard state flicker (fixed - context if it returns)
+
+Symptom: toggling a light from HA changed the light, but the dashboard state
+changed, reverted, then changed back ~30-60 s later. Cause: HA's REST sensors
+poll the bridge's caches, which only refreshed on background sweeps, so a poll
+landing between the command and the next sweep served the stale level.
+
+Fixed in `app/bridge.py`: successful commands write through to every served
+cache immediately (`_write_through_load_level`), and sweeps overlay any load
+commanded mid-sweep (`_overlay_recent_controls`) so they cannot resurrect a
+stale value. If reverts ever reappear, confirm the deployed bridge contains
+those two functions and that `_record_load_control` calls the write-through.
+
+## Physical link flapping (cable)
+
+Symptom: enabler drops off the network entirely (no ARP presence, 3040 closed
+LAN-wide), with isolated single-sample "present" blips - the signature of an
+Ethernet cable making momentary contact (bad RJ45 retention clip / not seated).
+A power-cycle does NOT fix this; reseating or replacing the patch cable at the
+panel does.
+
+Tool: `/home/bluelcd/pronet_watch.sh` on the bridge host logs enabler ARP
+presence + port 3040 state every 30 s. Run it in the background during cable
+work and watch for continuous `PRONET+3040-OPEN`:
+
+    setsid nohup /home/bluelcd/pronet_watch.sh > /dev/null 2>&1 &
+    tail -f /home/bluelcd/pronet_watch.log
+
+Stop it when done: `pkill -f 'pronet_watch.s[h]'` (bracket pattern avoids
+pkill matching itself).
