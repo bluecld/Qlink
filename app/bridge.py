@@ -2114,6 +2114,47 @@ def _update_last_known_level(load_id: int, level: int) -> None:
         last_known_load_levels[int(load_id)] = int(level)
 
 
+def _write_through_load_level(lid: int, lvl: int) -> None:
+    """Immediately reflect a commanded level in every served cache.
+
+    HA polls /api/loads and /api/loads/priority between a user command and
+    the next background sweep; without this write-through those polls return
+    the stale pre-command level, so the HA UI reverts briefly and then
+    corrects itself once a sweep catches up.
+    """
+    with priority_cache_lock:
+        priority_cache[lid] = lvl
+    with loads_cache_lock:
+        if loads_cache:
+            loads_cache[lid] = lvl
+    for n, lock in loads_subset_locks.items():
+        with lock:
+            cache = loads_subset_caches.get(n)
+            if cache and lid in cache:
+                cache[lid] = lvl
+
+
+def _overlay_recent_controls(
+    newmap: Dict[int, int], sweep_start: float, add_missing: bool = True
+) -> Dict[int, int]:
+    """Fold user commands issued mid-sweep into a sweep's result map.
+
+    A sweep may read a load before the user commands it and publish after,
+    which would resurrect the stale pre-command level. Any load controlled
+    since ``sweep_start`` keeps its commanded (last-known) level instead.
+    """
+    with priority_state_lock:
+        recent = [
+            lid for lid, ts in priority_last_control_ts.items() if ts >= sweep_start
+        ]
+    if recent:
+        with last_known_load_levels_lock:
+            for lid in recent:
+                if lid in last_known_load_levels and (add_missing or lid in newmap):
+                    newmap[lid] = last_known_load_levels[lid]
+    return newmap
+
+
 def _record_load_control(load_id: int, level: int) -> None:
     now = time.time()
     lid = int(load_id)
@@ -2127,6 +2168,7 @@ def _record_load_control(load_id: int, level: int) -> None:
         priority_usage_scores[lid] = score + 1.0
         priority_usage_ts[lid] = now
     _persist_priority_state()
+    _write_through_load_level(lid, max(0, min(100, int(level))))
 
 
 def _decay_score(score: float, age_sec: float) -> float:
@@ -2247,6 +2289,7 @@ def _update_priority_cache(
 ) -> None:
     global priority_cache, priority_cache_ts
     now = perf_counter()
+    sweep_start = time.time()
     if (
         not force
         and priority_cache_ts is not None
@@ -2279,6 +2322,7 @@ def _update_priority_cache(
 
         # Don't clobber a good cache with a partial sweep.
         if newmap and not _enabler_busy():
+            newmap = _overlay_recent_controls(newmap, sweep_start)
             with priority_cache_lock:
                 priority_cache = newmap
                 priority_cache_ts = perf_counter()
@@ -2304,6 +2348,7 @@ def _update_loads_cache() -> None:
     if not loads_refresh_lock.acquire(blocking=False):
         return
     try:
+        sweep_start = time.time()
         loads = _get_load_list()
         newmap: Dict[int, int] = {}
         for ld in loads:
@@ -2335,6 +2380,7 @@ def _update_loads_cache() -> None:
         # Only replace the cache if we actually read the full set; a partial
         # sweep (enabler went busy) must not clobber good cached values.
         if newmap and not _enabler_busy():
+            newmap = _overlay_recent_controls(newmap, sweep_start)
             with loads_cache_lock:
                 loads_cache = newmap
                 loads_cache_ts = perf_counter()
@@ -2702,6 +2748,7 @@ def _get_loads_subset(subset_num: int) -> Dict[int, int]:
     global loads_subset_caches, loads_subset_ts
 
     now = perf_counter()
+    sweep_start = time.time()
     lock = loads_subset_locks[subset_num]
 
     # Check if cache is still valid
@@ -2758,7 +2805,8 @@ def _get_loads_subset(subset_num: int) -> Dict[int, int]:
                 newmap[lid] = loads_subset_caches[subset_num].get(lid, 0)
             _update_last_known_level(lid, newmap[lid])
 
-    # Update cache
+    # Update cache (keep mid-sweep user commands; stay within subset bounds)
+    newmap = _overlay_recent_controls(newmap, sweep_start, add_missing=False)
     with lock:
         loads_subset_caches[subset_num] = newmap
         loads_subset_ts[subset_num] = perf_counter()
